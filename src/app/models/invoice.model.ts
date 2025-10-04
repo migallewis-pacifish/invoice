@@ -1,3 +1,14 @@
+export interface Client {
+  id: string;
+  displayName: string;
+  address?: string;
+  email?: string;
+  phone?: string;
+  vatNo?: string;
+  notes?: string;
+  createdAt: number;
+}
+
 export interface InvoiceItem {
   description: string;     
   rate: string;        
@@ -27,4 +38,41 @@ export interface InvoiceData {
   vat_percentage: string;
   notes: string;
   reference: string;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  regNo?: string;
+  address?: string;
+  tel?: string;
+  email?: string;
+  vatNo?: string;
+  banking?: {
+    accountName: string;
+    accountNumber: string;
+    branchCode: string;
+  };
+  templatePath?: string;        
+  users: string[];             
+  createdAt: number;
+}
+
+export interface AppUser {
+  uid: string;
+  email: string;
+  companyId: string;
+  role: 'owner' | 'staff';
+  createdAt: number;
+}
+
+export interface RecurringProfile {
+  id: string;
+  clientId: string;
+  title: string;                // e.g. "Monthly Retainer"
+  schedule: 'monthly' | 'quarterly' | 'yearly';
+  dayOfMonth?: number;          // e.g. 1..28
+  defaultItems: InvoiceData['items'];
+  active: boolean;
+  createdAt: number;
 }

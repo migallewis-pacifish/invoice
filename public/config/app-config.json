@@ -1,0 +1,14 @@
+{
+    "firebase": {
+        "apiKey": "AIzaSyCdwLZbe4YxD0COjEMoSS2g0FYhq4cVgx4",
+        "authDomain": "invoice-simple-336.firebaseapp.com",
+        "projectId": "invoice-simple-336",
+        "storageBucket": "invoice-simple-336.firebasestorage.app",
+        "messagingSenderId": "224759554009",
+        "appId": "1:224759554009:web:2178d68615119d53a8c3c8"
+    },
+    "app": {
+        "company": "Invoice",
+        "maxUsers": 2
+    }
+}
