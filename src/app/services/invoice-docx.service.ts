@@ -10,7 +10,7 @@ import { saveAs } from 'file-saver';
 })
 export class InvoiceDocxService {
 
-  private templateUrl = 'assets/invoice-template.docx';
+  private templateUrl = 'templates/DhlebelaInc.docx';
   private VAT_RATE = 0.15;
 
   constructor(private http: HttpClient) { }
@@ -45,7 +45,7 @@ export class InvoiceDocxService {
     return `DHI-${next}`;
   }
 
-  async generateAndDownload(data: Omit<InvoiceData, 'subtotal' | 'vat' | 'grand_total' | 'invoice_number'> & { invoice_number?: string }) {
+  async generateAndDownload(data: Omit<InvoiceData, 'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'> & { invoice_number?: string }) {
     const arrayBuffer = await this.http.get(this.templateUrl, { responseType: 'arraybuffer' }).toPromise();
 
     const { items, subtotalStr, vatStr, grandStr } = this.computeTotals(data.items);
@@ -68,6 +68,7 @@ export class InvoiceDocxService {
       vat_percentage: this.VAT_RATE.toString(),
       notes: data.notes,
       total: grandStr,
+      reference: data.reference || '',
     };
 
     const zip = new PizZip(arrayBuffer as ArrayBuffer);

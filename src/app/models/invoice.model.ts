@@ -2,7 +2,7 @@ export interface InvoiceItem {
   description: string;     
   rate: string;        
   hours: string; 
-  amount: string;      
+  amount?: string;      
 }
 
 export interface InvoiceData {
@@ -26,4 +26,5 @@ export interface InvoiceData {
   total: string;
   vat_percentage: string;
   notes: string;
+  reference: string;
 }
