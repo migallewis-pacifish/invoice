@@ -1,0 +1,88 @@
+
+.clients-wrapper{
+  min-height:100svh;
+  background:var(--bg);
+  padding:32px 16px 64px;
+  max-width:1100px;
+  margin:0 auto;
+}
+
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:18px;
+}
+.topbar h2{
+  margin:0;color:var(--ink);font-weight:700;
+}
+.top-actions{
+  display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+}
+.search{
+  padding:10px 12px;border:1px solid var(--border);border-radius:12px;min-width:240px;
+  outline:none;color:var(--ink);
+}
+.search:focus{ border-color:#b9d3df; box-shadow:0 0 0 4px rgba(43,111,138,.12); }
+
+.primary{
+  background:var(--primary); color:var(--primary-ink); border:none; border-radius:999px;
+  padding:10px 20px; font-weight:600; cursor:pointer;
+  box-shadow:var(--shadow1),var(--shadow2);
+}
+.primary:hover{ box-shadow:0 8px 18px rgba(43,111,138,.20); transform:translateY(-1px); }
+
+.grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap:18px;
+  margin-top:14px;
+}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:16px;
+  box-shadow:var(--shadow1),var(--shadow2);
+  padding:18px;
+  display:flex;flex-direction:column;gap:12px;
+}
+
+.card-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:8px;
+}
+.card-head h3{ margin:0; font-size:18px; color:var(--ink); }
+.meta{ color:var(--muted); font-size:12px; }
+
+.card-body .row{
+  display:flex; gap:8px; font-size:14px; color:var(--ink); margin:4px 0;
+}
+.card-body .row span{ color:var(--muted); width:72px; flex:0 0 72px; }
+.multiline{ white-space:pre-wrap; }
+
+.card-actions{
+  display:flex; gap:10px; margin-top:auto; flex-wrap:wrap;
+}
+
+.secondary{
+  background:#fff; color:var(--primary);
+  border:1px solid #c9dbe3; border-radius:999px; padding:8px 14px; font-weight:600; cursor:pointer;
+}
+.secondary:hover{ background:#f2f8fb; }
+
+.ghost{
+  background:transparent; color:var(--muted); border:none; padding:8px 12px; cursor:pointer; font-weight:600;
+}
+.ghost:hover{ color:var(--ink); text-decoration:underline; }
+
+.empty{
+  background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow1),var(--shadow2);
+  padding:32px; text-align:center; color:var(--muted); margin-top:18px;
+}
+.empty .primary{ margin-top:10px; }
+
+@media (max-width:640px){
+  .top-actions{ width:100%; }
+  .search{ flex:1; min-width:0; }
+}

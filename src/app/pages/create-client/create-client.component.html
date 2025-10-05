@@ -1,0 +1,55 @@
+<div class="client-wrapper">
+  <div class="client-card">
+    <div class="client-header">
+      <h2>Create Client / Company</h2>
+      <p>Add a new client you can use for once-off or recurring invoices.</p>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Client / Company Name <span>*</span></label>
+          <input type="text" formControlName="displayName" placeholder="e.g. ABC Holdings (Pty) Ltd">
+          <small *ngIf="form.controls.displayName.touched && form.controls.displayName.invalid">
+            Name is required.
+          </small>
+        </div>
+
+        <div class="form-group full">
+          <label>Address</label>
+          <textarea formControlName="address" rows="3" placeholder="Street, City, Postal Code"></textarea>
+        </div>
+
+        <div class="form-group half">
+          <label>Email</label>
+          <input type="email" formControlName="email" placeholder="accounts@client.co.za">
+        </div>
+
+        <div class="form-group half">
+          <label>Phone</label>
+          <input type="text" formControlName="phone" placeholder="+27 …">
+        </div>
+
+        <div class="form-group half">
+          <label>VAT Number</label>
+          <input type="text" formControlName="vatNo" placeholder="(optional)">
+        </div>
+
+        <div class="form-group half">
+          <label>Notes</label>
+          <input type="text" formControlName="notes" placeholder="(optional)">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="submit" [disabled]="saving()" class="primary">
+          <span *ngIf="!saving()">Save Client</span>
+          <span *ngIf="saving()" class="spinner"></span>
+        </button>
+
+        <div class="msg success" *ngIf="successId()">Saved ✓ (ID: {{ successId() }})</div>
+        <div class="msg error" *ngIf="errorMsg()">{{ errorMsg() }}</div>
+      </div>
+    </form>
+  </div>
+</div>

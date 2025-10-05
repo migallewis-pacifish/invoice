@@ -1,0 +1,9 @@
+    .nav {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:12px 24px; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.05);
+    }
+    .logout {
+      background:transparent; border:none; color:#2b6f8a; font-weight:600;
+      cursor:pointer; transition:opacity .2s;
+    }
+    .logout:hover { opacity:0.7; }

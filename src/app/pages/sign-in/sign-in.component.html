@@ -1,0 +1,47 @@
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <!-- Left: Visual panel -->
+    <div class="visual">
+      <img src="/images/invoice.png" alt="Invoicing" />
+      <div class="overlay-text">
+        <h1>Invoice.<br>Send.<br>Get Paid.</h1>
+      </div>
+    </div>
+
+    <!-- Right: Form panel -->
+    <div class="form-panel">
+      <h2>Sign In</h2>
+
+      <form [formGroup]="form" (ngSubmit)="signInEmail()" novalidate>
+        <label>Email *</label>
+        <input class="control" type="email" formControlName="email" placeholder="you@company.com" />
+        <div class="hint" *ngIf="form.controls.email.touched && form.controls.email.invalid">Enter a valid email.</div>
+
+        <label class="mt">Password *</label>
+        <input class="control" type="password" formControlName="password" placeholder="••••••••" />
+        <div class="hint" *ngIf="form.controls.password.touched && form.controls.password.invalid">
+          Minimum 6 characters.
+        </div>
+
+        <button class="primary mt-lg" type="submit" [disabled]="loading()">
+          <span *ngIf="!loading()">Sign In</span>
+          <span *ngIf="loading()" class="spinner"></span>
+        </button>
+
+        <div class="or"><span>OR</span></div>
+
+        <div class="providers">
+          <button type="button" class="icon-btn" (click)="signInGoogle()" aria-label="Sign in with Google">
+            <img src="/images/google.svg" alt="" />
+          </button>
+          <button type="button" class="icon-btn" (click)="signInMicrosoft()" aria-label="Sign in with Microsoft">
+            <img src="/images/microsoft.svg" alt="" />
+          </button>
+        </div>
+
+        <div class="error" *ngIf="error()">{{ error() }}</div>
+      </form>
+    </div>
+  </div>
+</div>
+

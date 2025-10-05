@@ -1,0 +1,133 @@
+<div class="wizard-wrapper">
+    <div class="wizard-card">
+        <!-- Left visual -->
+        <div class="visual">
+            <img src="/images/invoice.png" alt="Invoicing">
+            <div class="overlay-text">
+                <h1>Set up your firm</h1>
+            </div>
+        </div>
+
+        <!-- Right: Steps -->
+        <div class="panel">
+            <div class="progress">
+                <div class="dot" [class.active]="step()>=1">1</div>
+                <div class="line" [class.active]="step()>=2"></div>
+                <div class="dot" [class.active]="step()>=2">2</div>
+                <div class="line" [class.active]="step()>=3"></div>
+                <div class="dot" [class.active]="step()>=3">3</div>
+                <div class="line" [class.active]="step()>=4"></div>
+                <div class="dot" [class.active]="step()>=4">4</div>
+            </div>
+
+            <h2 class="title">
+                {{ step() === 1 ? 'Company Info' :
+                step() === 2 ? 'Registration & VAT' :
+                step() === 3 ? 'Address' :
+                step() === 4 ? 'Banking' : 'Additional User' }}
+            </h2>
+
+            <!-- STEP 1 -->
+            <form *ngIf="step()===1" [formGroup]="step1" (ngSubmit)="next()" novalidate>
+                <label>Company Name <span>*</span></label>
+                <input class="control" type="text" formControlName="companyName" placeholder="Duduzile Hlebela Inc.">
+                <div class="hint"
+                    *ngIf="step1.controls['companyName'].touched && step1.controls['companyName'].invalid">Required
+                </div>
+
+                <label class="mt">Telephone <span>*</span></label>
+                <input class="control" type="text" formControlName="tel" placeholder="010 449 2166">
+                <div class="hint" *ngIf="step1.controls['tel'].touched && step1.controls['tel'].invalid">Required</div>
+
+                <label>Registration Number <span>*</span></label>
+                <input class="control" type="text" formControlName="regNo" placeholder="2012/072526/21">
+
+                <label class="mt">VAT Number</label>
+                <input class="control" type="text" formControlName="vatNo" placeholder="">
+                <div class="actions">
+                    <button class="ghost" type="button" (click)="back()">Back</button>
+                    <button class="primary" type="submit" [disabled]="!canNext()">Next</button>
+                </div>
+            </form>
+
+            <!-- STEP 2 -->
+            <form *ngIf="step()===2" [formGroup]="step2" (ngSubmit)="next()" novalidate>
+                <label>Address Line 1 <span>*</span></label>
+                <input class="control" type="text" formControlName="line1"
+                    placeholder="6 Sturdee Avenue, 1st Floor, Building 6">
+
+                <label class="mt">Address Line 2</label>
+                <input class="control" type="text" formControlName="line2" placeholder="(optional)">
+
+                <div class="row">
+                    <div class="col">
+                        <label class="mt">City <span>*</span></label>
+                        <input class="control" type="text" formControlName="city" placeholder="Rosebank">
+                    </div>
+                    <div class="col">
+                        <label class="mt">Province <span>*</span></label>
+                        <input class="control" type="text" formControlName="province" placeholder="Gauteng">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <label class="mt">Postal Code <span>*</span></label>
+                        <input class="control" type="text" formControlName="postalCode" placeholder="2196">
+                    </div>
+                    <div class="col">
+                        <label class="mt">Country <span>*</span></label>
+                        <input class="control" type="text" formControlName="country" placeholder="South Africa">
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button class="ghost" type="button" (click)="back()">Back</button>
+                    <button class="primary" type="submit" [disabled]="!canNext()">Next</button>
+                </div>
+            </form>
+
+            <!-- STEP 3 -->
+            <form *ngIf="step()===3" [formGroup]="step3" (ngSubmit)="next()">
+                <label>Bank Name<span>*</span></label>
+                <input class="control" type="text" formControlName="bankName">
+
+                <label>Account Name<span>*</span></label>
+                <input class="control" type="text" formControlName="accountName">
+
+                <div class="row">
+                    <div class="col">
+                        <label class="mt">Account Number<span>*</span></label>
+                        <input class="control" type="text" formControlName="accountNumber">
+                    </div>
+                    <div class="col">
+                        <label class="mt">Branch Code<span>*</span></label>
+                        <input class="control" type="text" formControlName="branchCode">
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button class="ghost" type="button" (click)="back()">Back</button>
+                    <button class="primary" type="submit">Next</button>
+                </div>
+            </form>
+
+            <!-- STEP 4 -->
+            <form *ngIf="step()===4" [formGroup]="step4" (ngSubmit)="submit()">
+                <label>Additional User Email (optional)</label>
+                <input class="control" type="email" formControlName="extraUserEmail" placeholder="colleague@firm.co.za">
+                <small class="muted">Max 1 additional user (owner + 1). We’ll save as a pending invite.</small>
+
+                <div class="actions">
+                    <button class="ghost" type="button" (click)="back()">Back</button>
+                    <button class="primary" type="submit" [disabled]="loading() || !canNext()">
+                        <span *ngIf="!loading()">Finish & Create</span>
+                        <span *ngIf="loading()" class="spinner"></span>
+                    </button>
+                </div>
+
+                <div class="error" *ngIf="error()">{{ error() }}</div>
+            </form>
+        </div>
+    </div>
+</div>
