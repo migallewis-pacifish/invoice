@@ -1,2 +1,34 @@
 <app-nav-bar></app-nav-bar>
 
+<div class="wrap" *ngIf="!loading(); else loadingTpl">
+  <div class="card">
+    <h1 class="title">{{ companyName() }}</h1>
+
+    <div class="template-status">
+      <ng-container *ngIf="templatePath(); else noTemplate">
+        <div class="status-row">
+          <span class="badge ok">Invoice Template Available</span>
+          <button class="primary" (click)="goToUpload()">Update Template</button>
+        </div>
+        <p class="muted">You can replace your existing template anytime.</p>
+      </ng-container>
+
+      <ng-template #noTemplate>
+        <div class="status-row">
+          <span class="badge warn">No Template Uploaded</span>
+          <button class="primary" (click)="goToUpload()">Upload Template</button>
+        </div>
+        <p class="muted">Please upload your Word invoice template before creating invoices.</p>
+      </ng-template>
+    </div>
+  </div>
+
+  <app-client-list ></app-client-list>
+</div>
+
+<ng-template #loadingTpl>
+  <div class="loading">
+    <div class="spinner"></div>
+    <p>Loading dashboard...</p>
+  </div>
+</ng-template>
