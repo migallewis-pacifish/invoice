@@ -1,8 +1,9 @@
 import { inject, Injectable } from '@angular/core';
-import { Auth } from '@angular/fire/auth';
-import { Firestore } from '@angular/fire/firestore';
-import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { Auth, authState } from '@angular/fire/auth';
+import { collectionData, docData, Firestore } from '@angular/fire/firestore';
+import { addDoc, collection, doc, getDoc, orderBy, query, serverTimestamp } from 'firebase/firestore';
 import { Client } from '../models/invoice.model';
+import { map, Observable, of, switchMap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -37,5 +38,30 @@ export class ClientService {
     });
 
     return docRef.id;
+  }
+
+    clients$(): Observable<Client[]> {
+    return authState(this.auth).pipe(
+      switchMap(user => {
+        if (!user) return of([]);
+        const userDoc = doc(this.db, `users/${user.uid}`);
+        return docData(userDoc).pipe(
+          switchMap((u: any) => {
+            const companyId = u?.companyId as string | undefined;
+            if (!companyId) return of([]);
+            const col = collection(this.db, `companies/${companyId}/clients`);
+            const q = query(col, orderBy('displayName'));
+            return collectionData(q, { idField: 'id' }).pipe(
+              map((arr: any[]) =>
+                arr.map(x => ({
+                  ...x,
+                  createdAt: typeof x.createdAt?.toMillis === 'function' ? x.createdAt.toMillis() : x.createdAt ?? 0
+                })) as Client[]
+              )
+            );
+          })
+        );
+      })
+    );
   }
 }

@@ -1,0 +1,37 @@
+<div class="clients-wrapper">
+  <div class="topbar">
+    <h2>Clients</h2>
+
+    <div class="top-actions">
+      <input class="search" [formControl]="search" placeholder="Search clients…" />
+      <button class="primary" (click)="goNew()">Add New Client</button>
+    </div>
+  </div>
+
+  <ng-container *ngIf="(filtered$ | async) as clients">
+    <div class="empty" *ngIf="clients.length === 0">
+      <p>No clients yet.</p>
+      <button class="primary" (click)="goNew()">Add Your First Client</button>
+    </div>
+
+    <div class="grid" *ngIf="clients.length > 0">
+      <div class="card" *ngFor="let c of clients">
+        <div class="card-head">
+          <h3>{{ c.displayName }}</h3>
+          <span class="meta" *ngIf="c.vatNo">VAT: {{ c.vatNo }}</span>
+        </div>
+
+        <div class="card-body">
+          <div class="row"><span>Email:</span><strong>{{ c.email || '—' }}</strong></div>
+          <div class="row"><span>Phone:</span><strong>{{ c.phone || '—' }}</strong></div>
+          <div class="row"><span>Address:</span><strong class="multiline">{{ c.address || '—' }}</strong></div>
+        </div>
+
+        <div class="card-actions">
+          <button class="secondary" (click)="createInvoice(c)">Create Invoice</button>
+          <button class="ghost" (click)="goClient(c)">Go to Client</button>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

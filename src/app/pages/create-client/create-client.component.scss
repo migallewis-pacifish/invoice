@@ -1,0 +1,124 @@
+
+
+.client-wrapper {
+  background: var(--bg);
+  min-height: 100svh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 60px 16px;
+}
+
+.client-card {
+  width: min(900px, 100%);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow1), var(--shadow2);
+  padding: 48px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.client-header h2 {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 700;
+}
+.client-header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Grid layout */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px 24px;
+}
+.form-group.full {
+  grid-column: 1 / -1;
+}
+
+/* Inputs */
+label {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+label span {
+  color: #c0392b;
+}
+input, textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  outline: none;
+  font-size: 15px;
+  color: var(--ink);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  background: #fff;
+}
+input:focus, textarea:focus {
+  border-color: #b9d3df;
+  box-shadow: 0 0 0 4px rgba(43,111,138,0.12);
+}
+small {
+  display: block;
+  color: #c0392b;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Button & actions */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.primary {
+  background: var(--primary);
+  color: var(--primary-ink);
+  border: none;
+  border-radius: 999px;
+  padding: 12px 32px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.primary:hover {
+  box-shadow: 0 8px 18px rgba(43,111,138,0.20);
+  transform: translateY(-1px);
+}
+.primary:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,.5);
+  border-top-color: #fff;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 1s linear infinite;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.msg {
+  font-size: 14px;
+}
+.msg.success { color: #27ae60; }
+.msg.error { color: #b00020; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .client-card {
+    padding: 32px 24px;
+  }
+}

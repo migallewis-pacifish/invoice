@@ -1,54 +1,55 @@
-<div class="container py-4" style="max-width: 760px;">
-  <h2 class="mb-3">Create Client / Company</h2>
-  <p class="text-muted mb-4">Add a new client that you can use for once-off and recurring invoices.</p>
-
-  <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="needs-validation">
-
-    <div class="mb-3">
-      <label class="form-label">Client / Company Name <span class="text-danger">*</span></label>
-      <input type="text" class="form-control" formControlName="displayName" placeholder="e.g. Sample Client (Pty) Ltd">
-      <div class="text-danger small" *ngIf="form.controls.displayName.touched && form.controls.displayName.invalid">
-        Name is required (min 2 characters).
-      </div>
+<div class="client-wrapper">
+  <div class="client-card">
+    <div class="client-header">
+      <h2>Create Client / Company</h2>
+      <p>Add a new client you can use for once-off or recurring invoices.</p>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label">Address</label>
-      <textarea class="form-control" rows="3" formControlName="address" placeholder="Street, City, Code"></textarea>
-    </div>
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Client / Company Name <span>*</span></label>
+          <input type="text" formControlName="displayName" placeholder="e.g. ABC Holdings (Pty) Ltd">
+          <small *ngIf="form.controls.displayName.touched && form.controls.displayName.invalid">
+            Name is required.
+          </small>
+        </div>
 
-    <div class="row g-3">
-      <div class="col-md-6">
-        <label class="form-label">Email</label>
-        <input type="email" class="form-control" formControlName="email" placeholder="accounts@client.co.za">
-        <div class="text-danger small" *ngIf="form.controls.email.touched && form.controls.email.invalid">
-          Please enter a valid email.
+        <div class="form-group full">
+          <label>Address</label>
+          <textarea formControlName="address" rows="3" placeholder="Street, City, Postal Code"></textarea>
+        </div>
+
+        <div class="form-group half">
+          <label>Email</label>
+          <input type="email" formControlName="email" placeholder="accounts@client.co.za">
+        </div>
+
+        <div class="form-group half">
+          <label>Phone</label>
+          <input type="text" formControlName="phone" placeholder="+27 …">
+        </div>
+
+        <div class="form-group half">
+          <label>VAT Number</label>
+          <input type="text" formControlName="vatNo" placeholder="(optional)">
+        </div>
+
+        <div class="form-group half">
+          <label>Notes</label>
+          <input type="text" formControlName="notes" placeholder="(optional)">
         </div>
       </div>
-      <div class="col-md-6">
-        <label class="form-label">Phone</label>
-        <input type="text" class="form-control" formControlName="phone" placeholder="+27 ..">
-      </div>
-    </div>
 
-    <div class="row g-3 mt-1">
-      <div class="col-md-6">
-        <label class="form-label">VAT Number</label>
-        <input type="text" class="form-control" formControlName="vatNo" placeholder="(optional)">
-      </div>
-      <div class="col-md-6">
-        <label class="form-label">Notes</label>
-        <input type="text" class="form-control" formControlName="notes" placeholder="(optional)">
-      </div>
-    </div>
+      <div class="actions">
+        <button type="submit" [disabled]="saving()" class="primary">
+          <span *ngIf="!saving()">Save Client</span>
+          <span *ngIf="saving()" class="spinner"></span>
+        </button>
 
-    <div class="d-flex align-items-center gap-2 mt-4">
-      <button class="btn btn-primary" type="submit" [disabled]="saving()">
-        <span *ngIf="!saving()">Save Client</span>
-        <span *ngIf="saving()" class="spinner-border spinner-border-sm"></span>
-      </button>
-      <div *ngIf="successId()" class="text-success">Saved ✓ (ID: {{ successId() }})</div>
-      <div *ngIf="errorMsg()" class="text-danger">{{ errorMsg() }}</div>
-    </div>
-  </form>
+        <div class="msg success" *ngIf="successId()">Saved ✓ (ID: {{ successId() }})</div>
+        <div class="msg error" *ngIf="errorMsg()">{{ errorMsg() }}</div>
+      </div>
+    </form>
+  </div>
 </div>
