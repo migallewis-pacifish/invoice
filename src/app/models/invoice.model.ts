@@ -49,6 +49,7 @@ export interface Address {
 }
 
 export interface Banking {
+  bankName: string;  
   accountName: string;
   accountNumber: string;
   branchCode: string;

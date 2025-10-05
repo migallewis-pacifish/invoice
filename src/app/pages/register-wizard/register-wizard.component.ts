@@ -26,13 +26,11 @@ export class RegisterWizardComponent {
   step1 = this.fb.group({
     companyName: ['', [Validators.required, Validators.minLength(2)]],
     tel: ['', [Validators.required]],
-    ownerEmail: ['', [Validators.required, Validators.email]],
-    ownerPassword: ['', [Validators.required, Validators.minLength(6)]],
-    confirm: ['', [Validators.required]],
-  }, { validators: [matchPasswords('ownerPassword', 'confirm')] });
+    regNo: ['', Validators.required],
+    vatNo: ['']
+  });
 
-  step2 = this.fb.group({ regNo: [''], vatNo: [''] });
-  step3 = this.fb.group({
+  step2 = this.fb.group({
     line1: ['', Validators.required],
     line2: [''],
     city: ['', Validators.required],
@@ -40,16 +38,17 @@ export class RegisterWizardComponent {
     postalCode: [''],
     country: ['South Africa', Validators.required],
   });
-  step4 = this.fb.group({
-    accountName: [''],
-    accountNumber: [''],
-    branchCode: [''],
+  step3 = this.fb.group({
+    bankName: ['', Validators.required],
+    accountName: ['', Validators.required],
+    accountNumber: ['', Validators.required],
+    branchCode: ['', Validators.required],
   });
-  step5 = this.fb.group({
+  step4 = this.fb.group({
     extraUserEmail: ['', [Validators.email]],
   });
 
-  maxStep = 5;
+  maxStep = 4;
 
   private asValidSignal = (ctrl: any) =>
     toSignal(
@@ -64,16 +63,14 @@ export class RegisterWizardComponent {
   step2Valid = this.asValidSignal(this.step2);
   step3Valid = this.asValidSignal(this.step3);
   step4Valid = this.asValidSignal(this.step4);
-  step5Valid = this.asValidSignal(this.step5);
 
   // recompute canNext based on *signals*
   canNext = computed(() => {
     switch (this.step()) {
       case 1: return this.step1Valid();
-      case 2: return true;          // optional step
+      case 2: return this.step2Valid();          // optional step
       case 3: return this.step3Valid();
-      case 4: return true;          // optional
-      case 5: return this.step5Valid(); // email is optional but must be valid if present
+      case 4: return this.step4Valid();
       default: return false;
     }
   });
@@ -89,27 +86,26 @@ export class RegisterWizardComponent {
     this.loading.set(true);
     this.error.set(null);
     try {
-      await this.reg.registerCompanyAndOwner({
+      await this.reg.createCompanyForCurrentUser({
         companyName: this.step1.value.companyName!.trim(),
         tel: this.step1.value.tel!.trim(),
-        ownerEmail: this.step1.value.ownerEmail!.trim(),
-        ownerPassword: this.step1.value.ownerPassword!,
-        regNo: this.step2.value.regNo?.trim(),
-        vatNo: this.step2.value.vatNo?.trim(),
+        regNo: this.step1.value.regNo?.trim(),
+        vatNo: this.step1.value.vatNo?.trim(),
         address: {
-          line1: this.step3.value.line1!.trim(),
-          line2: this.step3.value.line2?.trim(),
-          city: this.step3.value.city!.trim(),
-          province: this.step3.value.province?.trim(),
-          postalCode: this.step3.value.postalCode?.trim(),
-          country: this.step3.value.country!.trim(),
+          line1: this.step2.value.line1!.trim(),
+          line2: this.step2.value.line2?.trim(),
+          city: this.step2.value.city!.trim(),
+          province: this.step2.value.province?.trim(),
+          postalCode: this.step2.value.postalCode?.trim(),
+          country: this.step2.value.country!.trim(),
         },
-        banking: (this.step4.value.accountName || this.step4.value.accountNumber || this.step4.value.branchCode) ? {
-          accountName: this.step4.value.accountName?.trim() || '',
-          accountNumber: this.step4.value.accountNumber?.trim() || '',
-          branchCode: this.step4.value.branchCode?.trim() || '',
+        banking: (this.step3.value.bankName || this.step3.value.accountName || this.step3.value.accountNumber || this.step3.value.branchCode) ? {
+          bankName: this.step3.value.bankName?.trim() || '',
+          accountName: this.step3.value.accountName?.trim() || '',
+          accountNumber: this.step3.value.accountNumber?.trim() || '',
+          branchCode: this.step3.value.branchCode?.trim() || '',
         } : undefined,
-        extraUserEmail: this.step5.value.extraUserEmail?.trim() || undefined,
+        extraUserEmail: this.step4.value.extraUserEmail?.trim() || undefined,
       });
       this.router.navigateByUrl('/');
     } catch (e: any) {
@@ -123,7 +119,6 @@ export class RegisterWizardComponent {
     const s = this.step();
     (s === 1 ? this.step1 :
       s === 2 ? this.step2 :
-        s === 3 ? this.step3 :
-          s === 4 ? this.step4 : this.step5).markAllAsTouched();
+        s === 3 ? this.step3 : this.step4).markAllAsTouched();
   }
 }

@@ -18,12 +18,10 @@
                 <div class="dot" [class.active]="step()>=3">3</div>
                 <div class="line" [class.active]="step()>=4"></div>
                 <div class="dot" [class.active]="step()>=4">4</div>
-                <div class="line" [class.active]="step()>=5"></div>
-                <div class="dot" [class.active]="step()>=5">5</div>
             </div>
 
             <h2 class="title">
-                {{ step() === 1 ? 'Company & Owner' :
+                {{ step() === 1 ? 'Company Info' :
                 step() === 2 ? 'Registration & VAT' :
                 step() === 3 ? 'Address' :
                 step() === 4 ? 'Banking' : 'Additional User' }}
@@ -41,31 +39,7 @@
                 <input class="control" type="text" formControlName="tel" placeholder="010 449 2166">
                 <div class="hint" *ngIf="step1.controls['tel'].touched && step1.controls['tel'].invalid">Required</div>
 
-                <label class="mt">Owner Email <span>*</span></label>
-                <input class="control" type="email" formControlName="ownerEmail" placeholder="you@firm.co.za">
-                <div class="hint" *ngIf="step1.controls['ownerEmail'].touched && step1.controls['ownerEmail'].invalid">
-                    Valid email required</div>
-
-                <div class="row">
-                    <div class="col">
-                        <label class="mt">Password <span>*</span></label>
-                        <input class="control" type="password" formControlName="ownerPassword" placeholder="••••••••">
-                    </div>
-                    <div class="col">
-                        <label class="mt">Confirm <span>*</span></label>
-                        <input class="control" type="password" formControlName="confirm" placeholder="••••••••">
-                    </div>
-                </div>
-                <div class="hint" *ngIf="step1.errors?.['mismatch']">Passwords don’t match</div>
-
-                <div class="actions">
-                    <button class="primary" type="submit" [disabled]="!canNext()">Next</button>
-                </div>
-            </form>
-
-            <!-- STEP 2 -->
-            <form *ngIf="step()===2" [formGroup]="step2" (ngSubmit)="next()">
-                <label>Registration Number</label>
+                <label>Registration Number <span>*</span></label>
                 <input class="control" type="text" formControlName="regNo" placeholder="2012/072526/21">
 
                 <label class="mt">VAT Number</label>
@@ -76,8 +50,8 @@
                 </div>
             </form>
 
-            <!-- STEP 3 -->
-            <form *ngIf="step()===3" [formGroup]="step3" (ngSubmit)="next()" novalidate>
+            <!-- STEP 2 -->
+            <form *ngIf="step()===2" [formGroup]="step2" (ngSubmit)="next()" novalidate>
                 <label>Address Line 1 <span>*</span></label>
                 <input class="control" type="text" formControlName="line1"
                     placeholder="6 Sturdee Avenue, 1st Floor, Building 6">
@@ -91,14 +65,14 @@
                         <input class="control" type="text" formControlName="city" placeholder="Rosebank">
                     </div>
                     <div class="col">
-                        <label class="mt">Province</label>
+                        <label class="mt">Province <span>*</span></label>
                         <input class="control" type="text" formControlName="province" placeholder="Gauteng">
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col">
-                        <label class="mt">Postal Code</label>
+                        <label class="mt">Postal Code <span>*</span></label>
                         <input class="control" type="text" formControlName="postalCode" placeholder="2196">
                     </div>
                     <div class="col">
@@ -113,18 +87,21 @@
                 </div>
             </form>
 
-            <!-- STEP 4 -->
-            <form *ngIf="step()===4" [formGroup]="step4" (ngSubmit)="next()">
-                <label>Account Name</label>
+            <!-- STEP 3 -->
+            <form *ngIf="step()===3" [formGroup]="step3" (ngSubmit)="next()">
+                <label>Bank Name<span>*</span></label>
+                <input class="control" type="text" formControlName="bankName">
+
+                <label>Account Name<span>*</span></label>
                 <input class="control" type="text" formControlName="accountName">
 
                 <div class="row">
                     <div class="col">
-                        <label class="mt">Account Number</label>
+                        <label class="mt">Account Number<span>*</span></label>
                         <input class="control" type="text" formControlName="accountNumber">
                     </div>
                     <div class="col">
-                        <label class="mt">Branch Code</label>
+                        <label class="mt">Branch Code<span>*</span></label>
                         <input class="control" type="text" formControlName="branchCode">
                     </div>
                 </div>
@@ -135,8 +112,8 @@
                 </div>
             </form>
 
-            <!-- STEP 5 -->
-            <form *ngIf="step()===5" [formGroup]="step5" (ngSubmit)="submit()">
+            <!-- STEP 4 -->
+            <form *ngIf="step()===4" [formGroup]="step4" (ngSubmit)="submit()">
                 <label>Additional User Email (optional)</label>
                 <input class="control" type="email" formControlName="extraUserEmail" placeholder="colleague@firm.co.za">
                 <small class="muted">Max 1 additional user (owner + 1). We’ll save as a pending invite.</small>

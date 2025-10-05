@@ -1,9 +1,10 @@
 import { inject, Injectable } from '@angular/core';
-import { Auth } from '@angular/fire/auth';
-import { Firestore } from '@angular/fire/firestore';
+import { Auth, onAuthStateChanged, signOut } from '@angular/fire/auth';
+import { Firestore, getDoc } from '@angular/fire/firestore';
 import { RegisterPayload, RegisterWizardPayload } from '../models/invoice.model';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { addDoc, collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { Router } from '@angular/router';
 
 @Injectable({
   providedIn: 'root'
@@ -11,47 +12,65 @@ import { addDoc, collection, doc, runTransaction, serverTimestamp } from 'fireba
 export class RegisterService {
   private auth = inject(Auth);
   private db = inject(Firestore);
+  private router = inject(Router);
 
-  /**
-   * Creates Auth owner user, company doc, and user profile.
-   * Stores extraUserEmail in company.pendingUsers (invite flow later).
-   */
-  async registerCompanyAndOwner(data: RegisterWizardPayload) {
-    // 1) Create owner auth user
-    const cred = await createUserWithEmailAndPassword(this.auth, data.ownerEmail, data.ownerPassword);
-    const uid = cred.user.uid;
-    await updateProfile(cred.user, { displayName: data.companyName });
+  async createCompanyForCurrentUser(data: Omit<RegisterWizardPayload, 'ownerEmail' | 'ownerPassword'>) {
+    const user = this.auth.currentUser;
+    if (!user) throw new Error('Not signed in');
 
-    // 2) Create company + user profile in a transaction
     const companiesCol = collection(this.db, 'companies');
-    const usersDoc = doc(this.db, `users/${uid}`);
+    const usersDoc = doc(this.db, `users/${user.uid}`);
 
     await runTransaction(this.db, async (tx) => {
-      // Create the company document
       const compRef = await addDoc(companiesCol, {
         name: data.companyName,
         regNo: data.regNo ?? '',
         vatNo: data.vatNo ?? '',
         address: data.address ?? null,
         tel: data.tel ?? '',
-        email: data.ownerEmail,
+        email: user.email ?? '',
         banking: data.banking ?? null,
         templatePath: null,
-        users: [uid],
+        users: [user.uid],
         pendingUsers: data.extraUserEmail ? [data.extraUserEmail] : [],
         createdAt: serverTimestamp()
       });
 
-      // Owner profile
       tx.set(usersDoc, {
-        uid,
-        email: data.ownerEmail,
+        uid: user.uid,
+        email: user.email ?? '',
         companyId: compRef.id,
         role: 'owner',
         createdAt: serverTimestamp()
       });
     });
+  }
 
-    return { uid };
+  async routeAfterSignIn(): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) {
+      await this.router.navigate(['/login']);
+      return;
+    }
+
+    // Check Firestore user profile
+    const userSnap = await getDoc(doc(this.db, `users/${user.uid}`));
+    if (userSnap.exists() && userSnap.data()?.['companyId']) {
+      await this.router.navigate(['/landing']);
+    } else {
+      await this.router.navigate(['/register-company']);
+    }
+    return;
+  }
+
+  /** Sign out completely */
+  async logout() {
+    await signOut(this.auth);
+    this.router.navigate(['/login']);
+  }
+
+  /** Optional: watch auth changes (e.g. for navbar display) */
+  watchUser(callback: (user: any) => void) {
+    return onAuthStateChanged(this.auth, callback);
   }
 }
