@@ -39,20 +39,30 @@ export interface InvoiceData {
   notes: string;
   reference: string;
 }
+export interface Address {
+  line1: string;
+  line2?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
+  country?: string;
+}
+
+export interface Banking {
+  accountName: string;
+  accountNumber: string;
+  branchCode: string;
+}
 
 export interface Company {
   id: string;
   name: string;
   regNo?: string;
-  address?: string;
+  address?: Address;
   tel?: string;
   email?: string;
   vatNo?: string;
-  banking?: {
-    accountName: string;
-    accountNumber: string;
-    branchCode: string;
-  };
+  banking?: Banking;
   templatePath?: string;        
   users: string[];             
   createdAt: number;
@@ -66,6 +76,15 @@ export interface AppUser {
   createdAt: number;
 }
 
+export interface RegisterPayload {
+  companyName: string;
+  regNo?: string;
+  address?: string;
+  tel?: string;
+  email: string;          // owner login
+  password: string;       // owner password
+}
+
 export interface RecurringProfile {
   id: string;
   clientId: string;
@@ -75,4 +94,25 @@ export interface RecurringProfile {
   defaultItems: InvoiceData['items'];
   active: boolean;
   createdAt: number;
+}
+
+export interface RegisterWizardPayload {
+  // step 1
+  companyName: string;
+  tel: string;
+  ownerEmail: string;
+  ownerPassword: string;
+
+  // step 2
+  regNo?: string;
+  vatNo?: string;
+
+  // step 3
+  address: Address;
+
+  // step 4
+  banking?: Banking;
+
+  // step 5
+  extraUserEmail?: string;   // optional, max 1 additional user
 }
