@@ -1,0 +1,54 @@
+:root{
+  --bg:#f6f8fb; --card:#fff; --ink:#1f3448; --muted:#6b879d;
+  --primary:#2b6f8a; --primary-ink:#fff; --border:#e3e9ef;
+  --shadow1:0 2px 6px rgba(0,0,0,.04); --shadow2:0 8px 20px rgba(43,111,138,.10);
+  --radius:18px;
+}
+
+.wrap{ min-height:100svh; background:var(--bg); display:grid; place-items:center; padding:32px 16px; }
+.card{
+  width:min(900px, 96vw); background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+  box-shadow:var(--shadow1), var(--shadow2); padding:28px; display:flex; flex-direction:column; gap:16px;
+}
+.head{ display:flex; justify-content:space-between; align-items:center; }
+h2{ margin:0; color:var(--ink); font-weight:700; }
+.muted{ color:var(--muted); }
+.tiny{ font-size:12px; }
+
+.badge{ display:inline-block; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+.badge.ok{ background:#e7f6ef; color:#1f7a3a; }
+.badge.warn{ background:#fff3e0; color:#9a6b1a; }
+
+.actions{ display:flex; gap:10px; margin-top:8px; }
+.link{ color:var(--primary); text-decoration:underline; }
+
+.dropzone{
+  border:2px dashed #cfe0e8; border-radius:16px; padding:28px; background:#fbfdff;
+  display:grid; place-items:center; transition:background .2s, border-color .2s;
+}
+.dropzone--disabled{ opacity:.6; pointer-events:none; }
+.dz-inner{ text-align:center; display:flex; flex-direction:column; gap:8px; }
+.dz-icon{ font-size:36px; }
+.dz-text strong{ color:var(--ink); }
+.pick{
+  background:transparent; border:1px solid var(--border); border-radius:999px; padding:8px 14px; cursor:pointer;
+}
+.filebar{ display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--border); padding-top:12px; }
+.fname{ color:var(--ink); }
+
+.progress .track{ height:8px; background:#eef3f7; border-radius:999px; overflow:hidden; }
+.progress .bar{ height:100%; background:var(--primary); width:0%; transition:width .2s; border-radius:999px; margin:6px 0; }
+
+.primary{
+  background:var(--primary); color:var(--primary-ink); border:none; border-radius:999px;
+  padding:10px 18px; font-weight:600; cursor:pointer; box-shadow:var(--shadow1), var(--shadow2);
+}
+.ghost{
+  background:transparent; border:1px solid var(--border); border-radius:999px; padding:10px 16px; cursor:pointer;
+}
+.danger{
+  background:#fff0f0; color:#9e1c1c; border:1px solid #f3c9c9; border-radius:999px; padding:8px 12px; cursor:pointer;
+}
+
+.error{ color:#b00020; }
+.info{ color:#1b6b38; }
