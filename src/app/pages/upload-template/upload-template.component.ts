@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, EventEmitter, inject, Input, Output, signal } from '@angular/core';
 import { Auth, authState } from '@angular/fire/auth';
 import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
 import { deleteObject, getDownloadURL, ref, Storage, uploadBytesResumable } from '@angular/fire/storage';
@@ -13,9 +13,14 @@ import { take } from 'rxjs';
   styleUrl: './upload-template.component.scss'
 })
 export class UploadTemplateComponent {
+  @Input() inDialog = false;                         // hide page-only bits when in a dialog
+  @Output() uploaded = new EventEmitter<string>();   // emits storage path on success
+  @Output() cancel = new EventEmitter<void>();
   private auth = inject(Auth);
   private db = inject(Firestore);
   private storage = inject(Storage);
+
+
 
   // State
   companyId = signal<string | null>(null);
@@ -100,7 +105,7 @@ export class UploadTemplateComponent {
       return;
     }
     this.file.set(f);
-    this.info.set(`${f.name} • ${(f.size/1024/1024).toFixed(2)} MB`);
+    this.info.set(`${f.name} • ${(f.size / 1024 / 1024).toFixed(2)} MB`);
   }
 
   async upload() {
@@ -139,6 +144,9 @@ export class UploadTemplateComponent {
           this.templateUrl.set(url);
           this.info.set('Template uploaded successfully.');
           this.file.set(null);
+
+          // 🔽 notify dialog wrapper
+          this.uploaded.emit(path);
         } catch (e: any) {
           this.error.set(e?.message ?? 'Failed to save template path.');
         } finally {
@@ -156,6 +164,9 @@ export class UploadTemplateComponent {
       this.uploading.set(false);
       this.progress.set(0);
       this.info.set(null);
+
+      // 🔽 notify dialog wrapper
+      this.cancel.emit();
     }
   }
 

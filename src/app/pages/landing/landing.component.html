@@ -8,7 +8,7 @@
       <ng-container *ngIf="templatePath(); else noTemplate">
         <div class="status-row">
           <span class="badge ok">Invoice Template Available</span>
-          <button class="primary" (click)="goToUpload()">Update Template</button>
+          <button class="primary" (click)="openUploadTemplate()">Update Template</button>
         </div>
         <p class="muted">You can replace your existing template anytime.</p>
       </ng-container>
@@ -16,7 +16,7 @@
       <ng-template #noTemplate>
         <div class="status-row">
           <span class="badge warn">No Template Uploaded</span>
-          <button class="primary" (click)="goToUpload()">Upload Template</button>
+          <button class="primary" (click)="openUploadTemplate()">Upload Template</button>
         </div>
         <p class="muted">Please upload your Word invoice template before creating invoices.</p>
       </ng-template>

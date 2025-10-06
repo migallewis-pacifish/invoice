@@ -1,6 +1,6 @@
-.wrap{ min-height:100svh; background:var(--bg); display:grid; place-items:center; padding:32px 16px; }
+.wrap{ background:var(--bg); display:grid; place-items:center; }
 .card{
-  width:min(900px, 96vw); background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+  width:min(800px, 96vw); background:var(--card); border:1px solid var(--border); ;
   box-shadow:var(--shadow1), var(--shadow2); padding:28px; display:flex; flex-direction:column; gap:16px;
 }
 .head{ display:flex; justify-content:space-between; align-items:center; }

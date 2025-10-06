@@ -6,6 +6,8 @@ import { Router } from '@angular/router';
 import { take } from 'rxjs';
 import { ClientListComponent } from '../client-list/client-list.component';
 import { CommonModule } from '@angular/common';
+import { Dialog } from '@angular/cdk/dialog';
+import { UploadTemplateDialogueComponent } from '../../components/upload-template-dialogue/upload-template-dialogue.component';
 
 @Component({
   selector: 'app-landing',
@@ -18,6 +20,7 @@ export class LandingComponent {
   private auth = inject(Auth);
   private db = inject(Firestore);
   private router = inject(Router);
+  private dialog = inject(Dialog);
 
   companyId = signal<string | null>(null);
   companyName = signal<string | null>(null);
@@ -46,5 +49,22 @@ export class LandingComponent {
   goToUpload() {
     this.router.navigate(['/template']);
   }
+
+
+openUploadTemplate() {
+  const ref = this.dialog.open<string | null>(UploadTemplateDialogueComponent, {
+    hasBackdrop: true,
+    disableClose: true,
+    backdropClass: 'dlg-backdrop',
+    panelClass: 'dlg-panel',
+  });
+
+  ref.closed.subscribe(path => {
+    if (path) {
+      // optional: toast “Template updated ✓”
+      // You already subscribe to the company doc, so UI should reflect automatically.
+    }
+  });
+}
 
 }
