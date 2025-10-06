@@ -4,14 +4,14 @@
 
     <div class="top-actions">
       <input class="search" [formControl]="search" placeholder="Search clients…" />
-      <button class="primary" (click)="goNew()">Add New Client</button>
+      <button class="primary" (click)="openAddClient()">Add New Client</button>
     </div>
   </div>
 
   <ng-container *ngIf="(filtered$ | async) as clients">
     <div class="empty" *ngIf="clients.length === 0">
       <p>No clients yet.</p>
-      <button class="primary" (click)="goNew()">Add Your First Client</button>
+      <button class="primary" (click)="openAddClient()">Add Your First Client</button>
     </div>
 
     <div class="grid" *ngIf="clients.length > 0">
@@ -24,7 +24,6 @@
         <div class="card-body">
           <div class="row"><span>Email:</span><strong>{{ c.email || '—' }}</strong></div>
           <div class="row"><span>Phone:</span><strong>{{ c.phone || '—' }}</strong></div>
-          <div class="row"><span>Address:</span><strong class="multiline">{{ c.address || '—' }}</strong></div>
         </div>
 
         <div class="card-actions">

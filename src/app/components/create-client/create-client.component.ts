@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, EventEmitter, inject, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ClientService } from '../../services/client.service';
@@ -11,6 +11,8 @@ import { ClientService } from '../../services/client.service';
   styleUrl: './create-client.component.scss'
 })
 export class CreateClientComponent {
+  @Output() clientSaved = new EventEmitter<string>();
+  @Output() cancel = new EventEmitter<void>();
   private fb = inject(FormBuilder);
   private clientSvc = inject(ClientService);
 
@@ -19,12 +21,18 @@ export class CreateClientComponent {
   errorMsg = signal<string | null>(null);
 
   form = this.fb.group({
-    displayName: ['', [Validators.required, Validators.minLength(2)]],
-    address: [''],
-    email: ['', [Validators.email]],
-    phone: [''],
-    vatNo: [''],
-    notes: [''],
+  displayName: ['', [Validators.required, Validators.minLength(2)]],
+  line1: [''],
+  line2: [''],
+  suburb: [''],
+  city: [''],
+  province: [''],
+  postalCode: [''],
+  country: [''],
+  email: ['', [Validators.email]],
+  phone: [''],
+  vatNo: [''],
+  notes: ['']
   });
 
   async submit() {
@@ -38,9 +46,19 @@ export class CreateClientComponent {
 
     this.saving.set(true);
     try {
+      const address = {
+        line1: this.form.value.line1?.trim(),
+        line2: this.form.value.line2?.trim(),
+        suburb: this.form.value.suburb?.trim(),
+        city: this.form.value.city?.trim(),
+        province: this.form.value.province?.trim(),
+        postalCode: this.form.value.postalCode?.trim(),
+        country: this.form.value.country?.trim()
+      };
+
       const id = await this.clientSvc.createClient({
         displayName: this.form.value.displayName!.trim(),
-        address: this.form.value.address?.trim(),
+        address: address,
         email: this.form.value.email?.trim(),
         phone: this.form.value.phone?.trim(),
         vatNo: this.form.value.vatNo?.trim(),
@@ -48,10 +66,12 @@ export class CreateClientComponent {
       });
       this.successId.set(id);
       this.form.reset();
+      this.clientSaved.emit(id);
     } catch (e: any) {
       this.errorMsg.set(e?.message ?? 'Failed to create client');
     } finally {
       this.saving.set(false);
     }
   }
+  close() { this.cancel.emit(); }
 }

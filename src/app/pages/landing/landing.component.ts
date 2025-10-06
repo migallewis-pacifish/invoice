@@ -1,13 +1,70 @@
-import { Component } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
+import { Auth, authState } from '@angular/fire/auth';
+import { doc, docData, Firestore } from '@angular/fire/firestore';
+import { Router } from '@angular/router';
+import { take } from 'rxjs';
+import { ClientListComponent } from '../client-list/client-list.component';
+import { CommonModule } from '@angular/common';
+import { Dialog } from '@angular/cdk/dialog';
+import { UploadTemplateDialogueComponent } from '../../components/upload-template-dialogue/upload-template-dialogue.component';
 
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [NavBarComponent],
+  imports: [NavBarComponent, CommonModule, ClientListComponent],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
 })
 export class LandingComponent {
+  private auth = inject(Auth);
+  private db = inject(Firestore);
+  private router = inject(Router);
+  private dialog = inject(Dialog);
+
+  companyId = signal<string | null>(null);
+  companyName = signal<string | null>(null);
+  templatePath = signal<string | null>(null);
+
+  loading = signal(true);
+
+  constructor() {
+    authState(this.auth).pipe(take(1)).subscribe(async (user) => {
+      if (!user) { this.router.navigate(['/login']); return; }
+      const userRef = doc(this.db, `users/${user.uid}`);
+      const userSnap = await docData(userRef).pipe(take(1)).toPromise() as any;
+      const companyId = userSnap?.companyId;
+      if (!companyId) { this.router.navigate(['/register-company']); return; }
+
+      this.companyId.set(companyId);
+      const compRef = doc(this.db, `companies/${companyId}`);
+      docData(compRef).subscribe((data: any) => {
+        this.companyName.set(data?.name ?? 'Your Company');
+        this.templatePath.set(data?.templatePath ?? null);
+        this.loading.set(false);
+      });
+    });
+  }
+
+  goToUpload() {
+    this.router.navigate(['/template']);
+  }
+
+
+openUploadTemplate() {
+  const ref = this.dialog.open<string | null>(UploadTemplateDialogueComponent, {
+    hasBackdrop: true,
+    disableClose: true,
+    backdropClass: 'dlg-backdrop',
+    panelClass: 'dlg-panel',
+  });
+
+  ref.closed.subscribe(path => {
+    if (path) {
+      // optional: toast “Template updated ✓”
+      // You already subscribe to the company doc, so UI should reflect automatically.
+    }
+  });
+}
 
 }

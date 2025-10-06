@@ -1,0 +1,13 @@
+    <div class="dialog-shell">
+      <div class="dialog-header">
+        <h3>Upload Invoice Template</h3>
+        <button class="icon-btn" (click)="close()">✕</button>
+      </div>
+
+      <!-- Your existing uploader inside the dialog -->
+      <app-upload-template
+        [inDialog]="true"
+        (uploaded)="onUploaded($event)"
+        (cancel)="close()">
+      </app-upload-template>
+    </div>

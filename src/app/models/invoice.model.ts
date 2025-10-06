@@ -1,7 +1,7 @@
 export interface Client {
   id: string;
   displayName: string;
-  address?: string;
+  address?: Address;
   email?: string;
   phone?: string;
   vatNo?: string;
@@ -40,8 +40,9 @@ export interface InvoiceData {
   reference: string;
 }
 export interface Address {
-  line1: string;
+  line1?: string;
   line2?: string;
+  suburb?: string;
   city?: string;
   province?: string;
   postalCode?: string;
