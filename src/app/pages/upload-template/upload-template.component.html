@@ -1,0 +1,59 @@
+<div class="wrap">
+  <div class="card">
+    <div class="head">
+      <div>
+        <p class="muted">Upload or replace your Word invoice template (.docx).</p>
+      </div>
+      <button class="ghost" routerLink="/landing" *ngIf="!inDialog">Back to Dashboard</button>
+    </div>
+
+    <div class="status">
+      <div *ngIf="templatePath(); else noTpl">
+        <span class="badge ok">Template set</span>
+        <div class="muted tiny">Path: {{ templatePath() }}</div>
+        <div class="actions">
+          <a *ngIf="templateUrl()" [href]="templateUrl()!" target="_blank" class="link">View current</a>
+          <button class="danger" (click)="removeTemplate()">Remove</button>
+        </div>
+      </div>
+      <ng-template #noTpl>
+        <span class="badge warn">No template uploaded</span>
+      </ng-template>
+    </div>
+
+    <div
+      class="dropzone"
+      (drop)="onDrop($event)"
+      (dragover)="onDragOver($event)"
+      [class.dropzone--disabled]="uploading()"
+    >
+      <div class="dz-inner">
+        <div class="dz-icon">📄</div>
+        <div class="dz-text">
+          <strong>Drag & drop your .docx here</strong>
+          <span class="muted"> or </span>
+          <button class="pick" (click)="onPickClicked(fileInput)" [disabled]="uploading()">Choose file</button>
+          <input #fileInput type="file" accept=".docx" (change)="onFilePicked($event)" hidden>
+        </div>
+        <div class="muted tiny">Max {{ maxSizeMB }}MB • .docx only</div>
+      </div>
+    </div>
+
+    <div *ngIf="file()" class="filebar">
+      <div class="fname">{{ info() }}</div>
+      <div class="row">
+        <button class="ghost" (click)="file.set(null)" [disabled]="uploading()">Clear</button>
+        <button class="primary" (click)="upload()" [disabled]="uploading()">Upload</button>
+      </div>
+    </div>
+
+    <div *ngIf="uploading()" class="progress">
+      <div class="track"><div class="bar" [style.width.%]="progress()"></div></div>
+      <div class="muted tiny">{{ progress() }}%</div>
+      <button class="ghost"  *ngIf="inDialog"  (click)="cancelUpload()">Cancel</button>
+    </div>
+
+    <div *ngIf="error()" class="error">{{ error() }}</div>
+    <div *ngIf="info()" class="info">{{ info() }}</div>
+  </div>
+</div>

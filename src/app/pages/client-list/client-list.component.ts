@@ -5,6 +5,8 @@ import { Client } from '../../models/invoice.model';
 import { combineLatest, map, Observable, of, startWith } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { Dialog } from '@angular/cdk/dialog';
+import { AddClientDialogueComponent } from '../../components/add-client-dialogue/add-client-dialogue.component';
 
 @Component({
   selector: 'app-client-list',
@@ -16,6 +18,7 @@ import { Router } from '@angular/router';
 export class ClientListComponent {
   private router = inject(Router);
   private clientSvc = inject(ClientService);
+    private dialog = inject(Dialog);
 
   // search/filter
   search = new FormControl('', { nonNullable: true });
@@ -46,7 +49,19 @@ export class ClientListComponent {
     );
   }
 
-  goNew() { this.router.navigate(['/clients/new']); }
   goClient(c: Client) { this.router.navigate(['/clients', c.id]); }           // you can create this route later
   createInvoice(c: Client) { this.router.navigate(['/invoice/once-off'], { state: { clientId: c.id } }); }
+
+  openAddClient() {
+    const ref = this.dialog.open<string | null>(AddClientDialogueComponent, {
+      backdropClass: 'dlg-backdrop',
+      panelClass: 'dlg-panel'
+    });
+
+    ref.closed.subscribe(result => {
+      if (result) {
+        // optionally show toast or refresh list
+      }
+    });
+  }
 }

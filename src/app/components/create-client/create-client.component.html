@@ -7,6 +7,8 @@
 
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <div class="form-grid">
+
+        <!-- Company Name -->
         <div class="form-group full">
           <label>Client / Company Name <span>*</span></label>
           <input type="text" formControlName="displayName" placeholder="e.g. ABC Holdings (Pty) Ltd">
@@ -15,11 +17,43 @@
           </small>
         </div>
 
+        <!-- Address Fields -->
         <div class="form-group full">
-          <label>Address</label>
-          <textarea formControlName="address" rows="3" placeholder="Street, City, Postal Code"></textarea>
+          <label>Street Address </label>
+          <input type="text" formControlName="line1" placeholder="123 Main Street,1st floor Building A">
         </div>
 
+        <div class="form-group full">
+          <label>Street Address (line 2) </label>
+          <input type="text" formControlName="line2" placeholder="(optional) cnr 2cnd Ave">
+        </div>
+
+        <div class="form-group full">
+          <label>Suburb</label>
+          <input type="text" formControlName="suburb" placeholder="Sandhurst">
+        </div>
+
+        <div class="form-group half">
+          <label>City / Town</label>
+          <input type="text" formControlName="city" placeholder="Sandton">
+        </div>
+
+        <div class="form-group half">
+          <label>Province</label>
+          <input type="text" formControlName="province" placeholder="Gauteng">
+        </div>
+
+        <div class="form-group half">
+          <label>Postal Code</label>
+          <input type="text" formControlName="postalCode" placeholder="2196">
+        </div>
+
+        <div class="form-group half">
+          <label>Country</label>
+          <input type="text" formControlName="country" placeholder="South Africa">
+        </div>
+
+        <!-- Contact -->
         <div class="form-group half">
           <label>Email</label>
           <input type="email" formControlName="email" placeholder="accounts@client.co.za">
@@ -30,6 +64,7 @@
           <input type="text" formControlName="phone" placeholder="+27 …">
         </div>
 
+        <!-- Other info -->
         <div class="form-group half">
           <label>VAT Number</label>
           <input type="text" formControlName="vatNo" placeholder="(optional)">
@@ -53,3 +88,4 @@
     </form>
   </div>
 </div>
+
