@@ -13,6 +13,10 @@
 
 @import '@angular/cdk/overlay-prebuilt.css';
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 .dlg-backdrop {
   background: rgba(8,18,28,0.45) !important;
 }

@@ -3,6 +3,8 @@ import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ClientService } from '../../services/client.service';
 import { take } from 'rxjs';
+import { Dialog } from '@angular/cdk/dialog';
+import { AddInvoiceDialogComponent } from '../../components/add-invoice-dialog/add-invoice-dialog.component';
 
 @Component({
   selector: 'app-client-detail',
@@ -15,6 +17,8 @@ export class ClientDetailComponent {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private clientSvc = inject(ClientService);
+  private dialog = inject(Dialog);
+  
 
   clientId = signal<string | null>(null);
   client = signal<any | null>(null);
@@ -43,8 +47,19 @@ export class ClientDetailComponent {
     });
   }
 
-  addInvoice() {
-    // Placeholder — will open invoice dialog later
-    alert(`Open invoice form for client ${this.clientId()}`);
-  }
+
+addInvoice() {
+  const ref = this.dialog.open<string | null>(AddInvoiceDialogComponent, {
+    backdropClass: 'dlg-backdrop',
+    panelClass: 'dlg-panel',
+    disableClose: true
+  });
+
+  ref.closed.subscribe(result => {
+    if (result) {
+      // optional toast
+      console.log('Invoice generated and downloaded.');
+    }
+  });
+}
 }
