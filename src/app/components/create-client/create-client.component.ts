@@ -56,17 +56,23 @@ export class CreateClientComponent {
         country: this.form.value.country?.trim()
       };
 
-      const id = await this.clientSvc.createClient({
+      this.clientSvc.createClient({
         displayName: this.form.value.displayName!.trim(),
         address: address,
         email: this.form.value.email?.trim(),
         phone: this.form.value.phone?.trim(),
         vatNo: this.form.value.vatNo?.trim(),
         notes: this.form.value.notes?.trim(),
+      }).subscribe({
+        next: id => {
+          this.successId.set(id);
+          this.form.reset();
+          this.clientSaved.emit(id);
+        },
+        error: err => {
+          this.errorMsg.set(err?.message ?? 'Failed to create client');
+        }
       });
-      this.successId.set(id);
-      this.form.reset();
-      this.clientSaved.emit(id);
     } catch (e: any) {
       this.errorMsg.set(e?.message ?? 'Failed to create client');
     } finally {

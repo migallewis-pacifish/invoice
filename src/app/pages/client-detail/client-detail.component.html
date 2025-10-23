@@ -1,0 +1,65 @@
+<div class="detail-wrap" *ngIf="!loading(); else loadingTpl">
+
+  <!-- Client Info Card -->
+  <div class="card">
+    <h2>{{ client()?.displayName }}</h2>
+    <div class="grid-info">
+      <div>
+        <h4>Address</h4>
+        <p>
+          {{ client()?.address?.line1 }} {{ client()?.address?.line2 }}<br>
+          {{ client()?.address?.suburb }}<br>
+          {{ client()?.address?.city }}, {{ client()?.address?.province }}<br>
+          {{ client()?.address?.postalCode }}<br>
+          {{ client()?.address?.country }}
+        </p>
+      </div>
+
+      <div>
+        <h4>Contact</h4>
+        <p *ngIf="client()?.email">📧 {{ client()?.email }}</p>
+        <p *ngIf="client()?.phone">📞 {{ client()?.phone }}</p>
+      </div>
+
+      <div>
+        <h4>Other Details</h4>
+        <p *ngIf="client()?.vatNo">VAT No: {{ client()?.vatNo }}</p>
+        <p *ngIf="client()?.notes">Notes: {{ client()?.notes }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Invoices Card -->
+  <div class="card">
+    <div class="header-row">
+      <h3>Invoices</h3>
+      <button class="primary" (click)="addInvoice()">Add Invoice</button>
+    </div>
+
+    <ng-container *ngIf="invoices().length > 0; else noInvoices">
+      <div class="invoice-list">
+        <div class="invoice-item" *ngFor="let inv of invoices()">
+          <div>
+            <strong>{{ inv.invoiceNumber || '(unnumbered)' }}</strong><br>
+            <span>{{ inv.date | date }}</span>
+          </div>
+          <div>
+            <span>{{ inv.total | currency:'ZAR':'symbol' }}</span>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <ng-template #noInvoices>
+      <p class="muted">No invoices yet for this client.</p>
+    </ng-template>
+  </div>
+
+</div>
+
+<ng-template #loadingTpl>
+  <div class="loading">
+    <div class="spinner"></div>
+    <p>Loading client details...</p>
+  </div>
+</ng-template>

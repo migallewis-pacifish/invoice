@@ -49,7 +49,7 @@ export class ClientListComponent {
     );
   }
 
-  goClient(c: Client) { this.router.navigate(['/clients', c.id]); }           // you can create this route later
+  goClient(c: Client) { this.router.navigate(['/client', c.id]); }           // you can create this route later
   createInvoice(c: Client) { this.router.navigate(['/invoice/once-off'], { state: { clientId: c.id } }); }
 
   openAddClient() {

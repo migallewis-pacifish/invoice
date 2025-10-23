@@ -3,7 +3,7 @@ import { Auth, authState } from '@angular/fire/auth';
 import { collectionData, docData, Firestore } from '@angular/fire/firestore';
 import { addDoc, collection, doc, getDoc, orderBy, query, serverTimestamp } from 'firebase/firestore';
 import { Client } from '../models/invoice.model';
-import { map, Observable, of, switchMap } from 'rxjs';
+import { defer, from, map, Observable, of, switchMap, throwError } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -14,33 +14,66 @@ export class ClientService {
   private db = inject(Firestore);
 
   /** Reads companyId from users/{uid} */
-  private async getCompanyId(): Promise<string> {
-    const user = this.auth.currentUser;
-    if (!user) throw new Error('Not authenticated');
-    const snap = await getDoc(doc(this.db, `users/${user.uid}`));
-    if (!snap.exists()) throw new Error('User profile not found');
-    const data = snap.data() as any;
-    if (!data.companyId) throw new Error('User has no companyId');
-    return data.companyId as string;
+  private companyContext$(): Observable<{ userId: string; companyId: string }> {
+    return defer(() => {
+      const user = this.auth.currentUser;
+      if (!user) {
+        return throwError(() => new Error('Not authenticated'));
+      }
+      const userDoc = doc(this.db, `users/${user.uid}`);
+      return from(getDoc(userDoc)).pipe(
+        map(snap => {
+          if (!snap.exists()) throw new Error('User profile not found');
+          const data = snap.data() as any;
+          const companyId = data?.companyId as string | undefined;
+          if (!companyId) throw new Error('User has no companyId');
+          return { userId: user.uid, companyId };
+        })
+      );
+    });
+  }
+
+  private getCompanyId$(): Observable<string> {
+    return this.companyContext$().pipe(map(ctx => ctx.companyId));
+  }
+
+  getClientById(id: string): Observable<any | null> {
+    return this.getCompanyId$().pipe(
+      switchMap(companyId => from(getDoc(doc(this.db, `companies/${companyId}/clients/${id}`)))),
+      map(snap => (snap.exists() ? { id: snap.id, ...snap.data() } : null))
+    );
+  }
+
+  /** 🔹 Get invoices for a client (live) */
+  getInvoicesForClient(id: string): Observable<any[]> {
+    return this.getCompanyId$().pipe(
+      switchMap(companyId => {
+        const ref = collection(this.db, `companies/${companyId}/clients/${id}/invoices`);
+        const q = query(ref, orderBy('date', 'desc'));
+        return collectionData(q, { idField: 'id' }).pipe(
+          map((arr: any[] | undefined) => arr ?? [])
+        );
+      })
+    );
   }
 
   /** Creates a client under companies/{companyId}/clients */
-  async createClient(payload: Omit<Client, 'id' | 'createdAt' | 'createdBy'>): Promise<string> {
-    const user = this.auth.currentUser;
-    if (!user) throw new Error('Not authenticated');
-    const companyId = await this.getCompanyId();
-
-    const colRef = collection(this.db, `companies/${companyId}/clients`);
-    const docRef = await addDoc(colRef, {
-      ...payload,
-      createdAt: serverTimestamp(),
-      createdBy: user.uid,
-    });
-
-    return docRef.id;
+  createClient(payload: Omit<Client, 'id' | 'createdAt' | 'createdBy'>): Observable<string> {
+    return this.companyContext$().pipe(
+      switchMap(({ userId, companyId }) => {
+        const colRef = collection(this.db, `companies/${companyId}/clients`);
+        return from(
+          addDoc(colRef, {
+            ...payload,
+            createdAt: serverTimestamp(),
+            createdBy: userId,
+          })
+        ).pipe(map(docRef => docRef.id));
+      })
+    );
   }
 
-    clients$(): Observable<Client[]> {
+  clients$(): Observable<Client[]> {
     return authState(this.auth).pipe(
       switchMap(user => {
         if (!user) return of([]);
