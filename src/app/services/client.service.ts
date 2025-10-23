@@ -55,6 +55,16 @@ export class ClientService {
         );
       })
     );
+    // return of([]);
+  }
+
+  createInvoice(clientId: string, data: any): Observable<string> {
+    return this.getCompanyId$().pipe(
+      switchMap(companyId => {
+        const colRef = collection(this.db, `companies/${companyId}/clients/${clientId}/invoices`);
+        return from(addDoc(colRef, data)).pipe(map(ref => ref.id));
+      })
+    );
   }
 
   /** Creates a client under companies/{companyId}/clients */

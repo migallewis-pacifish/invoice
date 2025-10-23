@@ -9,10 +9,10 @@ import { InvoiceDocxService } from '../../services/invoice-docx.service';
   styleUrl: './invoice.component.scss'
 })
 export class InvoiceComponent {
-  constructor(private svc: InvoiceDocxService) {}
+  constructor(private invoiceDocxService: InvoiceDocxService) {}
 
   async download() {
-    await this.svc.generateAndDownload({
+    this.invoiceDocxService.generateAndDownload({
       invoice_date: new Date().toISOString().slice(0,10),
 
 

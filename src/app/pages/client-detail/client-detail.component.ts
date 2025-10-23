@@ -49,16 +49,16 @@ export class ClientDetailComponent {
 
 
 addInvoice() {
-  const ref = this.dialog.open<string | null>(AddInvoiceDialogComponent, {
+  const ref = this.dialog.open(AddInvoiceDialogComponent, {
     backdropClass: 'dlg-backdrop',
     panelClass: 'dlg-panel',
-    disableClose: true
+    disableClose: true,
+    data: { client: this.client(), clientId: this.clientId() } // 👈 pass client info
   });
 
-  ref.closed.subscribe(result => {
-    if (result) {
-      // optional toast
-      console.log('Invoice generated and downloaded.');
+  ref.closed.subscribe(filename => {
+    if (filename) {
+      console.log('Invoice created:', filename);
     }
   });
 }
