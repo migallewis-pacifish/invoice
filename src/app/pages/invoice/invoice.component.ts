@@ -13,9 +13,8 @@ export class InvoiceComponent {
 
   async download() {
     this.invoiceDocxService.generateAndDownload({
+      invoice_number: 'DHI-1001',
       invoice_date: new Date().toISOString().slice(0,10),
-
-
       client_name: 'Sample Client (Pty) Ltd',
       client_building: 'Suite 5, Block A',
       client_street: '123 Client Street',
@@ -32,6 +31,10 @@ export class InvoiceComponent {
         { description: 'Consultation', rate:'300', hours: '2' },
         { description: 'Drafting of Letter of Demand', rate: '1800', hours: '1' },
       ],
+    }).subscribe(filename => {
+      if (filename) {
+        console.log('Invoice created:', filename);
+      }
     });
   }
 }

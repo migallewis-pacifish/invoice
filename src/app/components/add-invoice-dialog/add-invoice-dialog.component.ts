@@ -83,6 +83,7 @@ export class AddInvoiceDialogComponent {
     const formValue = this.form.value;
 
     const invoiceData = {
+      invoice_number: formValue.invoiceNumber,
       invoice_date: new Date().toISOString().slice(0, 10),
       client_name: this.client?.displayName || 'Unknown Client',
       client_building: this.client?.address?.street || '',

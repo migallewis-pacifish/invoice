@@ -38,20 +38,12 @@ export class InvoiceDocxService {
     };
   }
 
-  private nextInvoiceNumber(): string {
-    const key = 'dhlebelainc_last_invoice_no';
-    const last = Number(localStorage.getItem(key) || '1000');
-    const next = last + 1;
-    localStorage.setItem(key, String(next));
-    return `DHI-${next}`;
-  }
-
-  generateAndDownload(data: Omit<InvoiceData, 'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'> & { invoice_number?: string }): Observable<string> {
+  generateAndDownload(data: Omit<InvoiceData, 'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'> & { invoice_number: string }): Observable<string> {
     return this.http.get(this.templateUrl, { responseType: 'arraybuffer' }).pipe(
       map(arrayBuffer => {
         const { items, subtotalStr, vatStr, grandStr } = this.computeTotals(data.items);
         const finalData: InvoiceData = {
-          invoice_number: data.invoice_number ?? this.nextInvoiceNumber(),
+          invoice_number: data.invoice_number,
           invoice_date: data.invoice_date,
           client_name: data.client_name,
           client_building: data.client_building,
