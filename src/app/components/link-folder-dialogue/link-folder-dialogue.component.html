@@ -1,0 +1,49 @@
+<div class="dialog-shell">
+  <!-- Step 1 -->
+  <ng-container *ngIf="step() === 1">
+    <div class="dialog-header">
+        <h3>Link Folder</h3>
+        <button class="icon-btn" (click)="close()">✕</button>
+    </div>
+    <p>Select where to store your invoices:</p>
+
+    <div class="options">
+      <button class="option-btn" (click)="selectProvider('local')">Local Folder</button>
+      <button class="option-btn" (click)="selectProvider('google')">Google Drive</button>
+      <button class="option-btn" (click)="selectProvider('onedrive')">OneDrive</button>
+    </div>
+  </ng-container>
+
+  <!-- Step 2: Local folder -->
+  <ng-container *ngIf="step() === 2">
+    <div class="dialog-header">
+        <h3>Select Local Folder</h3>
+        <button class="icon-btn" (click)="close()">✕</button>
+    </div>
+    <p>Choose where to create your invoices folder.</p>
+
+    <div class="input-section">
+      <button class="primary" (click)="pickFolder()">Choose Folder</button>
+      <p *ngIf="folderPath()">Selected: {{ folderPath() }}</p>
+    </div>
+
+    <div class="actions">
+      <button class="secondary" (click)="back()">Back</button>
+      <button class="primary" [disabled]="!folderPath()" (click)="confirm()">Confirm</button>
+    </div>
+  </ng-container>
+
+  <!-- Future Step 3: Placeholder for Google / OneDrive -->
+  <ng-container *ngIf="step() === 3">
+    <div class="dialog-header">
+        <h3>Coming Soon</h3>
+        <button class="icon-btn" (click)="close()">✕</button>
+    </div>
+    <p>Integration for {{ selectedProvider() }} will be added shortly.</p>
+
+    <div class="actions">
+      <button class="ghost" (click)="back()">Back</button>
+      <button class="primary" (click)="close()">Close</button>
+    </div>
+  </ng-container>
+</div>

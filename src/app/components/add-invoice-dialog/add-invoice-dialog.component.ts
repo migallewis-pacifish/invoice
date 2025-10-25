@@ -117,7 +117,7 @@ export class AddInvoiceDialogComponent {
     console.log('invoiceData:', invoiceData);
 
     const total = invoiceData.items.reduce((sum: number, i: { description: string; rate: number; hours: number }) => sum + (i.rate * i.hours), 0);
-    from(this.invoiceDocx.generateAndDownload(this.companyId, invoiceData)).pipe(
+    from(this.invoiceDocx.generateAndSave(this.companyId, invoiceData)).pipe(
       switchMap(filename =>
         from(
           this.clientSvc.createInvoice(this.clientId, {

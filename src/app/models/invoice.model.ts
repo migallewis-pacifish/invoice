@@ -69,6 +69,8 @@ export interface Company {
   templatePath?: string;        
   users: string[];             
   createdAt: number;
+  storageProvider?: 'local' | 'google' | 'onedrive';
+  storagePath?: string;
 }
 
 export interface AppUser {

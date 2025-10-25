@@ -1,10 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { InvoiceData, InvoiceItem } from '../models/invoice.model';
+import { InvoiceData, InvoiceItem, Company } from '../models/invoice.model';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { saveAs } from 'file-saver';
-import { Observable, catchError, from, map, switchMap, tap, throwError } from 'rxjs';
+import { Observable, catchError, from, map, switchMap, tap, throwError, lastValueFrom } from 'rxjs';
 import { doc, docData, Firestore, getDoc } from '@angular/fire/firestore';
 import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 
@@ -46,7 +46,7 @@ export class InvoiceDocxService {
     * @param companyId The company whose template to use
     * @param data Invoice data object
     */
-  generateAndDownload(
+  generateAndSave(
     companyId: string,
     data: Omit<
       InvoiceData,
@@ -55,22 +55,30 @@ export class InvoiceDocxService {
   ): Observable<string> {
     const companyDoc = doc(this.db, `companies/${companyId}`);
     return docData(companyDoc).pipe(
-      map((c: any) => c?.templatePath),
-      switchMap(templatePath => {
+      switchMap((companyRaw: any) => {
+        if (!companyRaw) {
+          return throwError(() => new Error('Company not found.'));
+        }
+        const company = companyRaw as Company;
+        const templatePath = company?.templatePath;
         if (!templatePath) {
           return throwError(() => new Error('No templatePath found for company.'));
         }
         // Step 2: Get download URL from Firebase Storage
         const templateRef = ref(this.storage, templatePath);
-        return from(getDownloadURL(templateRef));
+        return from(getDownloadURL(templateRef)).pipe(
+          map(url => ({ url, company }))
+        );
       }),
       // Step 3: Fetch the .docx template as ArrayBuffer
-      switchMap((url: string) => this.http.get(url, { responseType: 'arraybuffer' })),
-      // Step 4: Fill and download the invoice
-      map(arrayBuffer => {
-        // Determine VAT inclusion
+      switchMap(({ url, company }) =>
+        this.http.get(url, { responseType: 'arraybuffer' }).pipe(
+          map(arrayBuffer => ({ arrayBuffer, company }))
+        )
+      ),
+      // Step 4: Fill and save the invoice
+      switchMap(({ arrayBuffer, company }) => {
         const shouldIncludeVAT = data.includeVat ?? data.shouldIncludeVAT ?? false;
-        // compute per-line totals if missing
         const normalized = data.items.map((i: any) => ({
           ...i,
           amount: (parseFloat(i.rate) * parseFloat(i.hours)).toFixed(2),
@@ -78,7 +86,6 @@ export class InvoiceDocxService {
         const subtotalNum = normalized.reduce((s: number, i: any) => s + (parseFloat(i.amount) || 0), 0);
         const vatNum = shouldIncludeVAT ? +(subtotalNum * this.VAT_RATE).toFixed(2) : 0;
         const grandNum = +(subtotalNum + vatNum).toFixed(2);
-        // Format money as ZAR
         const fmt = (n: number) =>
           new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(n);
         const items = normalized.map((i: any) => ({ ...i, amount: fmt(parseFloat(i.amount)) }));
@@ -105,7 +112,6 @@ export class InvoiceDocxService {
           total: grandStr,
           reference: data.reference || '',
         };
-        console.log('Final invoice data:', finalData);
         const zip = new PizZip(arrayBuffer as ArrayBuffer);
         const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
         doc.setData(finalData);
@@ -116,13 +122,37 @@ export class InvoiceDocxService {
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         });
         const fileName = `${finalData.invoice_number}.docx`;
-        saveAs(out, fileName);
-        return fileName;
+        // Call appropriate save method
+        if (company.storageProvider === 'onedrive') {
+          return from(this.saveToOneDrive(/* params */)).pipe(map(() => fileName));
+        } else if (company.storageProvider === 'google') {
+          return from(this.saveToGoogleDrive(/* params */)).pipe(map(() => fileName));
+        } else {
+          // Default: local
+          return from(this.saveLocally(out, company, data.client_name, fileName)).pipe(map(() => fileName));
+        }
       }),
       catchError(err => {
         console.error('Invoice generation error:', err);
         return throwError(() => new Error('Failed to generate invoice document.'));
       })
     );
+  }
+
+  async saveLocally(file: Blob, company: Company, clientName: string, fileName: string): Promise<void> {
+    if (!company.storagePath) throw new Error('No storagePath defined for company');
+    // Simulate folder structure in filename
+    const fullFileName = `${clientName}/${fileName}`;
+    saveAs(file, fullFileName);
+  }
+
+  async saveToOneDrive(/* params */): Promise<void> {
+    // TODO: Implement OneDrive save logic
+    throw new Error('Not implemented');
+  }
+
+  async saveToGoogleDrive(/* params */): Promise<void> {
+    // TODO: Implement Google Drive save logic
+    throw new Error('Not implemented');
   }
 }
