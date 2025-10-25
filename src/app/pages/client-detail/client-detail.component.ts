@@ -62,7 +62,7 @@ addInvoice() {
       client: this.client(),
       clientId: this.clientId(),
       companyId: this.companyId(),
-      lastInvoice: this.lastInvoice().invoiceNumber
+      lastInvoice: this.lastInvoice()?.invoiceNumber
     }
   });
 
