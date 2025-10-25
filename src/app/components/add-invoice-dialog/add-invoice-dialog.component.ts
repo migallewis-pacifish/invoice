@@ -30,11 +30,13 @@ export class AddInvoiceDialogComponent {
 
   client: any;
   clientId: any;
+  companyId: string;
   form: any;
 
   constructor() {
     this.client = this.data?.client;
     this.clientId = this.data?.clientId;
+    this.companyId = typeof this.data?.companyId === 'function' ? this.data?.companyId() : this.data?.companyId;
     this.form = this.fb.group({
       invoiceNumber: ['', Validators.required],
       notes: [''],
@@ -104,11 +106,7 @@ export class AddInvoiceDialogComponent {
     };
 
     const total = invoiceData.items.reduce((sum: number, i: { description: string; rate: number; hours: number }) => sum + (i.rate * i.hours), 0);
-
-    // 🔹 Step 1: Generate + Download invoice via your existing service (returns filename)
-    from(this.invoiceDocx.generateAndDownload(invoiceData)).pipe(
-
-      // 🔹 Step 2: Use switchMap to save invoice to Firestore
+    from(this.invoiceDocx.generateAndDownload(this.companyId, invoiceData)).pipe(
       switchMap(filename =>
         from(
           this.clientSvc.createInvoice(this.clientId, {

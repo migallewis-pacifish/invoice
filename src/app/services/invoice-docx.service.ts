@@ -1,10 +1,12 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { InvoiceData, InvoiceItem } from '../models/invoice.model';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { saveAs } from 'file-saver';
-import { Observable, from, map } from 'rxjs';
+import { Observable, catchError, from, map, switchMap, tap, throwError } from 'rxjs';
+import { doc, docData, Firestore, getDoc } from '@angular/fire/firestore';
+import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 
 @Injectable({
   providedIn: 'root'
@@ -13,8 +15,9 @@ export class InvoiceDocxService {
 
   private templateUrl = 'templates/DhlebelaInc.docx';
   private VAT_RATE = 0.15;
-
-  constructor(private http: HttpClient) { }
+  private storage = inject(Storage);
+  private http = inject(HttpClient);
+  private db = inject(Firestore);
 
   private computeTotals(items: InvoiceItem[]) {
     // compute per-line totals if missing
@@ -38,8 +41,35 @@ export class InvoiceDocxService {
     };
   }
 
-  generateAndDownload(data: Omit<InvoiceData, 'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'> & { invoice_number: string }): Observable<string> {
-    return this.http.get(this.templateUrl, { responseType: 'arraybuffer' }).pipe(
+  /**
+    * 🔹 Generates an invoice document using the company template stored in Firestore.
+    * @param companyId The company whose template to use
+    * @param data Invoice data object
+    */
+  generateAndDownload(
+    companyId: string,
+    data: Omit<
+      InvoiceData,
+      'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'
+    > & { invoice_number: string }
+  ): Observable<string> {
+
+    console.log('Generating invoice for companyId:', companyId);
+    // Step 1: Get templatePath from Firestore
+    const companyDoc = doc(this.db, `companies/${companyId}`);
+    return docData(companyDoc).pipe(
+      map((c: any) => c?.templatePath),
+      switchMap(templatePath => {
+        if (!templatePath) {
+          return throwError(() => new Error('No templatePath found for company.'));
+        }
+        // Step 2: Get download URL from Firebase Storage
+        const templateRef = ref(this.storage, templatePath);
+        return from(getDownloadURL(templateRef));
+      }),
+      // Step 3: Fetch the .docx template as ArrayBuffer
+      switchMap((url: string) => this.http.get(url, { responseType: 'arraybuffer' })),
+      // Step 4: Fill and download the invoice
       map(arrayBuffer => {
         const { items, subtotalStr, vatStr, grandStr } = this.computeTotals(data.items);
         const finalData: InvoiceData = {
@@ -62,17 +92,25 @@ export class InvoiceDocxService {
           total: grandStr,
           reference: data.reference || '',
         };
+        console.log('Final invoice data:', finalData);
         const zip = new PizZip(arrayBuffer as ArrayBuffer);
         const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
         doc.setData(finalData);
         doc.render();
+
         const out = doc.getZip().generate({
-          type: 'blob', mimeType:
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          type: 'blob',
+          mimeType:
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         });
+
         const fileName = `${finalData.invoice_number}.docx`;
         saveAs(out, fileName);
         return fileName;
+      }),
+      catchError(err => {
+        console.error('Invoice generation error:', err);
+        return throwError(() => new Error('Failed to generate invoice document.'));
       })
     );
   }

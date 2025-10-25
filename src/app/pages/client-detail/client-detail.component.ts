@@ -19,7 +19,7 @@ export class ClientDetailComponent {
   private clientSvc = inject(ClientService);
   private dialog = inject(Dialog);
   
-
+  companyId = signal<string | null>(null);
   clientId = signal<string | null>(null);
   client = signal<any | null>(null);
   invoices = signal<any[]>([]);
@@ -27,21 +27,23 @@ export class ClientDetailComponent {
 
   constructor() {
     this.route.paramMap.subscribe(params => {
-      const id = params.get('id');
-      if (!id) {
+      const companyId = params.get('companyId');
+      const clientId = params.get('clientId');
+      if (!clientId || !companyId) {
         this.router.navigate(['/']);
         return;
       }
-      this.clientId.set(id);
+      this.clientId.set(clientId);
+      this.companyId.set(companyId);
 
       // Subscribe to client data
-      this.clientSvc.getClientById(id).pipe(take(1)).subscribe(data => {
+      this.clientSvc.getClientById(clientId).pipe(take(1)).subscribe(data => {
         this.client.set(data);
         this.loading.set(false);
       });
 
       // Real-time invoices
-      this.clientSvc.getInvoicesForClient(id).subscribe(list => {
+      this.clientSvc.getInvoicesForClient(clientId).subscribe(list => {
         this.invoices.set(list);
       });
     });
@@ -53,7 +55,7 @@ addInvoice() {
     backdropClass: 'dlg-backdrop',
     panelClass: 'dlg-panel',
     disableClose: true,
-    data: { client: this.client(), clientId: this.clientId() } // 👈 pass client info
+    data: { client: this.client(), clientId: this.clientId(), companyId: this.companyId() } // 👈 pass client info
   });
 
   ref.closed.subscribe(filename => {

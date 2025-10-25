@@ -19,7 +19,7 @@ export const routes: Routes = [
   { path: 'clients', component: ClientListComponent, canActivate: [authGuard, companyGuard] },
   { path: 'template', component: UploadTemplateComponent, canActivate: [authGuard, companyGuard] },
   {
-    path: 'client/:id',
+    path: 'company/:companyId/client/:clientId',
     component: ClientDetailComponent,
     canActivate: [authGuard, companyGuard]
   }

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, Input, signal } from '@angular/core';
 import { ClientService } from '../../services/client.service';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Client } from '../../models/invoice.model';
@@ -16,6 +16,7 @@ import { AddClientDialogueComponent } from '../../components/add-client-dialogue
   styleUrl: './client-list.component.scss'
 })
 export class ClientListComponent {
+  @Input() companyId = signal<string | null>(null);
   private router = inject(Router);
   private clientSvc = inject(ClientService);
     private dialog = inject(Dialog);
@@ -49,7 +50,7 @@ export class ClientListComponent {
     );
   }
 
-  goClient(c: Client) { this.router.navigate(['/client', c.id]); }           // you can create this route later
+  goClient(c: Client) { this.router.navigate([`/company/${this.companyId()}/client/${c.id}`]); }           // you can create this route later
   createInvoice(c: Client) { this.router.navigate(['/invoice/once-off'], { state: { clientId: c.id } }); }
 
   openAddClient() {

@@ -12,7 +12,7 @@ export class InvoiceComponent {
   constructor(private invoiceDocxService: InvoiceDocxService) {}
 
   async download() {
-    this.invoiceDocxService.generateAndDownload({
+    this.invoiceDocxService.generateAndDownload('',{
       invoice_number: 'DHI-1001',
       invoice_date: new Date().toISOString().slice(0,10),
       client_name: 'Sample Client (Pty) Ltd',
