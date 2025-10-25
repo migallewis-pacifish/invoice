@@ -23,6 +23,7 @@ export class ClientDetailComponent {
   clientId = signal<string | null>(null);
   client = signal<any | null>(null);
   invoices = signal<any[]>([]);
+  lastInvoice = signal<any | null>(null);
   loading = signal(true);
 
   constructor() {
@@ -45,6 +46,7 @@ export class ClientDetailComponent {
       // Real-time invoices
       this.clientSvc.getInvoicesForClient(clientId).subscribe(list => {
         this.invoices.set(list);
+        this.lastInvoice.set(list.length > 0 ? list[0] : null);
       });
     });
   }
@@ -55,7 +57,12 @@ addInvoice() {
     backdropClass: 'dlg-backdrop',
     panelClass: 'dlg-panel',
     disableClose: true,
-    data: { client: this.client(), clientId: this.clientId(), companyId: this.companyId() } // 👈 pass client info
+    data: {
+      client: this.client(),
+      clientId: this.clientId(),
+      companyId: this.companyId(),
+      lastInvoice: this.lastInvoice().invoiceNumber
+    }
   });
 
   ref.closed.subscribe(filename => {

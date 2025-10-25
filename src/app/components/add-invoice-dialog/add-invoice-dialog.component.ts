@@ -31,15 +31,19 @@ export class AddInvoiceDialogComponent {
   client: any;
   clientId: any;
   companyId: string;
+  lastInvoice: string;
   form: any;
 
   constructor() {
     this.client = this.data?.client;
     this.clientId = this.data?.clientId;
     this.companyId = typeof this.data?.companyId === 'function' ? this.data?.companyId() : this.data?.companyId;
+    this.lastInvoice = this.data?.lastInvoice;
+    const nextInvoiceNumber = this.getNextInvoiceNumber(this.lastInvoice);
     this.form = this.fb.group({
-      invoiceNumber: ['', Validators.required],
+      invoiceNumber: [nextInvoiceNumber, Validators.required],
       notes: [''],
+      servicesProvided: ['', Validators.required],
       items: this.fb.array([
         this.createItem()
       ])
@@ -95,7 +99,7 @@ export class AddInvoiceDialogComponent {
       client_post_code: this.client?.address?.postalCode || '',
       client_contact_no: this.client?.phone || '',
       client_email: this.client?.email || '',
-      services_rendered: 'Legal Services',
+      services_rendered: formValue.servicesProvided,
       notes: formValue.notes || '',
       reference: formValue.invoiceNumber,
       items: formValue.items.map((it: { description: string; rate: number; hours: number }) => ({
@@ -138,5 +142,17 @@ export class AddInvoiceDialogComponent {
       error: () => this.saving.set(false),
       complete: () => this.saving.set(false)
     });
+  }
+
+  private getNextInvoiceNumber(lastInvoice: string | null): string {
+    console.log('Last invoice number:', lastInvoice);
+    if (!lastInvoice) return 'INV-001';
+
+    const lastNumStr = lastInvoice.slice(-3);
+    const prefix = lastInvoice.slice(0, -3);
+
+    const nextNum = (parseInt(lastNumStr, 10) + 1).toString().padStart(3, '0');
+
+    return `${prefix}${nextNum}`;
   }
 }
