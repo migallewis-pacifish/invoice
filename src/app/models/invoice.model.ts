@@ -24,7 +24,7 @@ export interface InvoiceData {
   client_street: string;
   client_suburb: string;
   client_city: string;
-  client_post_code: string;
+  client_postal_code: string;
   client_building: string;
   client_contact_no: string;
   client_email: string;
@@ -32,6 +32,7 @@ export interface InvoiceData {
 
   items: InvoiceItem[];
 
+  shouldIncludeVAT?: boolean;
   excluding_vat: string;
   vat_amount: string;
   total: string;

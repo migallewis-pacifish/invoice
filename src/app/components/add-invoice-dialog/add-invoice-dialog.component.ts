@@ -44,6 +44,7 @@ export class AddInvoiceDialogComponent {
       invoiceNumber: [nextInvoiceNumber, Validators.required],
       notes: [''],
       servicesProvided: ['', Validators.required],
+      includeVat: [false],
       items: this.fb.array([
         this.createItem()
       ])
@@ -88,15 +89,18 @@ export class AddInvoiceDialogComponent {
 
     const formValue = this.form.value;
 
+    console.log('client:', this.client);
+
     const invoiceData = {
       invoice_number: formValue.invoiceNumber,
       invoice_date: new Date().toISOString().slice(0, 10),
       client_name: this.client?.displayName || 'Unknown Client',
-      client_building: this.client?.address?.street || '',
-      client_street: this.client?.address?.street || '',
-      client_suburb: this.client?.address?.city || '',
-      client_city: this.client?.address?.province || '',
-      client_post_code: this.client?.address?.postalCode || '',
+      client_building: this.client?.address?.building || '',
+      client_street: this.client?.address?.line1 + ' ' + this.client?.address?.line2 || '',
+      client_suburb: this.client?.address?.suburb || '',
+      client_city: this.client?.address?.city || '',
+      client_province: this.client?.address?.province || '',
+      client_postal_code: this.client?.address?.postalCode || '',
       client_contact_no: this.client?.phone || '',
       client_email: this.client?.email || '',
       services_rendered: formValue.servicesProvided,
@@ -106,8 +110,11 @@ export class AddInvoiceDialogComponent {
         description: it.description,
         rate: it.rate,
         hours: it.hours
-      }))
+      })),
+      shouldIncludeVAT: formValue.includeVat // Pass VAT flag
     };
+
+    console.log('invoiceData:', invoiceData);
 
     const total = invoiceData.items.reduce((sum: number, i: { description: string; rate: number; hours: number }) => sum + (i.rate * i.hours), 0);
     from(this.invoiceDocx.generateAndDownload(this.companyId, invoiceData)).pipe(

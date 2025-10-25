@@ -5,11 +5,12 @@ import { ClientService } from '../../services/client.service';
 import { take } from 'rxjs';
 import { Dialog } from '@angular/cdk/dialog';
 import { AddInvoiceDialogComponent } from '../../components/add-invoice-dialog/add-invoice-dialog.component';
+import { OrderByDateDescPipe } from './order-by-date-desc.pipe';
 
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, OrderByDateDescPipe],
   templateUrl: './client-detail.component.html',
   styleUrl: './client-detail.component.scss'
 })

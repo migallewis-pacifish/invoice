@@ -51,11 +51,8 @@ export class InvoiceDocxService {
     data: Omit<
       InvoiceData,
       'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'
-    > & { invoice_number: string }
+    > & { invoice_number: string; includeVat?: boolean }
   ): Observable<string> {
-
-    console.log('Generating invoice for companyId:', companyId);
-    // Step 1: Get templatePath from Firestore
     const companyDoc = doc(this.db, `companies/${companyId}`);
     return docData(companyDoc).pipe(
       map((c: any) => c?.templatePath),
@@ -71,7 +68,23 @@ export class InvoiceDocxService {
       switchMap((url: string) => this.http.get(url, { responseType: 'arraybuffer' })),
       // Step 4: Fill and download the invoice
       map(arrayBuffer => {
-        const { items, subtotalStr, vatStr, grandStr } = this.computeTotals(data.items);
+        // Determine VAT inclusion
+        const shouldIncludeVAT = data.includeVat ?? data.shouldIncludeVAT ?? false;
+        // compute per-line totals if missing
+        const normalized = data.items.map((i: any) => ({
+          ...i,
+          amount: (parseFloat(i.rate) * parseFloat(i.hours)).toFixed(2),
+        }));
+        const subtotalNum = normalized.reduce((s: number, i: any) => s + (parseFloat(i.amount) || 0), 0);
+        const vatNum = shouldIncludeVAT ? +(subtotalNum * this.VAT_RATE).toFixed(2) : 0;
+        const grandNum = +(subtotalNum + vatNum).toFixed(2);
+        // Format money as ZAR
+        const fmt = (n: number) =>
+          new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(n);
+        const items = normalized.map((i: any) => ({ ...i, amount: fmt(parseFloat(i.amount)) }));
+        const subtotalStr = fmt(subtotalNum);
+        const vatStr = fmt(vatNum);
+        const grandStr = fmt(grandNum);
         const finalData: InvoiceData = {
           invoice_number: data.invoice_number,
           invoice_date: data.invoice_date,
@@ -80,14 +93,14 @@ export class InvoiceDocxService {
           client_street: data.client_street || '',
           client_suburb: data.client_suburb || '',
           client_city: data.client_city || '',
-          client_post_code: data.client_post_code || '',
+          client_postal_code: data.client_postal_code || '',
           client_contact_no: data.client_contact_no || '',
           services_rendered: data.services_rendered || '',
           client_email: data.client_email || '',
           items,
           excluding_vat: subtotalStr,
           vat_amount: vatStr,
-          vat_percentage: this.VAT_RATE.toString(),
+          vat_percentage: (this.VAT_RATE * 100).toString(),
           notes: data.notes,
           total: grandStr,
           reference: data.reference || '',
@@ -97,13 +110,11 @@ export class InvoiceDocxService {
         const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
         doc.setData(finalData);
         doc.render();
-
         const out = doc.getZip().generate({
           type: 'blob',
           mimeType:
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         });
-
         const fileName = `${finalData.invoice_number}.docx`;
         saveAs(out, fileName);
         return fileName;

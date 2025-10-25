@@ -20,7 +20,7 @@ export class InvoiceComponent {
       client_street: '123 Client Street',
       client_suburb: 'Sandton',
       client_city: 'Johannesburg',
-      client_post_code: '2196',
+      client_postal_code: '2196',
       client_contact_no: '+27 11 123 4567',
       services_rendered: 'Legal Services',
       notes: 'Client tends to pay on the 1st.',

@@ -38,7 +38,7 @@
 
     <ng-container *ngIf="invoices().length > 0; else noInvoices">
       <div class="invoice-list">
-        <div class="invoice-item" *ngFor="let inv of invoices()">
+        <div class="invoice-item" *ngFor="let inv of invoices() | orderByDateDesc">
           <div>
             <strong>{{ inv.invoiceNumber || '(unnumbered)' }}</strong><br>
             <span>{{ inv.date | date }}</span>
