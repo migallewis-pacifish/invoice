@@ -6,12 +6,18 @@
   --muted: #6b879d;
   --primary: #2b6f8a;
   --primary-ink: #ffffff;
+  --secondary: #e3e9ef;
+  --secondary-ink: #1f3448;
   --border: #e3e9ef;
   --shadow: 0 8px 24px rgba(20, 40, 60, 0.08);
   --radius: 18px;
 }
 
 @import '@angular/cdk/overlay-prebuilt.css';
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 
 .dlg-backdrop {
   background: rgba(8,18,28,0.45) !important;
@@ -25,4 +31,14 @@
   display: grid;
   place-items: center;
   min-height: 100svh;  /* full viewport to center vertically */
+}
+
+.primary {
+  background:#2b6f8a; color:#fff; border:none; border-radius:999px;
+  padding:10px 18px; font-weight:600; cursor:pointer;
+}
+
+.secondary {
+  background:#e3e9ef; color:#1f3448; border:none; border-radius:999px;
+  padding:10px 18px; font-weight:600; cursor:pointer;
 }

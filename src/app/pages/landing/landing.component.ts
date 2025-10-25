@@ -1,13 +1,14 @@
 import { Component, inject, signal } from '@angular/core';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { Auth, authState } from '@angular/fire/auth';
-import { doc, docData, Firestore } from '@angular/fire/firestore';
+import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { take } from 'rxjs';
 import { ClientListComponent } from '../client-list/client-list.component';
 import { CommonModule } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
 import { UploadTemplateDialogueComponent } from '../../components/upload-template-dialogue/upload-template-dialogue.component';
+import { LinkFolderDialogueComponent } from '../../components/link-folder-dialogue/link-folder-dialogue.component';
 
 @Component({
   selector: 'app-landing',
@@ -51,20 +52,42 @@ export class LandingComponent {
   }
 
 
-openUploadTemplate() {
-  const ref = this.dialog.open<string | null>(UploadTemplateDialogueComponent, {
-    hasBackdrop: true,
-    disableClose: true,
-    backdropClass: 'dlg-backdrop',
-    panelClass: 'dlg-panel',
-  });
+  openUploadTemplate() {
+    const ref = this.dialog.open<string | null>(UploadTemplateDialogueComponent, {
+      hasBackdrop: true,
+      disableClose: true,
+      backdropClass: 'dlg-backdrop',
+      panelClass: 'dlg-panel',
+    });
 
-  ref.closed.subscribe(path => {
-    if (path) {
-      // optional: toast “Template updated ✓”
-      // You already subscribe to the company doc, so UI should reflect automatically.
-    }
-  });
-}
+    ref.closed.subscribe(path => {
+      if (path) {
+        // optional: toast “Template updated ✓”
+        // You already subscribe to the company doc, so UI should reflect automatically.
+      }
+    });
+  }
+
+
+  openLinkFolderDialog() {
+    const ref = this.dialog.open(LinkFolderDialogueComponent, {
+      backdropClass: 'dlg-backdrop',
+      panelClass: 'dlg-panel',
+      disableClose: true
+    });
+
+    ref.closed.subscribe((result => {
+      const typedResult = result as { provider: 'local' | 'google' | 'onedrive' | null; path: string | null; } | null;
+      if (typedResult) {
+        const companyId = this.companyId();
+        if (!companyId) return;
+        const companyRef = doc(this.db, `companies/${companyId}`);
+        updateDoc(companyRef, {
+          storageProvider: typedResult.provider ?? null,
+          storagePath: typedResult.path ?? null
+        }).catch((error) => console.error('Failed to save storage settings', error));
+      }
+    }));
+  }
 
 }

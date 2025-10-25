@@ -9,19 +9,18 @@ import { InvoiceDocxService } from '../../services/invoice-docx.service';
   styleUrl: './invoice.component.scss'
 })
 export class InvoiceComponent {
-  constructor(private svc: InvoiceDocxService) {}
+  constructor(private invoiceDocxService: InvoiceDocxService) {}
 
   async download() {
-    await this.svc.generateAndDownload({
+    this.invoiceDocxService.generateAndSave('',{
+      invoice_number: 'DHI-1001',
       invoice_date: new Date().toISOString().slice(0,10),
-
-
       client_name: 'Sample Client (Pty) Ltd',
       client_building: 'Suite 5, Block A',
       client_street: '123 Client Street',
       client_suburb: 'Sandton',
       client_city: 'Johannesburg',
-      client_post_code: '2196',
+      client_postal_code: '2196',
       client_contact_no: '+27 11 123 4567',
       services_rendered: 'Legal Services',
       notes: 'Client tends to pay on the 1st.',
@@ -32,6 +31,10 @@ export class InvoiceComponent {
         { description: 'Consultation', rate:'300', hours: '2' },
         { description: 'Drafting of Letter of Demand', rate: '1800', hours: '1' },
       ],
+    }).subscribe(filename => {
+      if (filename) {
+        console.log('Invoice created:', filename);
+      }
     });
   }
 }

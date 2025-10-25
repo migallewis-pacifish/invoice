@@ -1,0 +1,59 @@
+<div class="dialog-shell">
+    <div class="dialog-header">
+        <h3>Add Invoice</h3>
+        <button class="icon-btn" (click)="close()">✕</button>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="generateInvoice()" class="dialog-body">
+        <div class="form-group">
+            <label>Invoice Number <span>*</span></label>
+            <input type="text" formControlName="invoiceNumber">
+        </div>
+
+        <div class="item-row header">
+            <div>Description</div>
+            <div>Rate (ZAR)</div>
+            <div>Hours</div>
+            <div>Total (ZAR)</div>
+            <div></div>
+        </div>
+
+        <div formArrayName="items" class="items-block">
+            <div *ngFor="let item of items.controls; let i = index" [formGroupName]="i" class="item-row">
+                <input placeholder="Description" formControlName="description">
+                <input type="number" placeholder="Rate (ZAR)" formControlName="rate">
+                <input type="number" placeholder="Hours" formControlName="hours">
+                <input type="number" placeholder="Total" formControlName="total" readonly>
+                <button type="button" class="remove" (click)="removeItem(i)">✕</button>
+            </div>
+        </div>
+
+        <button type="button" class="ghost add-item-btn" (click)="addItem()">+ Add Item</button>
+
+        <div class="form-group full">
+            <label>
+                <input type="checkbox" formControlName="includeVat">
+                Include VAT
+            </label>
+        </div>
+
+        <div class="form-group full">
+            <label>Services Provided <span>*</span></label>
+            <input type="text" formControlName="servicesProvided">
+        </div>
+
+        <div class="form-group full">
+            <label>Notes (optional)</label>
+            <textarea rows="3" formControlName="notes"></textarea>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="primary" [disabled]="saving()">
+                <span *ngIf="!saving()">Generate & Download Invoice</span>
+                <span *ngIf="saving()" class="spinner"></span>
+            </button>
+        </div>
+
+        <div class="msg error" *ngIf="error()">{{ error() }}</div>
+    </form>
+</div>
