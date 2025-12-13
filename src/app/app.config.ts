@@ -33,3 +33,4 @@ export const appConfig: ApplicationConfig = {
     provideStorage(() => getStorage()),
   ]
 };
+// sEM8kkexYR5xTJCL2j1G

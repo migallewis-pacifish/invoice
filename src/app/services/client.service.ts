@@ -59,6 +59,7 @@ export class ClientService {
   }
 
   createInvoice(clientId: string, data: any): Observable<string> {
+    console.log('creating invoice for client:', clientId);
     return this.getCompanyId$().pipe(
       switchMap(companyId => {
         const colRef = collection(this.db, `companies/${companyId}/clients/${clientId}/invoices`);

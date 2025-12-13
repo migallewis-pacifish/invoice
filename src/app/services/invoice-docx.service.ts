@@ -53,6 +53,9 @@ export class InvoiceDocxService {
       'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'
     > & { invoice_number: string; includeVat?: boolean }
   ): Observable<string> {
+
+    console.log('generating invoice for company:', companyId);
+
     const companyDoc = doc(this.db, `companies/${companyId}`);
     return docData(companyDoc).pipe(
       switchMap((companyRaw: any) => {
