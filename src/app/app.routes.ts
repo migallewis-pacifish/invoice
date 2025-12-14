@@ -12,18 +12,18 @@ import { MembershipPlanComponent } from './libraries/membership-plan/membership-
 
 export const routes: Routes = [
 
-  { path: 'login', component: SignInComponent },
-  { path: 'register', component: RegisterWizardComponent },
+ { path: 'login', component: SignInComponent },
+  { path: 'register', component: RegisterWizardComponent, canActivate: [authGuard] },
 
-  { path: '', component: LandingComponent},
-  { path: 'clients/new', component: CreateClientComponent},
-  { path: 'clients', component: ClientListComponent },
-  { path: 'template', component: UploadTemplateComponent },
+  { path: '', component: LandingComponent, canActivate: [authGuard, companyGuard] },
+  { path: 'clients/new', component: CreateClientComponent, canActivate: [authGuard, companyGuard] },
+  { path: 'clients', component: ClientListComponent, canActivate: [authGuard, companyGuard] },
+  { path: 'template', component: UploadTemplateComponent, canActivate: [authGuard, companyGuard] },
   {
     path: 'company/:companyId/client/:clientId',
     component: ClientDetailComponent,
-  
-  },
+    canActivate: [authGuard, companyGuard]
+  }
   {
     path: 'membership',
     component: MembershipPlanComponent
