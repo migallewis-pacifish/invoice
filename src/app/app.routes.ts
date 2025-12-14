@@ -23,7 +23,7 @@ export const routes: Routes = [
     path: 'company/:companyId/client/:clientId',
     component: ClientDetailComponent,
     canActivate: [authGuard, companyGuard]
-  }
+  },
   {
     path: 'membership',
     component: MembershipPlanComponent
