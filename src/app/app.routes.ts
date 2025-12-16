@@ -8,10 +8,11 @@ import { authGuard } from './utils/authGuard';
 import { companyGuard } from './utils/companyGuard';
 import { UploadTemplateComponent } from './pages/upload-template/upload-template.component';
 import { ClientDetailComponent } from './pages/client-detail/client-detail.component';
+import { MembershipPlanComponent } from './libraries/membership-plan/membership-plan.component';
 
 export const routes: Routes = [
 
-  { path: 'login', component: SignInComponent },
+ { path: 'login', component: SignInComponent },
   { path: 'register', component: RegisterWizardComponent, canActivate: [authGuard] },
 
   { path: '', component: LandingComponent, canActivate: [authGuard, companyGuard] },
@@ -22,6 +23,10 @@ export const routes: Routes = [
     path: 'company/:companyId/client/:clientId',
     component: ClientDetailComponent,
     canActivate: [authGuard, companyGuard]
+  },
+  {
+    path: 'membership',
+    component: MembershipPlanComponent
   }
 
 ];

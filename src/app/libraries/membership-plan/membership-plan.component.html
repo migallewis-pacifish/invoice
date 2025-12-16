@@ -1,0 +1,14 @@
+<section class="subscription-root">
+
+<lib-membership-plans
+        [plans]="plans()"
+        layout="auto"
+        theme="default"
+        [showBillingToggle]="true"
+        (selectPlan)="onPlanSelected($event)"
+        class="global-theme">
+</lib-membership-plans>
+
+</section>
+
+
