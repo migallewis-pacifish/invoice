@@ -9,11 +9,12 @@ import { CommonModule } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
 import { UploadTemplateDialogueComponent } from '../../components/upload-template-dialogue/upload-template-dialogue.component';
 import { LinkFolderDialogueComponent } from '../../components/link-folder-dialogue/link-folder-dialogue.component';
+import { ExpensesComponent } from '../../components/expenses/expenses.component';
 
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [NavBarComponent, CommonModule, ClientListComponent],
+  imports: [NavBarComponent, CommonModule, ClientListComponent, ExpensesComponent],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
 })
@@ -23,9 +24,10 @@ export class LandingComponent {
   private router = inject(Router);
   private dialog = inject(Dialog);
 
-  companyId = signal<string | null>(null);
+  companyId = signal<string >("");
   companyName = signal<string | null>(null);
   templatePath = signal<string | null>(null);
+  activeTab = signal<TabKey>('invoices');
 
   loading = signal(true);
 
@@ -90,4 +92,10 @@ export class LandingComponent {
     }));
   }
 
+  setTab(tab: TabKey) {
+    this.activeTab.set(tab);
+  }
+
 }
+
+type TabKey = 'invoices' | 'expenses';

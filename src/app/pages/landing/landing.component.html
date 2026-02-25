@@ -1,34 +1,46 @@
 <app-nav-bar></app-nav-bar>
-
 <div class="wrap" *ngIf="!loading(); else loadingTpl">
-  <div class="card">
-    <h1 class="title">{{ companyName() }}</h1>
+  <h1 class="title">{{ companyName() }}</h1>
+  <div class="tabs mt-4">
+    <button type="button" class="tab" [class.active]="activeTab() === 'invoices'" (click)="setTab('invoices')">
+      Invoices
+    </button>
 
-    <div class="template-status">
-      <ng-container *ngIf="templatePath(); else noTemplate">
-        <div class="status-row">
-          <span class="badge ok">Invoice Template Available</span>
-          <button class="primary" (click)="openUploadTemplate()">Update Template</button>
-        </div>
-        <p class="muted">You can replace your existing template anytime.</p>
-      </ng-container>
-
-      <ng-template #noTemplate>
-        <div class="status-row">
-          <span class="badge warn">No Template Uploaded</span>
-          <button class="primary" (click)="openUploadTemplate()">Upload Template</button>
-        </div>
-        <p class="muted">Please upload your Word invoice template before creating invoices.</p>
-      </ng-template>
-    </div>
-
-    <div class="status-row mt-3">
-      <span class="badge info">Storage Settings</span>
-      <button class="secondary" (click)="openLinkFolderDialog()">Link Folder</button>
-    </div>
+    <button type="button" class="tab" [class.active]="activeTab() === 'expenses'" (click)="setTab('expenses')">
+      Expenses
+    </button>
   </div>
+  <ng-container [ngSwitch]="activeTab()">
+    <div *ngSwitchCase="'invoices'">
+      <div class="card">
+        <div class="template-status">
+          <ng-container *ngIf="templatePath(); else noTemplate">
+            <div class="status-row">
+              <span class="badge ok">Invoice Template Available</span>
+              <button class="primary" (click)="openUploadTemplate()">Update Template</button>
+            </div>
+            <p class="muted">You can replace your existing template anytime.</p>
+          </ng-container>
 
-  <app-client-list [companyId]="companyId"></app-client-list>
+          <ng-template #noTemplate>
+            <div class="status-row">
+              <span class="badge warn">No Template Uploaded</span>
+              <button class="primary" (click)="openUploadTemplate()">Upload Template</button>
+            </div>
+            <p class="muted">Please upload your Word invoice template before creating invoices.</p>
+          </ng-template>
+        </div>
+
+        <div class="status-row mt-3">
+          <span class="badge info">Storage Settings</span>
+          <button class="secondary" (click)="openLinkFolderDialog()">Link Folder</button>
+        </div>
+      </div>
+      <app-client-list [companyId]="companyId"></app-client-list>
+    </div>
+
+    <app-expenses *ngSwitchCase="'expenses'" [companyId]="companyId()"></app-expenses>
+  </ng-container>
 </div>
 
 <ng-template #loadingTpl>

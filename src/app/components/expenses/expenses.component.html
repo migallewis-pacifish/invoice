@@ -1,0 +1,149 @@
+<div class="wrap expenses">
+
+    <!-- Header -->
+    <div class="card">
+        <div class="header-row">
+            <div>
+                <h2 class="section-title">Expenses</h2>
+                <p class="muted">Capture and manage business expenses per month</p>
+            </div>
+
+            <div class="month-picker">
+                <label class="label">Month</label>
+                <input #monthInput type="month" class="form-control" [value]="selectedMonth()"
+                    (change)="onMonthChange(monthInput.value)" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Expense -->
+    <div class="card mt-4">
+        <h3 class="card-title">Add Expense</h3>
+
+        <form [formGroup]="form" (ngSubmit)="addExpense()">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="label">Date</label>
+                    <input type="date" class="form-control" formControlName="date" />
+                </div>
+
+                <div class="form-group">
+                    <label class="label">Description</label>
+                    <input type="text" class="form-control" formControlName="description"
+                        placeholder="e.g. Vodacom Fibre" />
+                </div>
+
+                <div class="form-group">
+                    <label class="label">Category</label>
+                    <select class="form-control" formControlName="category">
+                        <option *ngFor="let c of categories" [value]="c">
+                            {{ c }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="label">Supplier (optional)</label>
+                    <input type="text" class="form-control" formControlName="supplier" placeholder="e.g. Takealot" />
+                </div>
+
+                <div class="form-group">
+                    <label class="label">Amount (ZAR)</label>
+                    <input type="number" class="form-control" formControlName="amount" step="0.01" min="0.01" />
+                </div>
+
+                <!-- Optional client link -->
+                <div class="form-group">
+                    <label class="label">Client (optional)</label>
+                    <select class="form-control" formControlName="clientId">
+                        <option [ngValue]="null">Business-wide</option>
+                        <option *ngFor="let c of clients | async" [ngValue]="c.id">
+                            {{ c.displayName }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label class="label">Notes (optional)</label>
+                    <input type="text" class="form-control" formControlName="notes" placeholder="Extra details..." />
+                </div>
+
+                <div class="actions full">
+                    <button type="submit" class="primary">
+                        Add Expense
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- List -->
+    <div class="card mt-4">
+        <div class="list-header">
+            <h3>Expenses for {{ selectedMonth() }}</h3>
+            <div class="total">
+                Total: <strong>{{ formatZar(monthlyTotal()) }}</strong>
+            </div>
+        </div>
+
+        <div *ngIf="expenses().length === 0" class="muted empty">
+            No expenses recorded for this month.
+        </div>
+
+        <div class="table-wrap" *ngIf="expenses().length > 0">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Supplier</th>
+                        <th>Client</th>
+                        <th class="right">Amount</th>
+                        <th></th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr *ngFor="let e of expenses()">
+                        <td>{{ e.date }}</td>
+                        <td>
+                            <div class="strong">{{ e.description }}</div>
+                            <div class="muted small" *ngIf="e.notes">{{ e.notes }}</div>
+                        </td>
+                        <td>{{ e.category }}</td>
+                        <td>{{ e.supplier || '-' }}</td>
+                        <td>
+                            <ng-container *ngIf="e.clientId; else overall">
+                                Client-linked
+                            </ng-container>
+                            <ng-template #overall>
+                                <span class="muted">Business-wide</span>
+                            </ng-template>
+                        </td>
+                        <td class="right strong">
+                            {{ formatZar(e.amount) }}
+                        </td>
+                        <td>
+                            <button type="button" class="secondary small-btn" (click)="deleteExpense(e.id)">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+
+                <tfoot>
+                    <tr>
+                        <td colspan="5" class="right strong">Total</td>
+                        <td class="right strong">
+                            {{ formatZar(monthlyTotal()) }}
+                        </td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+
+            </table>
+        </div>
+    </div>
+
+</div>

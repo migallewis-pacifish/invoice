@@ -42,3 +42,74 @@
   background:#e3e9ef; color:#1f3448; border:none; border-radius:999px;
   padding:10px 18px; font-weight:600; cursor:pointer;
 }
+
+/* Grid layout */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px 24px;
+}
+.form-group.full {
+  grid-column: 1 / -1;
+}
+
+/* Inputs */
+label {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+label span {
+  color: #c0392b;
+}
+input, textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  outline: none;
+  font-size: 15px;
+  color: var(--ink);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  background: #fff;
+}
+input:focus, textarea:focus {
+  border-color: #b9d3df;
+  box-shadow: 0 0 0 4px rgba(43,111,138,0.12);
+}
+
+select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  outline: none;
+  font-size: 15px;
+  color: var(--ink);
+  background-color: #fff;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+
+  /* Remove default browser styling */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  /* Custom arrow */
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%2399a3aa' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 12px;
+
+  cursor: pointer;
+}
+
+/* Focus state */
+select:focus {
+  border-color: #b9d3df;
+  box-shadow: 0 0 0 4px rgba(43,111,138,0.12);
+}
+
+select:hover {
+  border-color: #d5e3ea;
+}
