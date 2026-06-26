@@ -96,11 +96,25 @@ export class AddInvoiceDialogComponent {
     this.error.set(null);
 
     const formValue = this.form.getRawValue();
-    const items = formValue.items.map((it: { description: string; rate: number; hours: number }) => ({
-      description: it.description,
-      rate: Number(it.rate),
-      hours: Number(it.hours)
-    }));
+    const items = formValue.items.map((it: { description: string; rate: number; hours: number }) => {
+      const rate = Number(it.rate) || 0;
+      const hours = Number(it.hours) || 0;
+      const amount = +(rate * hours).toFixed(2);
+
+      return {
+        description: it.description,
+        rate,
+        hours,
+        amount,
+        total: amount
+      };
+    });
+
+    const includeVat = Boolean(formValue.includeVat);
+    const servicesProvided = formValue.servicesProvided || '';
+    const subtotal = +items.reduce((sum: number, i: { amount: number }) => sum + i.amount, 0).toFixed(2);
+    const vatAmount = includeVat ? +(subtotal * 0.15).toFixed(2) : 0;
+    const total = +(subtotal + vatAmount).toFixed(2);
 
     const invoiceData = {
       invoice_number: formValue.invoiceNumber,
@@ -114,15 +128,14 @@ export class AddInvoiceDialogComponent {
       client_postal_code: this.client?.address?.postalCode || '',
       client_contact_no: this.client?.phone || '',
       client_email: this.client?.email || '',
-      services_rendered: formValue.servicesProvided,
+      services_rendered: servicesProvided,
       notes: formValue.notes || '',
       reference: formValue.invoiceNumber,
       items,
-      shouldIncludeVAT: formValue.includeVat
+      includeVat,
+      shouldIncludeVAT: includeVat
     };
 
-    const subtotal = items.reduce((sum: number, i: { rate: number; hours: number }) => sum + (i.rate * i.hours), 0);
-    const total = formValue.includeVat ? +(subtotal * 1.15).toFixed(2) : subtotal;
     const generate$ = formValue.downloadFormat === 'pdf'
       ? from(this.invoiceDocx.generatePdf(invoiceData)).pipe(map(() => `${invoiceData.invoice_number}.pdf`))
       : this.invoiceDocx.generateAndSave(this.companyId, invoiceData);
@@ -133,13 +146,20 @@ export class AddInvoiceDialogComponent {
           this.clientSvc.createInvoice(this.clientId, {
             invoiceNumber: formValue.invoiceNumber,
             date: invoiceData.invoice_date,
+            subtotal,
+            excludingVat: subtotal,
+            vatAmount,
             total,
             notes: formValue.notes || '',
-            servicesProvided: formValue.servicesProvided,
-            services_rendered: formValue.servicesProvided,
-            includeVat: formValue.includeVat,
-            shouldIncludeVAT: formValue.includeVat,
+            servicesProvided,
+            services_rendered: servicesProvided,
+            servicesRendered: servicesProvided,
+            includeVat,
+            shouldIncludeVAT: includeVat,
+            vatIncluded: includeVat,
+            vatRate: 0.15,
             items,
+            lineItems: items,
             filename,
             downloadFormat: formValue.downloadFormat,
             createdAt: Date.now(),
