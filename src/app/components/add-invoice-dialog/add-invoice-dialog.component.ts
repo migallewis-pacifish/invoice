@@ -48,8 +48,8 @@ export class AddInvoiceDialogComponent {
     this.form = this.fb.group({
       invoiceNumber: [nextInvoiceNumber, Validators.required],
       notes: [this.previousInvoice?.notes || ''],
-      servicesProvided: [this.previousInvoice?.servicesProvided || '', Validators.required],
-      includeVat: [this.previousInvoice?.includeVat ?? false],
+      servicesProvided: [this.getCopiedServicesProvided(), Validators.required],
+      includeVat: [this.getCopiedIncludeVat()],
       downloadFormat: ['docx' as InvoiceDownloadFormat, Validators.required],
       items: this.fb.array(copiedItems.length ? copiedItems.map(item => this.createItem(item)) : [this.createItem()])
     });
@@ -136,7 +136,9 @@ export class AddInvoiceDialogComponent {
             total,
             notes: formValue.notes || '',
             servicesProvided: formValue.servicesProvided,
+            services_rendered: formValue.servicesProvided,
             includeVat: formValue.includeVat,
+            shouldIncludeVAT: formValue.includeVat,
             items,
             filename,
             downloadFormat: formValue.downloadFormat,
@@ -157,13 +159,37 @@ export class AddInvoiceDialogComponent {
     ).subscribe();
   }
 
+  private getCopiedServicesProvided(): string {
+    return this.previousInvoice?.servicesProvided
+      || this.previousInvoice?.services_rendered
+      || this.previousInvoice?.servicesRendered
+      || '';
+  }
+
+  private getCopiedIncludeVat(): boolean {
+    return this.previousInvoice?.includeVat
+      ?? this.previousInvoice?.shouldIncludeVAT
+      ?? false;
+  }
+
   private getCopiedItems(): { description: string; rate: number; hours: number }[] {
-    return Array.isArray(this.previousInvoice?.items)
-      ? this.previousInvoice.items.map((item: any) => ({
-        description: item.description || '',
-        rate: Number(item.rate ?? 0),
-        hours: Number(item.hours ?? 1)
-      }))
+    const previousItems = this.previousInvoice?.items
+      || this.previousInvoice?.lineItems
+      || this.previousInvoice?.invoiceItems
+      || [];
+
+    return Array.isArray(previousItems)
+      ? previousItems.map((item: any) => {
+        const hours = Number(item.hours ?? item.quantity ?? 1) || 1;
+        const rate = Number(item.rate ?? item.price ?? item.unitPrice ?? 0);
+        const amount = Number(item.amount ?? item.total ?? 0);
+
+        return {
+          description: item.description || item.name || '',
+          rate: rate || (amount && hours ? amount / hours : 0),
+          hours
+        };
+      }).filter(item => item.description || item.rate > 0)
       : [];
   }
 

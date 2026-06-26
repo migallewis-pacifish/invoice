@@ -49,7 +49,7 @@ export class ClientService {
     return this.getCompanyId$().pipe(
       switchMap(companyId => {
         const ref = collection(this.db, `companies/${companyId}/clients/${id}/invoices`);
-        const q = query(ref, orderBy('date', 'desc'));
+        const q = query(ref, orderBy('createdAt', 'desc'));
         return collectionData(q, { idField: 'id' }).pipe(
           map((arr: any[] | undefined) => arr ?? [])
         );
