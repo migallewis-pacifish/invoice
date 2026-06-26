@@ -1,11 +1,11 @@
 <div class="dialog-shell">
     <div class="dialog-header">
-        <h3>Add Invoice</h3>
+        <h3>{{ dialogTitle }}</h3>
         <button class="icon-btn" (click)="close()">✕</button>
     </div>
 
     <form [formGroup]="form" (ngSubmit)="generateInvoice()" class="dialog-body">
-        <p class="copy-note" *ngIf="previousInvoice">Copied from the previous invoice. Edit any details before generating.</p>
+        <p class="copy-note" *ngIf="previousInvoice || viewOnly">{{ helperText }}</p>
         <div class="form-group">
             <label>Invoice Number <span>*</span></label>
             <input type="text" formControlName="invoiceNumber">
@@ -25,11 +25,11 @@
                 <input type="number" placeholder="Rate (ZAR)" formControlName="rate">
                 <input type="number" placeholder="Hours" formControlName="hours">
                 <input type="number" placeholder="Total" formControlName="total" readonly>
-                <button type="button" class="remove" (click)="removeItem(i)">✕</button>
+                <button type="button" class="remove" *ngIf="!viewOnly" (click)="removeItem(i)">✕</button>
             </div>
         </div>
 
-        <button type="button" class="ghost add-item-btn" (click)="addItem()">+ Add Item</button>
+        <button type="button" class="ghost add-item-btn" *ngIf="!viewOnly" (click)="addItem()">+ Add Item</button>
 
         <div class="form-group full">
             <label>
@@ -58,7 +58,7 @@
 
         <div class="actions">
             <button type="submit" class="primary" [disabled]="saving() || form.invalid">
-                <span *ngIf="!saving()">Generate & Download Invoice</span>
+                <span *ngIf="!saving()">{{ viewOnly ? 'Regenerate & Download Invoice' : 'Generate & Download Invoice' }}</span>
                 <span *ngIf="saving()" class="spinner"></span>
             </button>
         </div>

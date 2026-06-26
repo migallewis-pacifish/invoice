@@ -89,3 +89,14 @@ p { margin: 0 0 4px; color: var(--ink); font-size: 15px; }
   font-weight: 600;
   cursor: pointer;
 }
+
+.invoice-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.secondary.small {
+  padding: 6px 12px;
+  font-size: 13px;
+}
