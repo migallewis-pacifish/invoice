@@ -46,8 +46,9 @@
             <strong>{{ inv.invoiceNumber || '(unnumbered)' }}</strong><br>
             <span>{{ inv.date | date }}</span>
           </div>
-          <div>
+          <div class="invoice-item-actions">
             <span>{{ inv.total | currency:'ZAR':'symbol' }}</span>
+            <button type="button" class="secondary small" (click)="viewInvoice(inv)">View</button>
           </div>
         </div>
       </div>
