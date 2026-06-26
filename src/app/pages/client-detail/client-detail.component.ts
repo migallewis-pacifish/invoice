@@ -53,7 +53,7 @@ export class ClientDetailComponent {
   }
 
 
-addInvoice() {
+addInvoice(previousInvoice: any | null = null) {
   const ref = this.dialog.open(AddInvoiceDialogComponent, {
     backdropClass: 'dlg-backdrop',
     panelClass: 'dlg-panel',
@@ -62,7 +62,8 @@ addInvoice() {
       client: this.client(),
       clientId: this.clientId(),
       companyId: this.companyId(),
-      lastInvoice: this.lastInvoice()?.invoiceNumber
+      lastInvoice: this.lastInvoice()?.invoiceNumber,
+      previousInvoice
     }
   });
 
@@ -71,5 +72,11 @@ addInvoice() {
       console.log('Invoice created:', filename);
     }
   });
+}
+
+copyLastInvoice() {
+  if (this.lastInvoice()) {
+    this.addInvoice(this.lastInvoice());
+  }
 }
 }
