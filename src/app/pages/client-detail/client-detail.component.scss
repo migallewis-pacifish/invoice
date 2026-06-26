@@ -73,3 +73,19 @@ p { margin: 0 0 4px; color: var(--ink); font-size: 15px; }
   animation:spin 1s linear infinite;
 }
 @keyframes spin { to { transform:rotate(360deg); } }
+
+.invoice-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.secondary {
+  background: #eef7fb;
+  color: var(--primary);
+  border: 1px solid #c8d7e0;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}

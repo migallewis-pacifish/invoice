@@ -5,6 +5,7 @@
     </div>
 
     <form [formGroup]="form" (ngSubmit)="generateInvoice()" class="dialog-body">
+        <p class="copy-note" *ngIf="previousInvoice">Copied from the previous invoice. Edit any details before generating.</p>
         <div class="form-group">
             <label>Invoice Number <span>*</span></label>
             <input type="text" formControlName="invoiceNumber">
@@ -43,12 +44,20 @@
         </div>
 
         <div class="form-group full">
+            <label>Download Format <span>*</span></label>
+            <select formControlName="downloadFormat">
+                <option value="docx">Word document (.docx)</option>
+                <option value="pdf">PDF</option>
+            </select>
+        </div>
+
+        <div class="form-group full">
             <label>Notes (optional)</label>
             <textarea rows="3" formControlName="notes"></textarea>
         </div>
 
         <div class="actions">
-            <button type="submit" class="primary" [disabled]="saving()">
+            <button type="submit" class="primary" [disabled]="saving() || form.invalid">
                 <span *ngIf="!saving()">Generate & Download Invoice</span>
                 <span *ngIf="saving()" class="spinner"></span>
             </button>

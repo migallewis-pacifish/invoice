@@ -19,7 +19,7 @@
 .dialog-body { padding:20px; display:flex; flex-direction:column; gap:16px; }
 
 .form-group { display:flex; flex-direction:column; gap:6px; }
-input, textarea {
+input, textarea, select {
   padding:10px 12px; border:1px solid #e3e9ef; border-radius:8px; width:100%;
 }
 .items-block { display:flex; flex-direction:column; gap:10px; }
@@ -53,4 +53,12 @@ input, textarea {
 }
 .ghost.add-item-btn:hover {
   background: #f0f8fa;
+}
+
+.copy-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #eef7fb;
+  color: #20556a;
 }
