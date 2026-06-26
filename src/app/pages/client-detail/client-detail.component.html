@@ -33,7 +33,10 @@
   <div class="card">
     <div class="header-row">
       <h3>Invoices</h3>
-      <button class="primary" (click)="addInvoice()">Add Invoice</button>
+      <div class="invoice-actions">
+        <button class="secondary" *ngIf="lastInvoice()" (click)="copyLastInvoice()">Copy Last Invoice</button>
+        <button class="primary" (click)="addInvoice()">Add Invoice</button>
+      </div>
     </div>
 
     <ng-container *ngIf="invoices().length > 0; else noInvoices">

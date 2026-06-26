@@ -5,9 +5,11 @@ import { ClientService } from '../../services/client.service';
 import { CommonModule } from '@angular/common';
 import { InvoiceDocxService } from '../../services/invoice-docx.service';
 import { DIALOG_DATA } from '@angular/cdk/dialog';
-import { catchError, from, map, of, switchMap, tap } from 'rxjs';
+import { catchError, finalize, from, map, of, switchMap, tap } from 'rxjs';
 import { Auth } from '@angular/fire/auth';
 
+
+type InvoiceDownloadFormat = 'docx' | 'pdf';
 
 @Component({
   selector: 'app-add-invoice-dialog',
@@ -32,6 +34,7 @@ export class AddInvoiceDialogComponent {
   clientId: any;
   companyId: string;
   lastInvoice: string;
+  previousInvoice: any;
   form: any;
 
   constructor() {
@@ -39,26 +42,29 @@ export class AddInvoiceDialogComponent {
     this.clientId = this.data?.clientId;
     this.companyId = typeof this.data?.companyId === 'function' ? this.data?.companyId() : this.data?.companyId;
     this.lastInvoice = this.data?.lastInvoice;
+    this.previousInvoice = this.data?.previousInvoice;
     const nextInvoiceNumber = this.getNextInvoiceNumber(this.lastInvoice);
+    const copiedItems = this.getCopiedItems();
     this.form = this.fb.group({
       invoiceNumber: [nextInvoiceNumber, Validators.required],
-      notes: [''],
-      servicesProvided: ['', Validators.required],
-      includeVat: [false],
-      items: this.fb.array([
-        this.createItem()
-      ])
+      notes: [this.previousInvoice?.notes || ''],
+      servicesProvided: [this.previousInvoice?.servicesProvided || '', Validators.required],
+      includeVat: [this.previousInvoice?.includeVat ?? false],
+      downloadFormat: ['docx' as InvoiceDownloadFormat, Validators.required],
+      items: this.fb.array(copiedItems.length ? copiedItems.map(item => this.createItem(item)) : [this.createItem()])
     });
   }
 
   get items() { return this.form.get('items') as FormArray; }
 
-  createItem() {
+  createItem(item?: { description?: string; rate?: number | string; hours?: number | string }) {
+    const rate = Number(item?.rate ?? 0);
+    const hours = Number(item?.hours ?? 1);
     const group = this.fb.group({
-      description: ['', Validators.required],
-      rate: [0, [Validators.required, Validators.min(0)]],
-      hours: [1, [Validators.required, Validators.min(0.1)]],
-      total: [{ value: 0, disabled: true }]
+      description: [item?.description || '', Validators.required],
+      rate: [rate, [Validators.required, Validators.min(0)]],
+      hours: [hours, [Validators.required, Validators.min(0.1)]],
+      total: [{ value: rate * hours, disabled: true }]
     });
 
     group.valueChanges.subscribe(value => {
@@ -74,7 +80,9 @@ export class AddInvoiceDialogComponent {
   }
 
   removeItem(i: number) {
-    this.items.removeAt(i);
+    if (this.items.length > 1) {
+      this.items.removeAt(i);
+    }
   }
 
   close() {
@@ -82,21 +90,24 @@ export class AddInvoiceDialogComponent {
   }
 
   generateInvoice() {
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.saving()) return;
 
     this.saving.set(true);
     this.error.set(null);
 
-    const formValue = this.form.value;
-
-    console.log('client:', this.client);
+    const formValue = this.form.getRawValue();
+    const items = formValue.items.map((it: { description: string; rate: number; hours: number }) => ({
+      description: it.description,
+      rate: Number(it.rate),
+      hours: Number(it.hours)
+    }));
 
     const invoiceData = {
       invoice_number: formValue.invoiceNumber,
       invoice_date: new Date().toISOString().slice(0, 10),
       client_name: this.client?.displayName || 'Unknown Client',
       client_building: this.client?.address?.building || '',
-      client_street: this.client?.address?.line1 + ' ' + this.client?.address?.line2 || '',
+      client_street: `${this.client?.address?.line1 || ''} ${this.client?.address?.line2 || ''}`.trim(),
       client_suburb: this.client?.address?.suburb || '',
       client_city: this.client?.address?.city || '',
       client_province: this.client?.address?.province || '',
@@ -106,18 +117,17 @@ export class AddInvoiceDialogComponent {
       services_rendered: formValue.servicesProvided,
       notes: formValue.notes || '',
       reference: formValue.invoiceNumber,
-      items: formValue.items.map((it: { description: string; rate: number; hours: number }) => ({
-        description: it.description,
-        rate: it.rate,
-        hours: it.hours
-      })),
-      shouldIncludeVAT: formValue.includeVat // Pass VAT flag
+      items,
+      shouldIncludeVAT: formValue.includeVat
     };
 
-    console.log('invoiceData:', invoiceData);
+    const subtotal = items.reduce((sum: number, i: { rate: number; hours: number }) => sum + (i.rate * i.hours), 0);
+    const total = formValue.includeVat ? +(subtotal * 1.15).toFixed(2) : subtotal;
+    const generate$ = formValue.downloadFormat === 'pdf'
+      ? from(this.invoiceDocx.generatePdf(invoiceData)).pipe(map(() => `${invoiceData.invoice_number}.pdf`))
+      : this.invoiceDocx.generateAndSave(this.companyId, invoiceData);
 
-    const total = invoiceData.items.reduce((sum: number, i: { description: string; rate: number; hours: number }) => sum + (i.rate * i.hours), 0);
-    from(this.invoiceDocx.generateAndSave(this.companyId, invoiceData)).pipe(
+    generate$.pipe(
       switchMap(filename =>
         from(
           this.clientSvc.createInvoice(this.clientId, {
@@ -125,40 +135,46 @@ export class AddInvoiceDialogComponent {
             date: invoiceData.invoice_date,
             total,
             notes: formValue.notes || '',
+            servicesProvided: formValue.servicesProvided,
+            includeVat: formValue.includeVat,
+            items,
             filename,
+            downloadFormat: formValue.downloadFormat,
             createdAt: Date.now(),
             createdBy: this.auth.currentUser?.uid
           })
         ).pipe(map(() => filename))
       ),
-
-      // 🔹 Step 3: Optional side effects
       tap(filename => {
         this.dialog.close(filename);
       }),
-
-      // 🔹 Step 4: Handle errors
       catchError((err) => {
         console.error(err);
         this.error.set('Failed to generate or save invoice.');
         return of(null);
-      })
+      }),
+      finalize(() => this.saving.set(false))
+    ).subscribe();
+  }
 
-    ).subscribe({
-      next: () => this.saving.set(false),
-      error: () => this.saving.set(false),
-      complete: () => this.saving.set(false)
-    });
+  private getCopiedItems(): { description: string; rate: number; hours: number }[] {
+    return Array.isArray(this.previousInvoice?.items)
+      ? this.previousInvoice.items.map((item: any) => ({
+        description: item.description || '',
+        rate: Number(item.rate ?? 0),
+        hours: Number(item.hours ?? 1)
+      }))
+      : [];
   }
 
   private getNextInvoiceNumber(lastInvoice: string | null): string {
-    console.log('Last invoice number:', lastInvoice);
     if (!lastInvoice) return 'INV-001';
 
-    const lastNumStr = lastInvoice.slice(-3);
-    const prefix = lastInvoice.slice(0, -3);
+    const match = lastInvoice.match(/^(.*?)(\d+)$/);
+    if (!match) return `${lastInvoice}-COPY`;
 
-    const nextNum = (parseInt(lastNumStr, 10) + 1).toString().padStart(3, '0');
+    const [, prefix, numberPart] = match;
+    const nextNum = (parseInt(numberPart, 10) + 1).toString().padStart(numberPart.length, '0');
 
     return `${prefix}${nextNum}`;
   }
