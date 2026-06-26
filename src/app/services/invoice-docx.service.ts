@@ -4,7 +4,7 @@ import { InvoiceData, InvoiceItem, Company } from '../models/invoice.model';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { saveAs } from 'file-saver';
-import { Observable, catchError, from, map, switchMap, tap, throwError, lastValueFrom } from 'rxjs';
+import { Observable, catchError, from, map, switchMap, take, throwError } from 'rxjs';
 import { doc, docData, Firestore, getDoc } from '@angular/fire/firestore';
 import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 
@@ -58,6 +58,7 @@ export class InvoiceDocxService {
 
     const companyDoc = doc(this.db, `companies/${companyId}`);
     return docData(companyDoc).pipe(
+      take(1),
       switchMap((companyRaw: any) => {
         if (!companyRaw) {
           return throwError(() => new Error('Company not found.'));
@@ -140,6 +141,87 @@ export class InvoiceDocxService {
         return throwError(() => new Error('Failed to generate invoice document.'));
       })
     );
+  }
+
+
+  async generatePdf(data: Omit<InvoiceData, 'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'> & { invoice_number: string; includeVat?: boolean }): Promise<void> {
+    const shouldIncludeVAT = data.includeVat ?? data.shouldIncludeVAT ?? false;
+    const normalized = data.items.map((item: any) => ({
+      ...item,
+      amount: (parseFloat(item.rate) * parseFloat(item.hours)).toFixed(2),
+    }));
+    const subtotalNum = normalized.reduce((sum: number, item: any) => sum + (parseFloat(item.amount) || 0), 0);
+    const vatNum = shouldIncludeVAT ? +(subtotalNum * this.VAT_RATE).toFixed(2) : 0;
+    const grandNum = +(subtotalNum + vatNum).toFixed(2);
+    const fmt = (n: number) =>
+      new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(n);
+    const rows = normalized.map((item: any) => `
+      <tr>
+        <td>${this.escapeHtml(item.description)}</td>
+        <td>${fmt(Number(item.rate) || 0)}</td>
+        <td>${this.escapeHtml(String(item.hours))}</td>
+        <td>${fmt(Number(item.amount) || 0)}</td>
+      </tr>`).join('');
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) throw new Error('Unable to open PDF print window.');
+
+    printWindow.document.write(`<!doctype html>
+      <html>
+        <head>
+          <title>${this.escapeHtml(data.invoice_number)}.pdf</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #10233f; margin: 32px; }
+            .header { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 32px; }
+            h1 { margin: 0 0 8px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+            th, td { border-bottom: 1px solid #dce5ec; padding: 10px; text-align: left; }
+            th { background: #f3f7fa; }
+            .totals { margin-left: auto; margin-top: 24px; width: 300px; }
+            .totals div { display: flex; justify-content: space-between; padding: 6px 0; }
+            .grand { font-weight: 700; border-top: 2px solid #10233f; }
+            @media print { button { display: none; } body { margin: 18mm; } }
+          </style>
+        </head>
+        <body>
+          <button onclick="window.print()">Download / Save as PDF</button>
+          <div class="header">
+            <div>
+              <h1>Invoice ${this.escapeHtml(data.invoice_number)}</h1>
+              <div>Date: ${this.escapeHtml(data.invoice_date)}</div>
+              <div>Reference: ${this.escapeHtml(data.reference || data.invoice_number)}</div>
+            </div>
+            <div>
+              <strong>${this.escapeHtml(data.client_name)}</strong><br>
+              ${this.escapeHtml(data.client_street || '')}<br>
+              ${this.escapeHtml(data.client_city || '')} ${this.escapeHtml(data.client_postal_code || '')}<br>
+              ${this.escapeHtml(data.client_email || '')}
+            </div>
+          </div>
+          <p><strong>Services Provided:</strong> ${this.escapeHtml(data.services_rendered || '')}</p>
+          <table>
+            <thead><tr><th>Description</th><th>Rate</th><th>Hours</th><th>Amount</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="totals">
+            <div><span>Subtotal</span><span>${fmt(subtotalNum)}</span></div>
+            <div><span>VAT (${this.VAT_RATE * 100}%)</span><span>${fmt(vatNum)}</span></div>
+            <div class="grand"><span>Total</span><span>${fmt(grandNum)}</span></div>
+          </div>
+          <p>${this.escapeHtml(data.notes || '')}</p>
+          <script>window.addEventListener('load', () => window.print());</script>
+        </body>
+      </html>`);
+    printWindow.document.close();
+  }
+
+  private escapeHtml(value: string): string {
+    return value.replace(/[&<>'"]/g, char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[char] || char));
   }
 
   async saveLocally(file: Blob, company: Company, clientName: string, fileName: string): Promise<void> {
