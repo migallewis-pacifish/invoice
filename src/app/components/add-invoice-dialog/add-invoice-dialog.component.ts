@@ -35,6 +35,7 @@ export class AddInvoiceDialogComponent {
   companyId: string;
   lastInvoice: string;
   previousInvoice: any;
+  viewOnly = false;
   form: any;
 
   constructor() {
@@ -43,19 +44,37 @@ export class AddInvoiceDialogComponent {
     this.companyId = typeof this.data?.companyId === 'function' ? this.data?.companyId() : this.data?.companyId;
     this.lastInvoice = this.data?.lastInvoice;
     this.previousInvoice = this.data?.previousInvoice;
-    const nextInvoiceNumber = this.getNextInvoiceNumber(this.lastInvoice);
+    this.viewOnly = Boolean(this.data?.viewOnly);
+    const nextInvoiceNumber = this.viewOnly && this.previousInvoice?.invoiceNumber
+      ? this.previousInvoice.invoiceNumber
+      : this.getNextInvoiceNumber(this.lastInvoice);
     const copiedItems = this.getCopiedItems();
     this.form = this.fb.group({
       invoiceNumber: [nextInvoiceNumber, Validators.required],
       notes: [this.previousInvoice?.notes || ''],
       servicesProvided: [this.getCopiedServicesProvided(), Validators.required],
       includeVat: [this.getCopiedIncludeVat()],
-      downloadFormat: ['docx' as InvoiceDownloadFormat, Validators.required],
+      downloadFormat: [this.previousInvoice?.downloadFormat || 'docx' as InvoiceDownloadFormat, Validators.required],
       items: this.fb.array(copiedItems.length ? copiedItems.map(item => this.createItem(item)) : [this.createItem()])
     });
+
+    if (this.viewOnly) {
+      this.form.disable({ emitEvent: false });
+      this.form.get('downloadFormat')?.enable({ emitEvent: false });
+    }
   }
 
   get items() { return this.form.get('items') as FormArray; }
+
+  get dialogTitle(): string {
+    return this.viewOnly ? 'View Invoice' : 'Add Invoice';
+  }
+
+  get helperText(): string {
+    return this.viewOnly
+      ? 'This invoice is read-only. You can change the download format and regenerate it.'
+      : 'Copied from the previous invoice. Edit any details before generating.';
+  }
 
   createItem(item?: { description?: string; rate?: number | string; hours?: number | string }) {
     const rate = Number(item?.rate ?? 0);
@@ -76,10 +95,12 @@ export class AddInvoiceDialogComponent {
   }
 
   addItem() {
+    if (this.viewOnly) return;
     this.items.push(this.createItem());
   }
 
   removeItem(i: number) {
+    if (this.viewOnly) return;
     if (this.items.length > 1) {
       this.items.removeAt(i);
     }
@@ -118,7 +139,9 @@ export class AddInvoiceDialogComponent {
 
     const invoiceData = {
       invoice_number: formValue.invoiceNumber,
-      invoice_date: new Date().toISOString().slice(0, 10),
+      invoice_date: this.viewOnly && this.previousInvoice?.date
+        ? this.toIsoDate(this.previousInvoice.date)
+        : new Date().toISOString().slice(0, 10),
       client_name: this.client?.displayName || 'Unknown Client',
       client_building: this.client?.address?.building || '',
       client_street: `${this.client?.address?.line1 || ''} ${this.client?.address?.line2 || ''}`.trim(),
@@ -137,12 +160,16 @@ export class AddInvoiceDialogComponent {
     };
 
     const generate$ = formValue.downloadFormat === 'pdf'
-      ? from(this.invoiceDocx.generatePdf(invoiceData)).pipe(map(() => `${invoiceData.invoice_number}.pdf`))
+      ? from(this.invoiceDocx.generatePdf(this.companyId, invoiceData)).pipe(map(() => `${invoiceData.invoice_number}.pdf`))
       : this.invoiceDocx.generateAndSave(this.companyId, invoiceData);
 
     generate$.pipe(
-      switchMap(filename =>
-        from(
+      switchMap(filename => {
+        if (this.viewOnly) {
+          return of(filename);
+        }
+
+        return from(
           this.clientSvc.createInvoice(this.clientId, {
             invoiceNumber: formValue.invoiceNumber,
             date: invoiceData.invoice_date,
@@ -165,8 +192,8 @@ export class AddInvoiceDialogComponent {
             createdAt: Date.now(),
             createdBy: this.auth.currentUser?.uid
           })
-        ).pipe(map(() => filename))
-      ),
+        ).pipe(map(() => filename));
+      }),
       tap(filename => {
         this.dialog.close(filename);
       }),
@@ -179,11 +206,23 @@ export class AddInvoiceDialogComponent {
     ).subscribe();
   }
 
+  private toIsoDate(value: any): string {
+    if (typeof value === 'string') {
+      return value.slice(0, 10);
+    }
+
+    if (typeof value?.toDate === 'function') {
+      return value.toDate().toISOString().slice(0, 10);
+    }
+
+    return new Date(value).toISOString().slice(0, 10);
+  }
+
   private getCopiedServicesProvided(): string {
     return this.previousInvoice?.servicesProvided
       || this.previousInvoice?.services_rendered
       || this.previousInvoice?.servicesRendered
-      || '';
+      || this.previousInvoice?.services || '';
   }
 
   private getCopiedIncludeVat(): boolean {
