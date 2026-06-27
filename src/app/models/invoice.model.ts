@@ -69,7 +69,7 @@ export interface Company {
   templatePath?: string;        
   users: string[];             
   createdAt: number;
-  storageProvider?: 'local' | 'google' | 'onedrive';
+  storageProvider?: 'local';
   storagePath?: string;
 }
 
