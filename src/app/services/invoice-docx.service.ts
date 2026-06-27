@@ -19,14 +19,14 @@ export class InvoiceDocxService {
   private http = inject(HttpClient);
   private db = inject(Firestore);
 
-  private computeTotals(items: InvoiceItem[]) {
+  calculateInvoiceTotals(items: InvoiceItem[], includeVat = true) {
     // compute per-line totals if missing
     const normalized = items.map(i => ({
       ...i,
       amount: (parseFloat(i.rate) * parseFloat(i.hours)).toFixed(2),
     }));
     const subtotalNum = normalized.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
-    const vatNum = +(subtotalNum * this.VAT_RATE).toFixed(2);
+    const vatNum = includeVat ? +(subtotalNum * this.VAT_RATE).toFixed(2) : 0;
     const grandNum = +(subtotalNum + vatNum).toFixed(2);
 
     // Format money as ZAR
@@ -98,16 +98,7 @@ export class InvoiceDocxService {
       ),
       map(({ arrayBuffer, company }) => {
         const shouldIncludeVAT = data.includeVat ?? data.shouldIncludeVAT ?? false;
-        const normalized = data.items.map((i: any) => ({
-          ...i,
-          amount: (parseFloat(i.rate) * parseFloat(i.hours)).toFixed(2),
-        }));
-        const subtotalNum = normalized.reduce((s: number, i: any) => s + (parseFloat(i.amount) || 0), 0);
-        const vatNum = shouldIncludeVAT ? +(subtotalNum * this.VAT_RATE).toFixed(2) : 0;
-        const grandNum = +(subtotalNum + vatNum).toFixed(2);
-        const fmt = (n: number) =>
-          new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(n);
-        const items = normalized.map((i: any) => ({ ...i, amount: fmt(parseFloat(i.amount)) }));
+        const totals = this.calculateInvoiceTotals(data.items, shouldIncludeVAT);
         const finalData: InvoiceData = {
           invoice_number: data.invoice_number,
           invoice_date: data.invoice_date,
@@ -120,12 +111,12 @@ export class InvoiceDocxService {
           client_contact_no: data.client_contact_no || '',
           services_rendered: data.services_rendered || '',
           client_email: data.client_email || '',
-          items,
-          excluding_vat: fmt(subtotalNum),
-          vat_amount: fmt(vatNum),
+          items: totals.items,
+          excluding_vat: totals.subtotalStr,
+          vat_amount: totals.vatStr,
           vat_percentage: (this.VAT_RATE * 100).toString(),
           notes: data.notes,
-          total: fmt(grandNum),
+          total: totals.grandStr,
           reference: data.reference || '',
         };
         const zip = new PizZip(arrayBuffer as ArrayBuffer);
