@@ -11,19 +11,18 @@ import { Component, inject, signal } from '@angular/core';
 })
 export class LinkFolderDialogueComponent {
   private dialog = inject(DialogRef<{
-    provider: 'local' | 'google' | 'onedrive' | null;
+    provider: 'local' | null;
     path: string | null;
   } | null>);
 
   step = signal(1);
-  selectedProvider = signal<'local' | 'google' | 'onedrive' | null>(null);
+  selectedProvider = signal<'local' | null>(null);
   folderPath = signal<string | null>(null);
 
   /** --- STEP 1 --- **/
-  selectProvider(provider: 'local' | 'google' | 'onedrive') {
+  selectProvider(provider: 'local') {
     this.selectedProvider.set(provider);
-    if (provider === 'local') this.step.set(2);
-    else this.step.set(3); // placeholders for future integrations
+    this.step.set(2);
   }
 
   /** --- STEP 2 (Local folder) --- **/

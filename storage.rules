@@ -1,9 +1,44 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userProfile() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+
+    function userCompanyId() {
+      return signedIn() && userProfile().data.companyId is string
+        ? userProfile().data.companyId
+        : null;
+    }
+
+    function isCompanyMember(companyId) {
+      return signedIn()
+        && userCompanyId() == companyId
+        && request.auth.uid in firestore.get(/databases/(default)/documents/companies/$(companyId)).data.users;
+    }
+
+    function isDocxTemplateUpload() {
+      return request.resource != null
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    }
+
+    match /companies/{companyId}/templates/{fileName} {
+      allow read: if isCompanyMember(companyId);
+      allow write: if isCompanyMember(companyId) && isDocxTemplateUpload();
+    }
+
+    match /companies/{companyId}/generated/{allPaths=**} {
+      allow read, write: if isCompanyMember(companyId);
+    }
+
     match /{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }

@@ -79,7 +79,7 @@ export class LandingComponent {
     });
 
     ref.closed.subscribe((result => {
-      const typedResult = result as { provider: 'local' | 'google' | 'onedrive' | null; path: string | null; } | null;
+      const typedResult = result as { provider: 'local' | null; path: string | null; } | null;
       if (typedResult) {
         const companyId = this.companyId();
         if (!companyId) return;
