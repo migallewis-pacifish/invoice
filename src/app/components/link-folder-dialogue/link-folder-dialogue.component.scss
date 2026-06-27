@@ -50,3 +50,15 @@ h2 {
   background:none; border:none; font-size:20px; cursor:pointer;
   color:#6b879d;
 }
+.option-btn:disabled,
+.option-btn.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.option-btn:disabled:hover,
+.option-btn.disabled:hover {
+  background: #f6f8fa;
+}
+.muted {
+  color: #6b879d;
+}

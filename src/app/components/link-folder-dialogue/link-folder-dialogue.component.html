@@ -5,12 +5,12 @@
         <h3>Link Folder</h3>
         <button class="icon-btn" (click)="close()">✕</button>
     </div>
-    <p>Select where to store your invoices:</p>
+    <p class="muted">Local DOCX download only. Cloud save providers are coming soon.</p>
 
     <div class="options">
-      <button class="option-btn" (click)="selectProvider('local')">Local Folder</button>
-      <button class="option-btn" (click)="selectProvider('google')">Google Drive</button>
-      <button class="option-btn" (click)="selectProvider('onedrive')">OneDrive</button>
+      <button class="option-btn" (click)="selectProvider('local')">Local DOCX Download</button>
+      <button class="option-btn disabled" type="button" disabled title="Google Drive save is not implemented yet.">Google Drive — coming soon</button>
+      <button class="option-btn disabled" type="button" disabled title="OneDrive save is not implemented yet.">OneDrive — coming soon</button>
     </div>
   </ng-container>
 
@@ -20,7 +20,7 @@
         <h3>Select Local Folder</h3>
         <button class="icon-btn" (click)="close()">✕</button>
     </div>
-    <p>Choose where to create your invoices folder.</p>
+    <p>Choose a local folder label for downloaded DOCX invoices.</p>
 
     <div class="input-section">
       <button class="primary" (click)="pickFolder()">Choose Folder</button>
@@ -33,17 +33,4 @@
     </div>
   </ng-container>
 
-  <!-- Future Step 3: Placeholder for Google / OneDrive -->
-  <ng-container *ngIf="step() === 3">
-    <div class="dialog-header">
-        <h3>Coming Soon</h3>
-        <button class="icon-btn" (click)="close()">✕</button>
-    </div>
-    <p>Integration for {{ selectedProvider() }} will be added shortly.</p>
-
-    <div class="actions">
-      <button class="ghost" (click)="back()">Back</button>
-      <button class="primary" (click)="close()">Close</button>
-    </div>
-  </ng-container>
 </div>

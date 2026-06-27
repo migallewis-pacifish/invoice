@@ -55,15 +55,9 @@ export class InvoiceDocxService {
   ): Observable<string> {
 
     return this.generateInvoiceDocx(companyId, data).pipe(
-      switchMap(({ blob, company, fileName }) => {
-        if (company.storageProvider === 'onedrive') {
-          return from(this.saveToOneDrive(/* params */)).pipe(map(() => fileName));
-        } else if (company.storageProvider === 'google') {
-          return from(this.saveToGoogleDrive(/* params */)).pipe(map(() => fileName));
-        } else {
-          return from(this.saveLocally(blob, company, data.client_name, fileName)).pipe(map(() => fileName));
-        }
-      }),
+      switchMap(({ blob, company, fileName }) =>
+        from(this.saveLocally(blob, company, data.client_name, fileName)).pipe(map(() => fileName))
+      ),
       catchError(err => {
         console.error('Invoice generation error:', err);
         return throwError(() => new Error('Failed to generate invoice document.'));
@@ -187,15 +181,5 @@ export class InvoiceDocxService {
     // Simulate folder structure in filename
     const fullFileName = `${clientName}/${fileName}`;
     saveAs(file, fullFileName);
-  }
-
-  async saveToOneDrive(/* params */): Promise<void> {
-    // TODO: Implement OneDrive save logic
-    throw new Error('Not implemented');
-  }
-
-  async saveToGoogleDrive(/* params */): Promise<void> {
-    // TODO: Implement Google Drive save logic
-    throw new Error('Not implemented');
   }
 }

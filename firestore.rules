@@ -1,18 +1,71 @@
-rules_version='2'
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userCompanyId() {
+      return signedIn() && userProfile().data.companyId is string
+        ? userProfile().data.companyId
+        : null;
+    }
+
+    function companyDoc(companyId) {
+      return get(/databases/$(database)/documents/companies/$(companyId));
+    }
+
+    function isCompanyMember(companyId) {
+      return signedIn()
+        && userCompanyId() == companyId
+        && request.auth.uid in companyDoc(companyId).data.users;
+    }
+
+    function isCreatingOwnCompany(companyId) {
+      return signedIn()
+        && request.resource.data.users is list
+        && request.auth.uid in request.resource.data.users
+        && (!exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          || userCompanyId() == companyId);
+    }
+
+    match /users/{userId} {
+      allow get, update, delete: if signedIn() && request.auth.uid == userId;
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId;
+      allow list: if false;
+    }
+
+    match /companies/{companyId} {
+      allow get, list: if isCompanyMember(companyId);
+      allow create: if isCreatingOwnCompany(companyId);
+      allow update, delete: if isCompanyMember(companyId);
+
+      match /clients/{clientId} {
+        allow read, write: if isCompanyMember(companyId);
+
+        match /invoices/{invoiceId} {
+          allow read, write: if isCompanyMember(companyId);
+        }
+      }
+
+      match /expenses/{expenseId} {
+        allow read, write: if isCompanyMember(companyId);
+      }
+
+      match /templates/{templateId} {
+        allow read, write: if isCompanyMember(companyId);
+      }
+    }
+
     match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2025, 11, 3);
+      allow read, write: if false;
     }
   }
 }
