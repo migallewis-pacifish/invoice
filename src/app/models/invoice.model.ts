@@ -40,6 +40,27 @@ export interface InvoiceData {
   notes: string;
   reference: string;
 }
+
+
+export type InvoiceStatus = 'draft' | 'sent' | 'partial' | 'paid' | 'overdue';
+
+export interface InvoiceRecord {
+  id?: string;
+  invoiceNumber?: string;
+  date?: any;
+  filename?: string;
+  notes?: string;
+  subtotal?: number;
+  total: number;
+  amountPaid: number;
+  status: InvoiceStatus;
+  dueDate?: any;
+  paidAt?: any;
+  updatedAt?: any;
+  createdAt?: any;
+  createdBy?: string;
+}
+
 export interface Address {
   line1?: string;
   line2?: string;

@@ -11,6 +11,7 @@ import { OrderByDateDescPipe } from './order-by-date-desc.pipe';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
+import { InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
 
 @Component({
   selector: 'app-client-detail',
@@ -30,7 +31,7 @@ export class ClientDetailComponent {
   companyId = signal<string | null>(null);
   clientId = signal<string | null>(null);
   client = signal<any | null>(null);
-  invoices = signal<any[]>([]);
+  invoices = signal<InvoiceRecord[]>([]);
   letters = signal<any[]>([]);
   lastInvoice = signal<any | null>(null);
   loading = signal(true);
@@ -131,9 +132,46 @@ export class ClientDetailComponent {
     return this.client()?.industry || 'FinTech';
   }
 
-  invoiceStatus(index: number): string {
-    // TODO: Replace mock invoice statuses with backend status fields once implemented in Firestore.
-    return ['Pending', 'Paid', 'Overdue', 'Draft'][index % 4];
+  outstandingBalance = computed(() => this.invoices().reduce((sum, invoice) => {
+    if (this.normalizedInvoiceStatus(invoice) === 'draft') return sum;
+    return sum + this.invoiceOutstanding(invoice);
+  }, 0));
+
+  overdueBalance = computed(() => this.invoices().reduce((sum, invoice) => {
+    return this.normalizedInvoiceStatus(invoice) === 'overdue'
+      ? sum + this.invoiceOutstanding(invoice)
+      : sum;
+  }, 0));
+
+  invoiceOutstanding(invoice: InvoiceRecord): number {
+    const total = Number(invoice.total) || 0;
+    const amountPaid = Number(invoice.amountPaid) || 0;
+    return Math.max(0, +(total - amountPaid).toFixed(2));
+  }
+
+  normalizedInvoiceStatus(invoice: InvoiceRecord): InvoiceStatus {
+    if (invoice.status === 'draft') return 'draft';
+    const total = Number(invoice.total) || 0;
+    const amountPaid = Number(invoice.amountPaid) || 0;
+    if (total > 0 && amountPaid >= total) return 'paid';
+    if (amountPaid > 0) return 'partial';
+    if (this.isPastDue(invoice.dueDate)) return 'overdue';
+    return invoice.status || 'sent';
+  }
+
+  invoiceStatusLabel(invoice: InvoiceRecord): string {
+    const status = this.normalizedInvoiceStatus(invoice);
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+
+  private isPastDue(value: any): boolean {
+    if (!value) return false;
+    const dueDate = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
+    if (Number.isNaN(dueDate.getTime())) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+    return dueDate < today;
   }
 
   updateNote(value: string) {
