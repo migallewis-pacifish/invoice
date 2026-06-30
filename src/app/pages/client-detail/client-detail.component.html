@@ -124,6 +124,53 @@
         </ng-template>
       </section>
 
+
+      <section *ngSwitchCase="'documents'" class="card table-card full-table-card">
+        <div class="table-toolbar">
+          <div>
+            <h2 class="section-title">Document Storage</h2>
+            <p>Display or configure where this client's documents are saved.</p>
+          </div>
+        </div>
+        <div class="grid-info storage-config">
+          <div>
+            <h4>Effective Provider</h4>
+            <p>{{ effectiveStorageProviderLabel }}</p>
+          </div>
+          <div>
+            <h4>Effective Folder</h4>
+            <p>{{ effectiveStorageLocation }}</p>
+          </div>
+          <div>
+            <h4>Company Default</h4>
+            <p>{{ companyStorage()?.defaultProvider ? companyDefaultProviderLabel : 'Not loaded' }}</p>
+          </div>
+        </div>
+
+        <div class="workspace-controls storage-controls">
+          <label>
+            Client provider
+            <select [ngModel]="clientStorageProvider()" (ngModelChange)="clientStorageProvider.set($event)">
+              <option value="company_default">Use company default</option>
+              <option value="google_drive">Google Drive</option>
+              <option value="onedrive">OneDrive</option>
+              <option value="nexus_storage">Nexus Storage</option>
+              <option value="local">Local Folder</option>
+              <option value="external_link">External Link</option>
+            </select>
+          </label>
+          <label>
+            Client folder / link
+            <input [ngModel]="clientStorageLocation()" (ngModelChange)="clientStorageLocation.set($event)" placeholder="Folder name, folder URL, local metadata, or external link">
+          </label>
+          <button class="primary" type="button" (click)="saveClientStorage()" [disabled]="savingClientStorage()">
+            {{ savingClientStorage() ? 'Saving…' : 'Save Client Storage' }}
+          </button>
+        </div>
+        <p class="muted">Local folder values are metadata-only until browser File System Access API or desktop wrapper support is implemented.</p>
+        <p class="muted" *ngIf="clientStorageMessage()">{{ clientStorageMessage() }}</p>
+      </section>
+
       <section *ngSwitchCase="'invoices'" class="card table-card full-table-card">
         <div class="table-toolbar"><div><h2 class="section-title">Invoices</h2><p>Search, filter, and manage invoice records for this client.</p></div><button class="primary" type="button" (click)="addInvoice()">New Invoice</button></div>
         <div class="workspace-controls"><input type="search" placeholder="Search invoices..."><button class="secondary" type="button">Filters</button><button class="secondary" type="button">Sort</button></div>
