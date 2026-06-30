@@ -1,11 +1,13 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ExpensesService } from '../../services/expenses.service';
 import { ClientService } from '../../services/client.service';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, switchMap } from 'rxjs';
+import { BehaviorSubject, switchMap, take } from 'rxjs';
 import { CreateExpense, Expense } from '../../models/expense.model';
+import { doc, docData, Firestore } from '@angular/fire/firestore';
+import { CurrencyService } from '../../services/currency.service';
 
 @Component({
   selector: 'app-expenses',
@@ -18,6 +20,8 @@ export class ExpensesComponent {
   private readonly fb = inject(FormBuilder);
   private readonly expensesService = inject(ExpensesService);
   private readonly clientsService = inject(ClientService);
+  private readonly db = inject(Firestore);
+  private readonly currencyService = inject(CurrencyService);
 
   // Provided by parent
   companyId = input.required<string>();
@@ -25,6 +29,18 @@ export class ExpensesComponent {
   // Month selection
   selectedMonth = signal<string>(this.toMonthKey(new Date()));
   private readonly month$ = new BehaviorSubject<string>(this.selectedMonth());
+  currency = signal(this.currencyService.defaultCurrency);
+  currencySymbol = computed(() => this.currencyService.symbolFor(this.currency()));
+
+  constructor() {
+    effect(() => {
+      const companyId = this.companyId();
+      if (!companyId) return;
+      docData(doc(this.db, `companies/${companyId}`)).pipe(take(1)).subscribe((company: any) => {
+        this.currency.set(this.currencyService.normalize(company?.currency));
+      });
+    });
+  }
 
   // Categories used in the dropdown
   categories = [
@@ -110,12 +126,8 @@ export class ExpensesComponent {
     await this.expensesService.remove(this.companyId(), id);
   }
 
-  formatZar(value: number) {
-    try {
-      return new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(value);
-    } catch {
-      return `R ${Number(value || 0).toFixed(2)}`;
-    }
+  formatCurrency(value: number) {
+    return this.currencyService.format(value, this.currency());
   }
 
   pad2(n: number) {

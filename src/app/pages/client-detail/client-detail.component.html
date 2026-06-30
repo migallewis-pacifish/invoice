@@ -42,8 +42,8 @@
       <section *ngSwitchCase="'overview'" class="overview-grid">
         <article class="card summary-card balance-card">
           <p class="eyebrow">Outstanding Balance</p>
-          <strong class="balance-amount">£12,450.00</strong>
-          <span class="overdue">▣ Overdue: £2,100.00</span>
+          <strong class="balance-amount">{{ currencySymbol() }}{{ 12450 | number:'1.2-2' }}</strong>
+          <span class="overdue">▣ Overdue: {{ currencySymbol() }}{{ 2100 | number:'1.2-2' }}</span>
           <button class="primary wide" type="button">Create Payment Link</button>
         </article>
 
@@ -84,7 +84,7 @@
             <div class="table-row" *ngFor="let inv of (invoices() | orderByDateDesc).slice(0, 4); let i = index">
               <strong>{{ inv.invoiceNumber || '#INV-' + (8821 - i) }}</strong>
               <span>{{ (inv.dueDate || inv.date) | date:'mediumDate' }}</span>
-              <span>{{ inv.total | currency:'GBP':'symbol' }}</span>
+              <span>{{ inv.total | currency:currency():'symbol' }}</span>
               <!-- TODO: Replace mock invoice statuses with Firestore status values once implemented. -->
               <span><span class="status-chip" [ngClass]="'status-' + invoiceStatus(i).toLowerCase()">{{ invoiceStatus(i) }}</span></span>
               <button class="ellipsis" type="button" (click)="viewInvoice(inv)">•••</button>
@@ -127,14 +127,14 @@
       <section *ngSwitchCase="'invoices'" class="card table-card full-table-card">
         <div class="table-toolbar"><div><h2 class="section-title">Invoices</h2><p>Search, filter, and manage invoice records for this client.</p></div><button class="primary" type="button" (click)="addInvoice()">New Invoice</button></div>
         <div class="workspace-controls"><input type="search" placeholder="Search invoices..."><button class="secondary" type="button">Filters</button><button class="secondary" type="button">Sort</button></div>
-        <div class="data-table"><div class="table-row table-head"><span>Invoice ID</span><span>Due Date</span><span>Amount</span><span>Status</span><span>Actions</span></div><div class="table-row" *ngFor="let inv of invoices() | orderByDateDesc; let i = index"><strong>{{ inv.invoiceNumber || '(unnumbered)' }}</strong><span>{{ (inv.dueDate || inv.date) | date:'mediumDate' }}</span><span>{{ inv.total | currency:'GBP':'symbol' }}</span><span><span class="status-chip" [ngClass]="'status-' + invoiceStatus(i).toLowerCase()">{{ invoiceStatus(i) }}</span></span><button class="secondary small" type="button" (click)="viewInvoice(inv)">View</button></div></div>
+        <div class="data-table"><div class="table-row table-head"><span>Invoice ID</span><span>Due Date</span><span>Amount</span><span>Status</span><span>Actions</span></div><div class="table-row" *ngFor="let inv of invoices() | orderByDateDesc; let i = index"><strong>{{ inv.invoiceNumber || '(unnumbered)' }}</strong><span>{{ (inv.dueDate || inv.date) | date:'mediumDate' }}</span><span>{{ inv.total | currency:currency():'symbol' }}</span><span><span class="status-chip" [ngClass]="'status-' + invoiceStatus(i).toLowerCase()">{{ invoiceStatus(i) }}</span></span><button class="secondary small" type="button" (click)="viewInvoice(inv)">View</button></div></div>
         <p class="muted empty-state" *ngIf="invoices().length === 0">No invoices yet for this client.</p><div class="pagination">Page 1 of 1</div>
       </section>
 
       <section *ngSwitchCase="'expenses'" class="card table-card full-table-card">
         <div class="table-toolbar"><div><h2 class="section-title">Expenses</h2><p>Reusable workspace table pattern with expense-specific columns.</p></div></div>
         <div class="workspace-controls"><input type="search" placeholder="Search expenses..."><button class="secondary" type="button">Filters</button><button class="secondary" type="button">Sort</button></div>
-        <div class="data-table"><div class="table-row table-head"><span>Expense</span><span>Category</span><span>Date</span><span>Amount</span><span>Status</span><span>Actions</span></div><div class="table-row six" *ngFor="let expense of expenseRows"><strong>{{ expense.expense }}</strong><span>{{ expense.category }}</span><span>{{ expense.date }}</span><span>{{ expense.amount }}</span><span><span class="status-chip" [ngClass]="'status-' + expense.status.toLowerCase()">{{ expense.status }}</span></span><button class="ellipsis" type="button">•••</button></div></div>
+        <div class="data-table"><div class="table-row table-head"><span>Expense</span><span>Category</span><span>Date</span><span>Amount</span><span>Status</span><span>Actions</span></div><div class="table-row six" *ngFor="let expense of expenseRows"><strong>{{ expense.expense }}</strong><span>{{ expense.category }}</span><span>{{ expense.date }}</span><span>{{ currencySymbol() }}{{ expense.amount | number:'1.2-2' }}</span><span><span class="status-chip" [ngClass]="'status-' + expense.status.toLowerCase()">{{ expense.status }}</span></span><button class="ellipsis" type="button">•••</button></div></div>
       </section>
 
       <section *ngSwitchCase="'letters'" class="card table-card full-table-card">
