@@ -5,7 +5,7 @@
     </div>
 
     <form [formGroup]="form" (ngSubmit)="generateInvoice()" class="dialog-body">
-        <p class="copy-note" *ngIf="previousInvoice || viewOnly">{{ helperText }}</p>
+        <p class="copy-note" *ngIf="previousInvoice || viewOnly || trackingOnly">{{ helperText }}</p>
         <div class="form-group">
             <label>Invoice Number <span>*</span></label>
             <input type="text" formControlName="invoiceNumber">
@@ -25,11 +25,11 @@
                 <input type="number" placeholder="Rate ({{ currencySymbol() }})" formControlName="rate">
                 <input type="number" placeholder="Hours" formControlName="hours">
                 <input type="number" placeholder="Total" formControlName="total" readonly>
-                <button type="button" class="remove" *ngIf="!viewOnly" (click)="removeItem(i)">✕</button>
+                <button type="button" class="remove" *ngIf="!viewOnly && !trackingOnly" (click)="removeItem(i)">✕</button>
             </div>
         </div>
 
-        <button type="button" class="ghost add-item-btn" *ngIf="!viewOnly" (click)="addItem()">+ Add Item</button>
+        <button type="button" class="ghost add-item-btn" *ngIf="!viewOnly && !trackingOnly" (click)="addItem()">+ Add Item</button>
 
         <div class="form-group full">
             <label>
@@ -41,6 +41,26 @@
         <div class="form-group full">
             <label>Services Provided <span>*</span></label>
             <input type="text" formControlName="servicesProvided">
+        </div>
+
+        <div class="form-group">
+            <label>Due Date</label>
+            <input type="date" formControlName="dueDate">
+        </div>
+
+        <div class="form-group">
+            <label>Amount Paid ({{ currencySymbol() }})</label>
+            <input type="number" min="0" step="0.01" formControlName="amountPaid" [readonly]="!canEditAmountPaid()">
+        </div>
+
+        <div class="form-group full">
+            <label>Status <span>*</span></label>
+            <select formControlName="status">
+                <option value="draft">Draft</option>
+                <option value="sent">Sent</option>
+                <option value="partial">Partial</option>
+                <option value="paid">Paid</option>
+            </select>
         </div>
 
         <div class="form-group full">
@@ -57,8 +77,12 @@
         </div>
 
         <div class="actions">
-            <button type="submit" class="primary" [disabled]="saving() || form.invalid">
-                <span *ngIf="!saving()">{{ viewOnly ? 'Regenerate & Download Invoice' : 'Generate & Download Invoice' }}</span>
+            <button type="button" class="secondary" *ngIf="trackingOnly" [disabled]="saving() || form.invalid" (click)="saveTracking()">
+                <span *ngIf="!saving()">Update Payment / Status</span>
+                <span *ngIf="saving()" class="spinner"></span>
+            </button>
+            <button type="submit" class="primary" *ngIf="!trackingOnly" [disabled]="saving() || form.invalid">
+                <span *ngIf="!saving()">{{ viewOnly ? 'Regenerate & Download' : 'Generate & Download Invoice' }}</span>
                 <span *ngIf="saving()" class="spinner"></span>
             </button>
         </div>
