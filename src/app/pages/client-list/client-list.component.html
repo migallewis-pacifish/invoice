@@ -1,37 +1,116 @@
 <app-nav-bar *ngIf="showNav"></app-nav-bar>
-<div class="clients-wrapper">
-  <div class="topbar">
-    <h2>Clients</h2>
 
-    <div class="top-actions">
-      <input class="search" [formControl]="search" placeholder="Search clients…" />
-      <button class="primary" (click)="openAddClient()">Add New Client</button>
+<main class="clients-page" aria-labelledby="client-directory-title">
+  <header class="dashboard-topbar clients-topbar" aria-label="Workspace header">
+    <label class="search-box clients-search" aria-label="Global search">
+      <span aria-hidden="true">⌕</span>
+      <input [formControl]="search" placeholder="Search clients, projects, or invoices..." />
+    </label>
+
+    <div class="topbar-actions" aria-label="Header actions">
+      <button class="icon-button" type="button" aria-label="Notifications">⌁</button>
+      <button class="icon-button" type="button" aria-label="Activity">○</button>
+      <div class="user-chip" aria-label="Signed in user">
+        <span><strong>Alex Sterling</strong><small>System Administrator</small></span>
+        <span class="avatar" aria-hidden="true">AS</span>
+      </div>
     </div>
-  </div>
+  </header>
 
-  <ng-container *ngIf="(filtered$ | async) as clients">
-    <div class="empty" *ngIf="clients.length === 0">
-      <p>No clients yet.</p>
-      <button class="primary" (click)="openAddClient()">Add Your First Client</button>
-    </div>
+  <section class="page-header clients-header">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/">Home</a>
+      <span aria-hidden="true">›</span>
+      <span>Clients</span>
+    </nav>
 
-    <div class="grid" *ngIf="clients.length > 0">
-      <div class="card" *ngFor="let c of clients">
-        <div class="card-head">
-          <h3>{{ c.displayName }}</h3>
-          <span class="meta" *ngIf="c.vatNo">VAT: {{ c.vatNo }}</span>
-        </div>
+    <div class="clients-header-row">
+      <div>
+        <h1 id="client-directory-title">Client Directory</h1>
+        <p>Manage your enterprise relationships, track outstanding balances, and monitor engagement status from a centralized workspace.</p>
+      </div>
 
-        <div class="card-body">
-          <div class="row"><span>Email:</span><strong>{{ c.email || '—' }}</strong></div>
-          <div class="row"><span>Phone:</span><strong>{{ c.phone || '—' }}</strong></div>
-        </div>
-
-        <div class="card-actions">
-          <button class="secondary" (click)="createInvoice(c)">Create Invoice</button>
-          <button class="ghost" (click)="goClient(c)">Go to Client</button>
+      <div class="table-toolbar" aria-label="Client directory toolbar">
+        <!-- TODO: Filtering -->
+        <!-- TODO: Bulk Actions -->
+        <!-- TODO: Export -->
+        <!-- TODO: Card View -->
+        <div class="display-switch" aria-label="Display mode switch">
+          <button class="active" type="button" aria-pressed="true"><span aria-hidden="true">▤</span> Table</button>
+          <button type="button" aria-pressed="false"><span aria-hidden="true">▦</span> Cards</button>
         </div>
       </div>
     </div>
+  </section>
+
+  <ng-container *ngIf="(filtered$ | async) as clients">
+    <section class="empty-state" *ngIf="clients.length === 0" aria-live="polite">
+      <span class="empty-state-icon" aria-hidden="true">◌</span>
+      <h2 class="section-title">No clients yet</h2>
+      <p class="muted">Create your first client to start tracking relationships and invoices.</p>
+      <button class="primary" type="button" (click)="openAddClient()">Add Your First Client</button>
+    </section>
+
+    <section class="table-card" *ngIf="clients.length > 0" aria-label="Client data table">
+      <div class="data-table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Client Name</th>
+              <th scope="col">Status</th>
+              <th scope="col">Balance</th>
+              <th scope="col">Contact Info</th>
+              <th scope="col" class="actions-heading">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of clients; let i = index" (click)="goClient(c)" tabindex="0">
+              <td>
+                <div class="client-identity">
+                  <span class="avatar-initial" [style.background]="avatarTone(i)" [style.color]="avatarInk(i)">{{ initials(c.displayName) }}</span>
+                  <div>
+                    <strong>{{ c.displayName }}</strong>
+                    <span class="text-small muted">{{ clientDescription(c) }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="status-chip" [class.inactive]="!isActiveClient(c, i)">{{ isActiveClient(c, i) ? 'Active' : 'Inactive' }}</span>
+              </td>
+              <td>
+                <div class="balance-cell">
+                  <strong>{{ currencySymbol() }}{{ balanceAmount(i) | number:'1.2-2' }}</strong>
+                  <span class="text-label" [class.settled]="balanceTone(i) === 'settled'" [class.overdue]="balanceTone(i) === 'overdue'">{{ balanceStatus(i) }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="contact-cell muted">
+                  <span>{{ c.email || 'email unavailable' }}</span>
+                  <span>{{ c.phone || 'phone unavailable' }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="row-actions" (click)="$event.stopPropagation()">
+                  <button class="icon-button" type="button" aria-label="View client" (click)="goClient(c)">⌕</button>
+                  <button class="icon-button" type="button" aria-label="Edit client" (click)="goClient(c)">✎</button>
+                  <button class="icon-button" type="button" aria-label="More actions">⋯</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="table-footer">
+        <span>Showing <strong>{{ clients.length }}</strong> of <strong>{{ clients.length }}</strong> clients</span>
+        <nav class="pagination" aria-label="Client pagination">
+          <button type="button" aria-label="Previous page">‹</button>
+          <button class="active" type="button" aria-current="page">1</button>
+          <button type="button">2</button>
+          <button type="button">3</button>
+          <button type="button" aria-label="Next page">›</button>
+        </nav>
+      </footer>
+    </section>
   </ng-container>
-</div>
+</main>

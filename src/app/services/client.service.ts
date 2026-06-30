@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { Auth, authState } from '@angular/fire/auth';
 import { collectionData, docData, Firestore } from '@angular/fire/firestore';
-import { addDoc, collection, doc, getDoc, orderBy, query, serverTimestamp } from 'firebase/firestore';
-import { Client } from '../models/invoice.model';
+import { addDoc, collection, doc, getDoc, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { Client, ClientUpdate } from '../models/client.model';
 import { defer, from, map, Observable, of, switchMap, throwError } from 'rxjs';
 
 @Injectable({
@@ -37,10 +37,10 @@ export class ClientService {
     return this.companyContext$().pipe(map(ctx => ctx.companyId));
   }
 
-  getClientById(id: string): Observable<any | null> {
+  getClientById(id: string): Observable<Client | null> {
     return this.getCompanyId$().pipe(
       switchMap(companyId => from(getDoc(doc(this.db, `companies/${companyId}/clients/${id}`)))),
-      map(snap => (snap.exists() ? { id: snap.id, ...snap.data() } : null))
+      map(snap => (snap.exists() ? this.toClient({ id: snap.id, ...snap.data() }) : null))
     );
   }
 
@@ -63,7 +63,25 @@ export class ClientService {
     return this.getCompanyId$().pipe(
       switchMap(companyId => {
         const colRef = collection(this.db, `companies/${companyId}/clients/${clientId}/invoices`);
-        return from(addDoc(colRef, data)).pipe(map(ref => ref.id));
+        const amountPaid = Number(data?.amountPaid ?? 0) || 0;
+        return from(addDoc(colRef, {
+          ...data,
+          amountPaid,
+          status: data?.status || (amountPaid > 0 ? 'partial' : 'sent'),
+          updatedAt: data?.updatedAt || serverTimestamp(),
+        })).pipe(map(ref => ref.id));
+      })
+    );
+  }
+
+  updateInvoiceTracking(clientId: string, invoiceId: string, data: { amountPaid: number; status: string; dueDate?: any; paidAt?: any }): Observable<void> {
+    return this.getCompanyId$().pipe(
+      switchMap(companyId => {
+        const invoiceRef = doc(this.db, `companies/${companyId}/clients/${clientId}/invoices/${invoiceId}`);
+        return from(updateDoc(invoiceRef, {
+          ...data,
+          updatedAt: serverTimestamp(),
+        }));
       })
     );
   }
@@ -105,6 +123,19 @@ export class ClientService {
     );
   }
 
+
+  updateClient(clientId: string, payload: ClientUpdate): Observable<void> {
+    return this.companyContext$().pipe(
+      switchMap(({ companyId }) => {
+        const clientRef = doc(this.db, `companies/${companyId}/clients/${clientId}`);
+        return from(updateDoc(clientRef, {
+          ...payload,
+          updatedAt: serverTimestamp(),
+        }));
+      })
+    );
+  }
+
   clients$(): Observable<Client[]> {
     return authState(this.auth).pipe(
       switchMap(user => {
@@ -118,10 +149,7 @@ export class ClientService {
             const q = query(col, orderBy('displayName'));
             return collectionData(q, { idField: 'id' }).pipe(
               map((arr: any[]) =>
-                arr.map(x => ({
-                  ...x,
-                  createdAt: typeof x.createdAt?.toMillis === 'function' ? x.createdAt.toMillis() : x.createdAt ?? 0
-                })) as Client[]
+                arr.map(x => this.toClient(x))
               )
             );
           })
@@ -129,4 +157,11 @@ export class ClientService {
       })
     );
   }
+  private toClient(data: any): Client {
+    return {
+      ...data,
+      createdAt: typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : data.createdAt ?? 0,
+    } as Client;
+  }
+
 }

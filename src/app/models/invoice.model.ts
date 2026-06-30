@@ -1,13 +1,4 @@
-export interface Client {
-  id: string;
-  displayName: string;
-  address?: Address;
-  email?: string;
-  phone?: string;
-  vatNo?: string;
-  notes?: string;
-  createdAt: number;
-}
+import { Address } from './address.model';
 
 export interface InvoiceItem {
   description: string;     
@@ -40,14 +31,25 @@ export interface InvoiceData {
   notes: string;
   reference: string;
 }
-export interface Address {
-  line1?: string;
-  line2?: string;
-  suburb?: string;
-  city?: string;
-  province?: string;
-  postalCode?: string;
-  country?: string;
+
+
+export type InvoiceStatus = 'draft' | 'sent' | 'partial' | 'paid' | 'overdue';
+
+export interface InvoiceRecord {
+  id?: string;
+  invoiceNumber?: string;
+  date?: any;
+  filename?: string;
+  notes?: string;
+  subtotal?: number;
+  total: number;
+  amountPaid: number;
+  status: InvoiceStatus;
+  dueDate?: any;
+  paidAt?: any;
+  updatedAt?: any;
+  createdAt?: any;
+  createdBy?: string;
 }
 
 export interface Banking {
@@ -73,6 +75,7 @@ export interface Company {
   createdAt: number;
   storageProvider?: 'local';
   storagePath?: string;
+  currency?: string;
 }
 
 export interface AppUser {
@@ -147,4 +150,5 @@ export interface CompanySettings {
   letterTemplateId?: string;
   storageProvider?: 'local';
   storagePath?: string;
+  currency?: string;
 }
