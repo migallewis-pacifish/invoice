@@ -5,8 +5,10 @@ import { ClientService } from '../../services/client.service';
 import { CommonModule } from '@angular/common';
 import { InvoiceDocxService } from '../../services/invoice-docx.service';
 import { DIALOG_DATA } from '@angular/cdk/dialog';
-import { catchError, finalize, from, map, of, switchMap, tap } from 'rxjs';
+import { catchError, finalize, from, map, of, switchMap, take, tap } from 'rxjs';
 import { Auth } from '@angular/fire/auth';
+import { doc, docData, Firestore } from '@angular/fire/firestore';
+import { CurrencyService } from '../../services/currency.service';
 
 
 type InvoiceDownloadFormat = 'docx' | 'pdf';
@@ -25,9 +27,13 @@ export class AddInvoiceDialogComponent {
   private invoiceDocx = inject(InvoiceDocxService);
   private clientSvc = inject(ClientService);
   private auth = inject(Auth);
+  private db = inject(Firestore);
+  private currencyService = inject(CurrencyService);
 
   saving = signal(false);
   error = signal<string | null>(null);
+  currency = signal(this.currencyService.defaultCurrency);
+  currencySymbol = signal(this.currencyService.symbolFor(this.currency()));
 
 
   client: any;
@@ -57,6 +63,14 @@ export class AddInvoiceDialogComponent {
       downloadFormat: [this.previousInvoice?.downloadFormat || 'docx' as InvoiceDownloadFormat, Validators.required],
       items: this.fb.array(copiedItems.length ? copiedItems.map(item => this.createItem(item)) : [this.createItem()])
     });
+
+    if (this.companyId) {
+      docData(doc(this.db, `companies/${this.companyId}`)).pipe(take(1)).subscribe((company: any) => {
+        const currency = this.currencyService.normalize(company?.currency);
+        this.currency.set(currency);
+        this.currencySymbol.set(this.currencyService.symbolFor(currency));
+      });
+    }
 
     if (this.viewOnly) {
       this.form.disable({ emitEvent: false });

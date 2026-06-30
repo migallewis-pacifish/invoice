@@ -35,6 +35,16 @@ describe('InvoiceDocxService', () => {
     expect(totals.grandStr).toBe('R 1,725.00');
   });
 
+  it('uses the selected currency symbol for invoice totals', () => {
+    const totals = service.calculateInvoiceTotals([
+      { description: 'Development', hours: '10', rate: '100' }
+    ], false, 'USD');
+
+    expect(totals.subtotalStr).toBe('$ 1,000.00');
+    expect(totals.vatStr).toBe('$ 0.00');
+    expect(totals.grandStr).toBe('$ 1,000.00');
+  });
+
   it('calculates invoice totals without VAT', () => {
     const totals = service.calculateInvoiceTotals([
       { description: 'Development', hours: '10', rate: '100' }

@@ -79,7 +79,7 @@
               </td>
               <td>
                 <div class="balance-cell">
-                  <strong>{{ balanceAmount(i) }}</strong>
+                  <strong>{{ currencySymbol() }}{{ balanceAmount(i) | number:'1.2-2' }}</strong>
                   <span class="text-label" [class.settled]="balanceTone(i) === 'settled'" [class.overdue]="balanceTone(i) === 'overdue'">{{ balanceStatus(i) }}</span>
                 </div>
               </td>

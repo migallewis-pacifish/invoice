@@ -1,13 +1,16 @@
-import { Component, inject, Input, signal } from '@angular/core';
+import { Component, effect, inject, Input, signal } from '@angular/core';
 import { ClientService } from '../../services/client.service';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Client } from '../../models/invoice.model';
-import { combineLatest, map, Observable, of, startWith } from 'rxjs';
+import { combineLatest, map, Observable, of, startWith, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { Dialog } from '@angular/cdk/dialog';
 import { AddClientDialogueComponent } from '../../components/add-client-dialogue/add-client-dialogue.component';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
+import { Auth, authState } from '@angular/fire/auth';
+import { doc, docData, Firestore } from '@angular/fire/firestore';
+import { CurrencyService } from '../../services/currency.service';
 
 @Component({
   selector: 'app-client-list',
@@ -22,16 +25,34 @@ export class ClientListComponent {
   private router = inject(Router);
   private clientSvc = inject(ClientService);
   private dialog = inject(Dialog);
+  private auth = inject(Auth);
+  private db = inject(Firestore);
+  private currencyService = inject(CurrencyService);
 
   // search/filter
   search = new FormControl('', { nonNullable: true });
   clients$: Observable<Client[]>;
+  currencySymbol = signal(this.currencyService.symbolFor(this.currencyService.defaultCurrency));
 
   filtered$: Observable<Client[]>;
 
   constructor() {
     this.clients$ = of([]);
     this.filtered$ = of([]);
+
+    effect(() => {
+      const inputCompanyId = this.companyId();
+      if (inputCompanyId) {
+        this.loadCurrency(inputCompanyId);
+        return;
+      }
+
+      authState(this.auth).pipe(take(1)).subscribe(async user => {
+        if (!user) return;
+        const userData = await docData(doc(this.db, `users/${user.uid}`)).pipe(take(1)).toPromise() as any;
+        if (userData?.companyId) this.loadCurrency(userData.companyId);
+      });
+    });
   }
 
   ngOnInit(): void {
@@ -69,8 +90,8 @@ export class ClientListComponent {
     return Boolean(client.email || client.phone || index % 4 !== 1);
   }
 
-  balanceAmount(index: number): string {
-    return ['$12,450.00', '$0.00', '$54,200.00', '$8,900.50'][index % 4];
+  balanceAmount(index: number): number {
+    return [12450, 0, 54200, 8900.50][index % 4];
   }
 
   balanceStatus(index: number): string {
@@ -87,6 +108,12 @@ export class ClientListComponent {
 
   avatarInk(index: number): string {
     return ['#ffffff', '#c2502e', '#092c7d', '#092c7d'][index % 4];
+  }
+
+  private loadCurrency(companyId: string) {
+    docData(doc(this.db, `companies/${companyId}`)).pipe(take(1)).subscribe((company: any) => {
+      this.currencySymbol.set(this.currencyService.symbolFor(company?.currency));
+    });
   }
 
   openAddClient() {

@@ -73,6 +73,7 @@ export interface Company {
   createdAt: number;
   storageProvider?: 'local';
   storagePath?: string;
+  currency?: string;
 }
 
 export interface AppUser {
@@ -147,4 +148,5 @@ export interface CompanySettings {
   letterTemplateId?: string;
   storageProvider?: 'local';
   storagePath?: string;
+  currency?: string;
 }
