@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ClientService } from '../../services/client.service';
@@ -9,6 +9,8 @@ import { AddInvoiceDialogComponent } from '../../components/add-invoice-dialog/a
 import { AddLetterDialogComponent } from '../../components/add-letter-dialog/add-letter-dialog.component';
 import { OrderByDateDescPipe } from './order-by-date-desc.pipe';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
+import { doc, docData, Firestore } from '@angular/fire/firestore';
+import { CurrencyService } from '../../services/currency.service';
 
 @Component({
   selector: 'app-client-detail',
@@ -22,6 +24,8 @@ export class ClientDetailComponent {
   private router = inject(Router);
   private clientSvc = inject(ClientService);
   private dialog = inject(Dialog);
+  private db = inject(Firestore);
+  private currencyService = inject(CurrencyService);
   
   companyId = signal<string | null>(null);
   clientId = signal<string | null>(null);
@@ -30,6 +34,8 @@ export class ClientDetailComponent {
   letters = signal<any[]>([]);
   lastInvoice = signal<any | null>(null);
   loading = signal(true);
+  currency = signal(this.currencyService.defaultCurrency);
+  currencySymbol = computed(() => this.currencyService.symbolFor(this.currency()));
   activeTab = signal<ClientTab>('overview');
   noteDraft = signal('Velocity Dynamics is expanding their London office. Sarah mentioned a potential renewal for their enterprise package in Q1 2024. Keep an eye on their usage metrics next week. Their accounting prefers VAT invoices sent directly to invoicing@client.io.');
 
@@ -56,9 +62,9 @@ export class ClientDetailComponent {
   ];
 
   readonly expenseRows = [
-    { expense: 'Travel reimbursement', category: 'Travel', date: 'Jun 18, 2026', amount: '£420.00', status: 'Pending' },
-    { expense: 'Client dinner', category: 'Meals', date: 'Jun 14, 2026', amount: '£188.40', status: 'Paid' },
-    { expense: 'Courier documents', category: 'Operations', date: 'Jun 10, 2026', amount: '£38.00', status: 'Draft' }
+    { expense: 'Travel reimbursement', category: 'Travel', date: 'Jun 18, 2026', amount: 420, status: 'Pending' },
+    { expense: 'Client dinner', category: 'Meals', date: 'Jun 14, 2026', amount: 188.40, status: 'Paid' },
+    { expense: 'Courier documents', category: 'Operations', date: 'Jun 10, 2026', amount: 38, status: 'Draft' }
   ];
 
   readonly letterRows = [
@@ -77,6 +83,10 @@ export class ClientDetailComponent {
       }
       this.clientId.set(clientId);
       this.companyId.set(companyId);
+
+      docData(doc(this.db, `companies/${companyId}`)).pipe(take(1)).subscribe((company: any) => {
+        this.currency.set(this.currencyService.normalize(company?.currency));
+      });
 
       // Subscribe to client data
       this.clientSvc.getClientById(clientId).pipe(take(1)).subscribe(data => {

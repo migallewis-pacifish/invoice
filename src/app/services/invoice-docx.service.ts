@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { InvoiceData, InvoiceItem, Company } from '../models/invoice.model';
+import { CurrencyService } from './currency.service';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { saveAs } from 'file-saver';
@@ -18,8 +19,9 @@ export class InvoiceDocxService {
   private storage = inject(Storage);
   private http = inject(HttpClient);
   private db = inject(Firestore);
+  private currencyService = inject(CurrencyService);
 
-  calculateInvoiceTotals(items: InvoiceItem[], includeVat = true) {
+  calculateInvoiceTotals(items: InvoiceItem[], includeVat = true, currencyCode?: string | null) {
     // compute per-line totals if missing
     const normalized = items.map(i => ({
       ...i,
@@ -30,8 +32,9 @@ export class InvoiceDocxService {
     const grandNum = +(subtotalNum + vatNum).toFixed(2);
 
     // Format money deterministically for invoice templates and CI snapshots.
+    const currencySymbol = this.currencyService.symbolFor(currencyCode);
     const fmt = (n: number) =>
-      `R ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      `${currencySymbol} ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     return {
       items: normalized.map(i => ({ ...i, amount: fmt(parseFloat(i.amount)) })),
@@ -98,7 +101,7 @@ export class InvoiceDocxService {
       ),
       map(({ arrayBuffer, company }) => {
         const shouldIncludeVAT = data.includeVat ?? data.shouldIncludeVAT ?? false;
-        const totals = this.calculateInvoiceTotals(data.items, shouldIncludeVAT);
+        const totals = this.calculateInvoiceTotals(data.items, shouldIncludeVAT, company.currency);
         const finalData: InvoiceData = {
           invoice_number: data.invoice_number,
           invoice_date: data.invoice_date,

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { Auth, authState } from '@angular/fire/auth';
 import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
@@ -9,6 +9,7 @@ import { CommonModule } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
 import { UploadTemplateDialogueComponent } from '../../components/upload-template-dialogue/upload-template-dialogue.component';
 import { LinkFolderDialogueComponent } from '../../components/link-folder-dialogue/link-folder-dialogue.component';
+import { CurrencyService } from '../../services/currency.service';
 
 @Component({
   selector: 'app-landing',
@@ -22,10 +23,13 @@ export class LandingComponent {
   private db = inject(Firestore);
   private router = inject(Router);
   private dialog = inject(Dialog);
+  private currencyService = inject(CurrencyService);
 
   companyId = signal<string >("");
   companyName = signal<string | null>(null);
   templatePath = signal<string | null>(null);
+  currency = signal(this.currencyService.defaultCurrency);
+  currencySymbol = computed(() => this.currencyService.symbolFor(this.currency()));
 
   loading = signal(true);
 
@@ -45,12 +49,12 @@ export class LandingComponent {
   ];
 
   upcomingPayments = [
-    { name: 'Cloud Server Subscription', meta: 'AWS Infrastructure · Due in 2 days', amount: '$1,250.00', icon: '▣', tone: 'red' },
-    { name: 'Professional Insurance Premium', meta: 'Allianz · Due in 12 days', amount: '$420.00', icon: '▤', tone: 'green' },
+    { name: 'Cloud Server Subscription', meta: 'AWS Infrastructure · Due in 2 days', amount: 1250, icon: '▣', tone: 'red' },
+    { name: 'Professional Insurance Premium', meta: 'Allianz · Due in 12 days', amount: 420, icon: '▤', tone: 'green' },
   ];
 
   activityItems = [
-    { title: 'Invoice #4203 Paid', copy: 'Lumina Digital cleared their balance of $3,500.00.', time: 'Today, 10:45 AM', icon: '◉', tone: 'navy' },
+    { title: 'Invoice #4203 Paid', copy: 'Lumina Digital cleared their balance of 3,500.00.', time: 'Today, 10:45 AM', icon: '◉', tone: 'navy' },
     { title: 'New Client Registered', copy: 'Horizon Analytics has been added to your workspace.', time: 'Yesterday, 4:20 PM', icon: '☉', tone: 'light' },
     { title: 'Expense Rejection', copy: 'The expense report for Office Supplies requires review.', time: 'Oct 24, 11:15 AM', icon: '●', tone: 'brown' },
   ];
@@ -68,6 +72,7 @@ export class LandingComponent {
       docData(compRef).subscribe((data: any) => {
         this.companyName.set(data?.name ?? 'Your Company');
         this.templatePath.set(data?.templatePath ?? null);
+        this.currency.set(this.currencyService.normalize(data?.currency));
         this.loading.set(false);
       });
     });

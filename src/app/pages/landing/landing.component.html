@@ -94,7 +94,7 @@
       <div class="payment-row" *ngFor="let payment of upcomingPayments">
         <span class="payment-icon" [class.green]="payment.tone === 'green'">{{ payment.icon }}</span>
         <span><strong>{{ payment.name }}</strong><small>{{ payment.meta }}</small></span>
-        <strong class="amount">{{ payment.amount }}</strong>
+        <strong class="amount">{{ currencySymbol() }}{{ payment.amount | number:'1.2-2' }}</strong>
       </div>
     </article>
 
@@ -103,7 +103,7 @@
       <div class="timeline">
         <div class="activity-item" *ngFor="let item of activityItems">
           <span class="activity-dot" [class.light]="item.tone === 'light'" [class.brown]="item.tone === 'brown'">{{ item.icon }}</span>
-          <div><strong>{{ item.title }}</strong><p>{{ item.copy }}</p><small>{{ item.time }}</small></div>
+          <div><strong>{{ item.title }}</strong><p>{{ item.title === 'Invoice #4203 Paid' ? 'Lumina Digital cleared their balance of ' + currencySymbol() + '3,500.00.' : item.copy }}</p><small>{{ item.time }}</small></div>
         </div>
       </div>
     </article>
