@@ -221,3 +221,223 @@ h2 { margin: 0; color: var(--primary); font-size: 21px; letter-spacing: -0.03em;
   .bar-chart { gap: 8px; padding-inline: 12px; }
   .bars span { width: 22px; }
 }
+
+.card,
+.table-card,
+.empty-state {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 26px rgba(7, 31, 77, 0.045);
+}
+
+.page-header h1 {
+  margin: 8px 0 0;
+  color: var(--primary);
+  font-size: clamp(30px, 4vw, 38px);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.page-header p {
+  margin: 10px 0 0;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.breadcrumb a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.breadcrumb a:hover { text-decoration: underline; }
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.table-card {
+  overflow: hidden;
+}
+
+.data-table-scroll {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface);
+}
+
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 18px 22px;
+  background: #eef4ff;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.data-table tbody td {
+  padding: 22px;
+  border-bottom: 1px solid #edf2f8;
+  vertical-align: middle;
+}
+
+.data-table tbody tr {
+  cursor: pointer;
+  transition: background-color .18s ease, box-shadow .18s ease;
+}
+
+.data-table tbody tr:hover {
+  background: #f8fbff;
+  box-shadow: inset 4px 0 0 var(--primary);
+}
+
+.data-table tbody tr:last-child td { border-bottom: 0; }
+
+.table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 22px;
+  border-top: 1px solid var(--border);
+  background: #eef4ff;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.status-chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-chip.inactive {
+  background: #eef0f4;
+  color: #64748b;
+}
+
+.avatar-initial {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 10px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination button {
+  min-width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.pagination button.active {
+  background: var(--primary);
+  color: var(--primary-ink);
+  box-shadow: 0 8px 18px rgba(9, 44, 125, .18);
+}
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 44px 24px;
+  text-align: center;
+}
+
+.empty-state-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: #eef4ff;
+  color: var(--primary);
+  font-size: 28px;
+}
+
+.muted { color: var(--muted); }
+.text-small { font-size: 12px; line-height: 1.4; }
+.text-label {
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.text-label.settled { color: var(--accent); }
+.text-label.overdue { color: var(--danger); }
+.section-title {
+  margin: 0;
+  color: var(--primary);
+  font-size: 21px;
+  letter-spacing: -0.03em;
+}
+
+@media (max-width: 720px) {
+  .table-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
