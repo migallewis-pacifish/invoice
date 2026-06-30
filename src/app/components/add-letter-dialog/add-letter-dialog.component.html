@@ -1,0 +1,54 @@
+<div class="dialog-shell">
+  <div class="dialog-header">
+    <h3>Add Letter</h3>
+    <button class="icon-btn" type="button" (click)="close()">✕</button>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="generateLetter()" class="dialog-body">
+    <p class="copy-note">Generate a client letter from your company Word template.</p>
+
+    <div class="template-box">
+      <strong>Letter template</strong>
+      <span class="badge" [class.ok]="templatePath()" [class.warn]="!templatePath()">
+        {{ templatePath() ? 'Template set' : 'No letter template' }}
+      </span>
+      <input type="file" accept=".docx" (change)="uploadTemplate($event)" [disabled]="uploading() || saving()">
+      <small>Template placeholders: &#123;letter_title&#125;, &#123;letter_message&#125;, &#123;client_name&#125;, &#123;company_name&#125;, &#123;signed_by&#125;, &#123;signature_url&#125;.</small>
+    </div>
+
+    <div class="form-group full">
+      <label>Title <span>*</span></label>
+      <input type="text" formControlName="title" placeholder="Letter of demand">
+    </div>
+
+    <div class="form-group full">
+      <label>Custom Message <span>*</span></label>
+      <textarea rows="8" formControlName="message" placeholder="Write the letter body..."></textarea>
+    </div>
+
+    <div class="form-group full">
+      <label>Signed by</label>
+      <input type="text" formControlName="signedBy" placeholder="Migal">
+    </div>
+
+    <div class="form-group full">
+      <label>Signature</label>
+      <select formControlName="signatureId">
+        <option value="">No uploaded signature</option>
+        <option *ngFor="let sig of signatures()" [value]="sig.id">{{ sig.name }}</option>
+      </select>
+      <input type="file" accept="image/*" (change)="uploadSignature($event)" [disabled]="uploading() || saving()">
+      <small>Upload a signature image after entering the signer name. The template receives its URL as &#123;signature_url&#125;.</small>
+    </div>
+
+    <div class="actions">
+      <button type="submit" class="primary" [disabled]="saving() || uploading() || form.invalid">
+        <span *ngIf="!saving()">Generate & Download Letter</span>
+        <span *ngIf="saving()" class="spinner"></span>
+      </button>
+    </div>
+
+    <div class="msg error" *ngIf="error()">{{ error() }}</div>
+    <div class="msg info" *ngIf="info()">{{ info() }}</div>
+  </form>
+</div>

@@ -37,6 +37,14 @@ service firebase.storage {
       allow read, write: if isCompanyMember(companyId);
     }
 
+    match /companies/{companyId}/signatures/{fileName} {
+      allow read: if isCompanyMember(companyId);
+      allow write: if isCompanyMember(companyId)
+        && request.resource != null
+        && request.resource.size <= 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

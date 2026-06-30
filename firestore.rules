@@ -53,6 +53,10 @@ service cloud.firestore {
         match /invoices/{invoiceId} {
           allow read, write: if isCompanyMember(companyId);
         }
+
+        match /letters/{letterId} {
+          allow read, write: if isCompanyMember(companyId);
+        }
       }
 
       match /expenses/{expenseId} {

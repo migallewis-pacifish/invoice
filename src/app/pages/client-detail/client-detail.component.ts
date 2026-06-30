@@ -5,6 +5,7 @@ import { ClientService } from '../../services/client.service';
 import { take } from 'rxjs';
 import { Dialog } from '@angular/cdk/dialog';
 import { AddInvoiceDialogComponent } from '../../components/add-invoice-dialog/add-invoice-dialog.component';
+import { AddLetterDialogComponent } from '../../components/add-letter-dialog/add-letter-dialog.component';
 import { OrderByDateDescPipe } from './order-by-date-desc.pipe';
 
 @Component({
@@ -24,6 +25,7 @@ export class ClientDetailComponent {
   clientId = signal<string | null>(null);
   client = signal<any | null>(null);
   invoices = signal<any[]>([]);
+  letters = signal<any[]>([]);
   lastInvoice = signal<any | null>(null);
   loading = signal(true);
 
@@ -48,6 +50,10 @@ export class ClientDetailComponent {
       this.clientSvc.getInvoicesForClient(clientId).subscribe(list => {
         this.invoices.set(list);
         this.lastInvoice.set(list.length > 0 ? list[0] : null);
+      });
+
+      this.clientSvc.getLettersForClient(clientId).subscribe(list => {
+        this.letters.set(list);
       });
     });
   }
@@ -77,6 +83,25 @@ addInvoice(previousInvoice: any | null = null, viewOnly = false) {
 
 viewInvoice(invoice: any) {
   this.addInvoice(invoice, true);
+}
+
+addLetter() {
+  const ref = this.dialog.open(AddLetterDialogComponent, {
+    backdropClass: 'dlg-backdrop',
+    panelClass: 'dlg-panel',
+    disableClose: true,
+    data: {
+      client: this.client(),
+      clientId: this.clientId(),
+      companyId: this.companyId()
+    }
+  });
+
+  ref.closed.subscribe(filename => {
+    if (filename) {
+      console.log('Letter created:', filename);
+    }
+  });
 }
 
 copyLastInvoice() {
