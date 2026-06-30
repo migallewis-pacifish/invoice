@@ -63,7 +63,13 @@ export class ClientService {
     return this.getCompanyId$().pipe(
       switchMap(companyId => {
         const colRef = collection(this.db, `companies/${companyId}/clients/${clientId}/invoices`);
-        return from(addDoc(colRef, data)).pipe(map(ref => ref.id));
+        const amountPaid = Number(data?.amountPaid ?? 0) || 0;
+        return from(addDoc(colRef, {
+          ...data,
+          amountPaid,
+          status: data?.status || (amountPaid > 0 ? 'partial' : 'sent'),
+          updatedAt: data?.updatedAt || serverTimestamp(),
+        })).pipe(map(ref => ref.id));
       })
     );
   }

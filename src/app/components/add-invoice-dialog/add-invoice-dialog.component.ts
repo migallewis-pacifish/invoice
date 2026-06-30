@@ -7,7 +7,7 @@ import { InvoiceDocxService } from '../../services/invoice-docx.service';
 import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { catchError, finalize, from, map, of, switchMap, take, tap } from 'rxjs';
 import { Auth } from '@angular/fire/auth';
-import { doc, docData, Firestore } from '@angular/fire/firestore';
+import { doc, docData, Firestore, serverTimestamp } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 
 
@@ -61,6 +61,9 @@ export class AddInvoiceDialogComponent {
       servicesProvided: [this.getCopiedServicesProvided(), Validators.required],
       includeVat: [this.getCopiedIncludeVat()],
       downloadFormat: [this.previousInvoice?.downloadFormat || 'docx' as InvoiceDownloadFormat, Validators.required],
+      dueDate: [this.getCopiedDueDate()],
+      amountPaid: [this.getCopiedAmountPaid(), [Validators.required, Validators.min(0)]],
+      status: [this.getCopiedStatus(), Validators.required],
       items: this.fb.array(copiedItems.length ? copiedItems.map(item => this.createItem(item)) : [this.createItem()])
     });
 
@@ -150,6 +153,8 @@ export class AddInvoiceDialogComponent {
     const subtotal = +items.reduce((sum: number, i: { amount: number }) => sum + i.amount, 0).toFixed(2);
     const vatAmount = includeVat ? +(subtotal * 0.15).toFixed(2) : 0;
     const total = +(subtotal + vatAmount).toFixed(2);
+    const amountPaid = Math.min(Number(formValue.amountPaid) || 0, total);
+    const status = this.resolveInvoiceStatus(formValue.status, total, amountPaid, formValue.dueDate);
 
     const invoiceData = {
       invoice_number: formValue.invoiceNumber,
@@ -191,6 +196,11 @@ export class AddInvoiceDialogComponent {
             excludingVat: subtotal,
             vatAmount,
             total,
+            amountPaid,
+            status,
+            dueDate: formValue.dueDate || null,
+            paidAt: status === 'paid' ? serverTimestamp() : null,
+            updatedAt: serverTimestamp(),
             notes: formValue.notes || '',
             servicesProvided,
             services_rendered: servicesProvided,
@@ -203,7 +213,7 @@ export class AddInvoiceDialogComponent {
             lineItems: items,
             filename,
             downloadFormat: formValue.downloadFormat,
-            createdAt: Date.now(),
+            createdAt: serverTimestamp(),
             createdBy: this.auth.currentUser?.uid
           })
         ).pipe(map(() => filename));
@@ -264,6 +274,34 @@ export class AddInvoiceDialogComponent {
         };
       }).filter(item => item.description || item.rate > 0)
       : [];
+  }
+
+
+  private getCopiedDueDate(): string {
+    if (!this.previousInvoice?.dueDate) return '';
+    return this.toIsoDate(this.previousInvoice.dueDate);
+  }
+
+  private getCopiedAmountPaid(): number {
+    return Number(this.previousInvoice?.amountPaid ?? 0) || 0;
+  }
+
+  private getCopiedStatus(): string {
+    return this.previousInvoice?.status || 'sent';
+  }
+
+  private resolveInvoiceStatus(status: string, total: number, amountPaid: number, dueDate?: string): string {
+    if (status === 'draft') return 'draft';
+    if (amountPaid >= total && total > 0) return 'paid';
+    if (amountPaid > 0) return 'partial';
+    if (dueDate && new Date(dueDate) < this.startOfToday()) return 'overdue';
+    return status || 'sent';
+  }
+
+  private startOfToday(): Date {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
   }
 
   private getNextInvoiceNumber(lastInvoice: string | null): string {
