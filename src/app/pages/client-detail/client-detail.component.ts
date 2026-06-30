@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ClientService } from '../../services/client.service';
 import { take } from 'rxjs';
@@ -12,7 +13,7 @@ import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, NavBarComponent, OrderByDateDescPipe],
+  imports: [CommonModule, FormsModule, RouterLink, NavBarComponent, OrderByDateDescPipe],
   templateUrl: './client-detail.component.html',
   styleUrl: './client-detail.component.scss'
 })
@@ -29,7 +30,42 @@ export class ClientDetailComponent {
   letters = signal<any[]>([]);
   lastInvoice = signal<any | null>(null);
   loading = signal(true);
-  activeTab = signal<ClientTab>('details');
+  activeTab = signal<ClientTab>('overview');
+  noteDraft = signal('Velocity Dynamics is expanding their London office. Sarah mentioned a potential renewal for their enterprise package in Q1 2024. Keep an eye on their usage metrics next week. Their accounting prefers VAT invoices sent directly to invoicing@client.io.');
+
+  readonly tabs: { id: ClientTab; label: string }[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'details', label: 'Details' },
+    { id: 'invoices', label: 'Invoices' },
+    { id: 'expenses', label: 'Expenses' },
+    { id: 'letters', label: 'Letters' }
+  ];
+
+  readonly documents = [
+    { icon: '▣', name: 'NDA_V2.pdf', created: '2 days ago', size: '1.2MB' },
+    { icon: '▣', name: 'Service_Agr.pdf', created: '1 week ago', size: '4.5MB' },
+    { icon: '▣', name: 'Onboarding.docx', created: '2 weeks ago', size: '980KB' }
+  ];
+
+  readonly activityEvents = [
+    { icon: '✉', title: 'Email sent to Sarah Jenkins', description: 'Follow up regarding #INV-8711', time: 'Today, 10:45 AM', tone: 'blue' },
+    { icon: '✓', title: 'Payment received', description: 'Cleared for #INV-8794 via Bank Transfer', time: 'Yesterday, 4:12 PM', tone: 'green' },
+    { icon: '□', title: 'Agreement signed', description: 'Service Agreement signed via DocuSign', time: 'Jun 24, 2026', tone: 'navy' },
+    { icon: '•', title: 'Expense created', description: 'Travel expense added to client workspace', time: 'Jun 22, 2026', tone: 'amber' },
+    { icon: '↻', title: 'Client updated', description: 'Primary contact details refreshed', time: 'Jun 20, 2026', tone: 'slate' }
+  ];
+
+  readonly expenseRows = [
+    { expense: 'Travel reimbursement', category: 'Travel', date: 'Jun 18, 2026', amount: '£420.00', status: 'Pending' },
+    { expense: 'Client dinner', category: 'Meals', date: 'Jun 14, 2026', amount: '£188.40', status: 'Paid' },
+    { expense: 'Courier documents', category: 'Operations', date: 'Jun 10, 2026', amount: '£38.00', status: 'Draft' }
+  ];
+
+  readonly letterRows = [
+    { letter: 'Service agreement', template: 'Enterprise MSA', created: 'Jun 12, 2026', status: 'Generated' },
+    { letter: 'Welcome letter', template: 'Onboarding', created: 'Jun 8, 2026', status: 'Sent' },
+    { letter: 'Renewal notice', template: 'Renewal', created: 'Jun 2, 2026', status: 'Draft' }
+  ];
 
   constructor() {
     this.route.paramMap.subscribe(params => {
@@ -60,6 +96,39 @@ export class ClientDetailComponent {
     });
   }
 
+  get initials(): string {
+    const name = this.client()?.displayName || 'Client';
+    return name.split(' ').slice(0, 2).map((part: string) => part[0]).join('').toUpperCase();
+  }
+
+  get formattedAddress(): string {
+    const address = this.client()?.address;
+    if (!address) return 'Address not provided';
+    return [address.line1, address.line2, address.suburb, address.city, address.province, address.postalCode, address.country]
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  get primaryContact(): string {
+    return this.client()?.contactName || this.client()?.primaryContact || 'Sarah Jenkins';
+  }
+
+  get clientEmail(): string {
+    return this.client()?.email || 'sarah@velocity.io';
+  }
+
+  get industry(): string {
+    return this.client()?.industry || 'FinTech';
+  }
+
+  invoiceStatus(index: number): string {
+    // TODO: Replace mock invoice statuses with backend status fields once implemented in Firestore.
+    return ['Pending', 'Paid', 'Overdue', 'Draft'][index % 4];
+  }
+
+  updateNote(value: string) {
+    this.noteDraft.set(value);
+  }
 
 addInvoice(previousInvoice: any | null = null, viewOnly = false) {
   const ref = this.dialog.open(AddInvoiceDialogComponent, {
@@ -118,5 +187,4 @@ copyLastInvoice() {
 
 }
 
-type ClientTab = 'details' | 'invoices' | 'expenses' | 'letters';
-
+type ClientTab = 'overview' | 'details' | 'invoices' | 'expenses' | 'letters';
