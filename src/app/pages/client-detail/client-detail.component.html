@@ -1,89 +1,151 @@
 <app-nav-bar></app-nav-bar>
-<div class="detail-wrap" *ngIf="!loading(); else loadingTpl">
-  <nav class="crumbs"><a routerLink="/clients">Clients</a> / {{ client()?.displayName }}</nav>
-  <h1>{{ client()?.displayName }}</h1>
 
-  <div class="tabs" aria-label="Client sections">
-    <button type="button" class="tab" [class.active]="activeTab() === 'details'" (click)="setTab('details')">Details</button>
-    <button type="button" class="tab" [class.active]="activeTab() === 'invoices'" (click)="setTab('invoices')">Invoices</button>
-    <button type="button" class="tab" [class.active]="activeTab() === 'expenses'" (click)="setTab('expenses')">Expenses</button>
-    <button type="button" class="tab" [class.active]="activeTab() === 'letters'" (click)="setTab('letters')">Letters</button>
-  </div>
+<main class="workspace-shell" *ngIf="!loading(); else loadingTpl">
+  <section class="workspace-container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/clients">Clients</a>
+      <span>›</span>
+      <strong>{{ client()?.displayName }}</strong>
+    </nav>
 
-  <ng-container [ngSwitch]="activeTab()">
-    <div class="card" *ngSwitchCase="'details'">
-      <h2>Details</h2>
-      <div class="grid-info">
+    <header class="workspace-header page-header">
+      <div class="entity-header-main">
+        <div class="avatar entity-avatar" aria-hidden="true">{{ initials }}</div>
         <div>
-          <h4>Address</h4>
-          <p>
-            {{ client()?.address?.line1 }} {{ client()?.address?.line2 }}<br>
-            {{ client()?.address?.suburb }}<br>
-            {{ client()?.address?.city }}, {{ client()?.address?.province }}<br>
-            {{ client()?.address?.postalCode }}<br>
-            {{ client()?.address?.country }}
-          </p>
-        </div>
-        <div>
-          <h4>Contact</h4>
-          <p *ngIf="client()?.email">📧 {{ client()?.email }}</p>
-          <p *ngIf="client()?.phone">📞 {{ client()?.phone }}</p>
-        </div>
-        <div>
-          <h4>Other Details</h4>
-          <p *ngIf="client()?.vatNo">VAT No: {{ client()?.vatNo }}</p>
-          <p *ngIf="client()?.notes">Notes: {{ client()?.notes }}</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" *ngSwitchCase="'invoices'">
-      <div class="header-row">
-        <h3>Invoices</h3>
-        <div class="invoice-actions">
-          <button class="secondary" *ngIf="lastInvoice()" (click)="copyLastInvoice()">Copy Last Invoice</button>
-          <button class="primary" (click)="addInvoice()">Add Invoice</button>
-        </div>
-      </div>
-      <ng-container *ngIf="invoices().length > 0; else noInvoices">
-        <div class="invoice-list">
-          <div class="invoice-item" *ngFor="let inv of invoices() | orderByDateDesc">
-            <div><strong>{{ inv.invoiceNumber || '(unnumbered)' }}</strong><br><span>{{ inv.date | date }}</span></div>
-            <div class="invoice-item-actions"><span>{{ inv.total | currency:'ZAR':'symbol' }}</span><button type="button" class="secondary small" (click)="viewInvoice(inv)">View</button></div>
+          <div class="title-row">
+            <h1>{{ client()?.displayName }}</h1>
+            <span class="badge entity-badge">Enterprise</span>
           </div>
+          <p class="entity-address">⌖ {{ formattedAddress }}</p>
         </div>
-      </ng-container>
-      <ng-template #noInvoices><p class="muted">No invoices yet for this client.</p></ng-template>
+      </div>
+      <div class="entity-actions">
+        <button class="secondary action-button" type="button">✉ Message</button>
+        <button class="primary action-button" type="button" (click)="setTab('details')">✎ Edit Client</button>
+      </div>
+    </header>
+
+    <div class="workspace-tabs" role="tablist" aria-label="Client workspace sections">
+      <button
+        *ngFor="let tab of tabs"
+        type="button"
+        class="workspace-tab"
+        role="tab"
+        [attr.aria-selected]="activeTab() === tab.id"
+        [class.active]="activeTab() === tab.id"
+        (click)="setTab(tab.id)">
+        {{ tab.label }}
+      </button>
     </div>
 
-    <div class="card" *ngSwitchCase="'expenses'">
-      <h3>Expenses</h3>
-      <!-- TODO: Implement client-level expenses using companies/{companyId}/clients/{clientId}/expenses. -->
-      <p>This section will manage Expenses.</p>
-    </div>
+    <ng-container [ngSwitch]="activeTab()">
+      <section *ngSwitchCase="'overview'" class="overview-grid">
+        <article class="card summary-card balance-card">
+          <p class="eyebrow">Outstanding Balance</p>
+          <strong class="balance-amount">£12,450.00</strong>
+          <span class="overdue">▣ Overdue: £2,100.00</span>
+          <button class="primary wide" type="button">Create Payment Link</button>
+        </article>
 
-    <div class="card" *ngSwitchCase="'letters'">
-      <div class="header-row">
-        <h3>Letters</h3>
-        <div class="invoice-actions"><button class="primary" (click)="addLetter()">Add Letter</button></div>
-      </div>
-      <div class="letter-types">
-        <span>Welcome Letter</span><span>Contract Agreement</span><span>Other Client Letters</span>
-      </div>
-      <!-- TODO: Split client letters by type when letter template management is implemented. -->
-      <ng-container *ngIf="letters().length > 0; else noLetters">
-        <div class="invoice-list">
-          <div class="invoice-item" *ngFor="let letter of letters() | orderByDateDesc">
-            <div><strong>{{ letter.title || '(untitled letter)' }}</strong><br><span>{{ letter.date | date }}</span></div>
-            <div class="invoice-item-actions"><span>{{ letter.signedBy ? 'Signed by ' + letter.signedBy : 'Unsigned' }}</span></div>
+        <article class="card summary-card client-summary-card">
+          <h2 class="section-title">Client Summary</h2>
+          <dl class="summary-list">
+            <div><dt>Primary Contact</dt><dd>{{ primaryContact }}</dd></div>
+            <div><dt>Email</dt><dd>{{ clientEmail }}</dd></div>
+            <div><dt>Industry</dt><dd>{{ industry }}</dd></div>
+            <div>
+              <dt>Status</dt>
+              <!-- TODO: Load client status from Firestore once the backend field is implemented. -->
+              <dd><span class="status-chip status-paid">Active</span></dd>
+            </div>
+          </dl>
+        </article>
+
+        <article class="card summary-card document-list">
+          <div class="card-heading compact-heading">
+            <h2 class="section-title">Recent Documents</h2>
+            <button class="link-button" type="button">View All</button>
           </div>
+          <!-- TODO: Replace mock documents with Firestore-backed client document records. -->
+          <div class="document-row" *ngFor="let doc of documents">
+            <span class="document-icon">{{ doc.icon }}</span>
+            <div><strong>{{ doc.name }}</strong><small>{{ doc.created }} · {{ doc.size }}</small></div>
+            <button class="icon-action" type="button" aria-label="Download document">⇩</button>
+          </div>
+        </article>
+
+        <article class="card table-card recent-invoices-card">
+          <div class="card-heading">
+            <h2 class="section-title">Recent Invoices</h2>
+            <button class="secondary pill-button" type="button" (click)="addInvoice()">＋ New Invoice</button>
+          </div>
+          <div class="data-table compact-table">
+            <div class="table-row table-head"><span>Invoice ID</span><span>Due Date</span><span>Amount</span><span>Status</span><span>Actions</span></div>
+            <div class="table-row" *ngFor="let inv of (invoices() | orderByDateDesc).slice(0, 4); let i = index">
+              <strong>{{ inv.invoiceNumber || '#INV-' + (8821 - i) }}</strong>
+              <span>{{ (inv.dueDate || inv.date) | date:'mediumDate' }}</span>
+              <span>{{ inv.total | currency:'GBP':'symbol' }}</span>
+              <!-- TODO: Replace mock invoice statuses with Firestore status values once implemented. -->
+              <span><span class="status-chip" [ngClass]="'status-' + invoiceStatus(i).toLowerCase()">{{ invoiceStatus(i) }}</span></span>
+              <button class="ellipsis" type="button" (click)="viewInvoice(inv)">•••</button>
+            </div>
+          </div>
+          <p class="muted empty-state" *ngIf="invoices().length === 0">No invoices yet for this client.</p>
+        </article>
+
+        <article class="card timeline-card">
+          <h2 class="section-title">Activity Feed</h2>
+          <!-- TODO: Load timeline events from activity history once that backend collection is available. -->
+          <div class="timeline">
+            <div class="timeline-item" *ngFor="let event of activityEvents">
+              <span class="timeline-dot" [ngClass]="event.tone">{{ event.icon }}</span>
+              <div><strong>{{ event.title }}</strong><p>{{ event.description }}</p><small>{{ event.time }}</small></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card notes-card">
+          <div class="card-heading compact-heading">
+            <h2 class="section-title">▱ Client Notes</h2>
+            <span class="autosave">Auto-saved at 11:20 AM</span>
+          </div>
+          <!-- TODO: Persist client notes to Firestore when relationship notes storage is implemented. -->
+          <textarea [ngModel]="noteDraft()" (ngModelChange)="updateNote($event)" rows="6" aria-label="Client notes"></textarea>
+          <div class="notes-actions"><button class="text-button" type="button">Discard</button><button class="primary" type="button">Save Note</button></div>
+        </article>
+      </section>
+
+      <section *ngSwitchCase="'details'" class="card details-card">
+        <h2 class="section-title">Client Details</h2>
+        <div class="grid-info">
+          <div><h4>Address</h4><p>{{ formattedAddress }}</p></div>
+          <div><h4>Contact</h4><p *ngIf="client()?.email">📧 {{ client()?.email }}</p><p *ngIf="client()?.phone">📞 {{ client()?.phone }}</p></div>
+          <div><h4>Other Details</h4><p *ngIf="client()?.vatNo">VAT No: {{ client()?.vatNo }}</p><p *ngIf="client()?.notes">Notes: {{ client()?.notes }}</p></div>
         </div>
-      </ng-container>
-      <ng-template #noLetters><p class="muted">No letters yet for this client.</p></ng-template>
-    </div>
-  </ng-container>
-</div>
+      </section>
+
+      <section *ngSwitchCase="'invoices'" class="card table-card full-table-card">
+        <div class="table-toolbar"><div><h2 class="section-title">Invoices</h2><p>Search, filter, and manage invoice records for this client.</p></div><button class="primary" type="button" (click)="addInvoice()">New Invoice</button></div>
+        <div class="workspace-controls"><input type="search" placeholder="Search invoices..."><button class="secondary" type="button">Filters</button><button class="secondary" type="button">Sort</button></div>
+        <div class="data-table"><div class="table-row table-head"><span>Invoice ID</span><span>Due Date</span><span>Amount</span><span>Status</span><span>Actions</span></div><div class="table-row" *ngFor="let inv of invoices() | orderByDateDesc; let i = index"><strong>{{ inv.invoiceNumber || '(unnumbered)' }}</strong><span>{{ (inv.dueDate || inv.date) | date:'mediumDate' }}</span><span>{{ inv.total | currency:'GBP':'symbol' }}</span><span><span class="status-chip" [ngClass]="'status-' + invoiceStatus(i).toLowerCase()">{{ invoiceStatus(i) }}</span></span><button class="secondary small" type="button" (click)="viewInvoice(inv)">View</button></div></div>
+        <p class="muted empty-state" *ngIf="invoices().length === 0">No invoices yet for this client.</p><div class="pagination">Page 1 of 1</div>
+      </section>
+
+      <section *ngSwitchCase="'expenses'" class="card table-card full-table-card">
+        <div class="table-toolbar"><div><h2 class="section-title">Expenses</h2><p>Reusable workspace table pattern with expense-specific columns.</p></div></div>
+        <div class="workspace-controls"><input type="search" placeholder="Search expenses..."><button class="secondary" type="button">Filters</button><button class="secondary" type="button">Sort</button></div>
+        <div class="data-table"><div class="table-row table-head"><span>Expense</span><span>Category</span><span>Date</span><span>Amount</span><span>Status</span><span>Actions</span></div><div class="table-row six" *ngFor="let expense of expenseRows"><strong>{{ expense.expense }}</strong><span>{{ expense.category }}</span><span>{{ expense.date }}</span><span>{{ expense.amount }}</span><span><span class="status-chip" [ngClass]="'status-' + expense.status.toLowerCase()">{{ expense.status }}</span></span><button class="ellipsis" type="button">•••</button></div></div>
+      </section>
+
+      <section *ngSwitchCase="'letters'" class="card table-card full-table-card">
+        <div class="table-toolbar"><div><h2 class="section-title">Letters</h2><p>Reusable workspace table pattern with letter-specific columns.</p></div><button class="primary" type="button" (click)="addLetter()">New Letter</button></div>
+        <div class="workspace-controls"><input type="search" placeholder="Search letters..."><button class="secondary" type="button">Filters</button><button class="secondary" type="button">Sort</button></div>
+        <div class="data-table"><div class="table-row table-head"><span>Letter</span><span>Template</span><span>Created</span><span>Status</span><span>Actions</span></div><div class="table-row" *ngFor="let letter of letterRows"><strong>{{ letter.letter }}</strong><span>{{ letter.template }}</span><span>{{ letter.created }}</span><span><span class="status-chip" [ngClass]="'status-' + letter.status.toLowerCase()">{{ letter.status }}</span></span><button class="ellipsis" type="button">•••</button></div></div>
+      </section>
+    </ng-container>
+  </section>
+</main>
 
 <ng-template #loadingTpl>
-  <div class="loading"><div class="spinner"></div><p>Loading client details...</p></div>
+  <div class="loading"><div class="spinner"></div><p>Loading client workspace...</p></div>
 </ng-template>
