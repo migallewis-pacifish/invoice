@@ -263,6 +263,7 @@ dt { color: var(--muted); font-size: 12px; } dd { margin: 0; font-weight: 900; f
 .table-row.six { grid-template-columns: 1.3fr 1fr 1fr 1fr .9fr .6fr; }
 .table-head { background: #f0f4fb; color: var(--muted); text-transform: uppercase; font-size: 10px; font-weight: 900; letter-spacing: .06em; border-bottom: 0; }
 .table-row strong { color: var(--primary); }
+.row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .status-paid, .status-active, .status-generated, .status-sent { background: #e7f8f0; color: var(--accent); }
 .status-pending, .status-partial { background: #fff4d6; color: #9a5a00; }
 .status-overdue { background: #ffe8e5; color: var(--danger); }

@@ -178,7 +178,7 @@ export class ClientDetailComponent {
     this.noteDraft.set(value);
   }
 
-addInvoice(previousInvoice: any | null = null, viewOnly = false) {
+addInvoice(previousInvoice: any | null = null, viewOnly = false, trackingOnly = false) {
   const ref = this.dialog.open(AddInvoiceDialogComponent, {
     backdropClass: 'dlg-backdrop',
     panelClass: 'dlg-panel',
@@ -189,7 +189,8 @@ addInvoice(previousInvoice: any | null = null, viewOnly = false) {
       companyId: this.companyId(),
       lastInvoice: this.lastInvoice()?.invoiceNumber,
       previousInvoice,
-      viewOnly
+      viewOnly,
+      trackingOnly
     }
   });
 
@@ -202,6 +203,10 @@ addInvoice(previousInvoice: any | null = null, viewOnly = false) {
 
 viewInvoice(invoice: any) {
   this.addInvoice(invoice, true);
+}
+
+updateInvoiceTracking(invoice: any) {
+  this.addInvoice(invoice, false, true);
 }
 
 addLetter() {

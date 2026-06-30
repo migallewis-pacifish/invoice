@@ -42,6 +42,7 @@ export class AddInvoiceDialogComponent {
   lastInvoice: string;
   previousInvoice: any;
   viewOnly = false;
+  trackingOnly = false;
   form: any;
 
   constructor() {
@@ -51,6 +52,7 @@ export class AddInvoiceDialogComponent {
     this.lastInvoice = this.data?.lastInvoice;
     this.previousInvoice = this.data?.previousInvoice;
     this.viewOnly = Boolean(this.data?.viewOnly);
+    this.trackingOnly = Boolean(this.data?.trackingOnly);
     const nextInvoiceNumber = this.viewOnly && this.previousInvoice?.invoiceNumber
       ? this.previousInvoice.invoiceNumber
       : this.getNextInvoiceNumber(this.lastInvoice);
@@ -75,19 +77,33 @@ export class AddInvoiceDialogComponent {
       });
     }
 
-    if (this.viewOnly) {
+    if (this.viewOnly || this.trackingOnly) {
       this.form.disable({ emitEvent: false });
-      this.form.get('downloadFormat')?.enable({ emitEvent: false });
+
+      if (this.viewOnly) {
+        this.form.get('downloadFormat')?.enable({ emitEvent: false });
+      }
+
+      if (this.trackingOnly) {
+        this.form.get('dueDate')?.enable({ emitEvent: false });
+        this.form.get('amountPaid')?.enable({ emitEvent: false });
+        this.form.get('status')?.enable({ emitEvent: false });
+      }
     }
   }
 
   get items() { return this.form.get('items') as FormArray; }
 
   get dialogTitle(): string {
+    if (this.trackingOnly) return 'Update Invoice Payment';
     return this.viewOnly ? 'View Invoice' : 'Add Invoice';
   }
 
   get helperText(): string {
+    if (this.trackingOnly) {
+      return 'Update this invoice payment status, amount paid, or due date without changing invoice line details.';
+    }
+
     return this.viewOnly
       ? 'This invoice is read-only. You can change the download format and regenerate it.'
       : 'Copied from the previous invoice. Edit any details before generating.';
@@ -112,12 +128,12 @@ export class AddInvoiceDialogComponent {
   }
 
   addItem() {
-    if (this.viewOnly) return;
+    if (this.viewOnly || this.trackingOnly) return;
     this.items.push(this.createItem());
   }
 
   removeItem(i: number) {
-    if (this.viewOnly) return;
+    if (this.viewOnly || this.trackingOnly) return;
     if (this.items.length > 1) {
       this.items.removeAt(i);
     }
@@ -284,6 +300,33 @@ export class AddInvoiceDialogComponent {
 
   private getCopiedAmountPaid(): number {
     return Number(this.previousInvoice?.amountPaid ?? 0) || 0;
+  }
+
+  saveTracking() {
+    if (!this.trackingOnly || !this.previousInvoice?.id || this.form.invalid || this.saving()) return;
+
+    this.saving.set(true);
+    this.error.set(null);
+
+    const formValue = this.form.getRawValue();
+    const total = Number(this.previousInvoice?.total) || 0;
+    const amountPaid = Math.min(Number(formValue.amountPaid) || 0, total);
+    const status = this.resolveInvoiceStatus(formValue.status, total, amountPaid, formValue.dueDate);
+
+    this.clientSvc.updateInvoiceTracking(this.clientId, this.previousInvoice.id, {
+      amountPaid,
+      status,
+      dueDate: formValue.dueDate || null,
+      paidAt: status === 'paid' ? serverTimestamp() : null,
+    }).pipe(
+      tap(() => this.dialog.close('Invoice payment tracking updated.')),
+      catchError((err) => {
+        console.error(err);
+        this.error.set('Failed to update invoice payment tracking.');
+        return of(undefined);
+      }),
+      finalize(() => this.saving.set(false))
+    ).subscribe();
   }
 
   private getCopiedStatus(): string {
