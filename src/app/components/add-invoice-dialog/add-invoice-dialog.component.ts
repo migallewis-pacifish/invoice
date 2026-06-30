@@ -7,7 +7,7 @@ import { InvoiceDocxService } from '../../services/invoice-docx.service';
 import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { catchError, finalize, from, map, of, switchMap, take, tap } from 'rxjs';
 import { Auth } from '@angular/fire/auth';
-import { doc, docData, Firestore } from '@angular/fire/firestore';
+import { doc, docData, Firestore, serverTimestamp } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 
 
@@ -42,6 +42,7 @@ export class AddInvoiceDialogComponent {
   lastInvoice: string;
   previousInvoice: any;
   viewOnly = false;
+  trackingOnly = false;
   form: any;
 
   constructor() {
@@ -51,6 +52,7 @@ export class AddInvoiceDialogComponent {
     this.lastInvoice = this.data?.lastInvoice;
     this.previousInvoice = this.data?.previousInvoice;
     this.viewOnly = Boolean(this.data?.viewOnly);
+    this.trackingOnly = Boolean(this.data?.trackingOnly);
     const nextInvoiceNumber = this.viewOnly && this.previousInvoice?.invoiceNumber
       ? this.previousInvoice.invoiceNumber
       : this.getNextInvoiceNumber(this.lastInvoice);
@@ -61,6 +63,9 @@ export class AddInvoiceDialogComponent {
       servicesProvided: [this.getCopiedServicesProvided(), Validators.required],
       includeVat: [this.getCopiedIncludeVat()],
       downloadFormat: [this.previousInvoice?.downloadFormat || 'docx' as InvoiceDownloadFormat, Validators.required],
+      dueDate: [this.getCopiedDueDate()],
+      amountPaid: [this.getCopiedAmountPaid(), [Validators.required, Validators.min(0)]],
+      status: [this.getCopiedStatus(), Validators.required],
       items: this.fb.array(copiedItems.length ? copiedItems.map(item => this.createItem(item)) : [this.createItem()])
     });
 
@@ -72,19 +77,33 @@ export class AddInvoiceDialogComponent {
       });
     }
 
-    if (this.viewOnly) {
+    if (this.viewOnly || this.trackingOnly) {
       this.form.disable({ emitEvent: false });
-      this.form.get('downloadFormat')?.enable({ emitEvent: false });
+
+      if (this.viewOnly) {
+        this.form.get('downloadFormat')?.enable({ emitEvent: false });
+      }
+
+      if (this.trackingOnly) {
+        this.form.get('dueDate')?.enable({ emitEvent: false });
+        this.form.get('amountPaid')?.enable({ emitEvent: false });
+        this.form.get('status')?.enable({ emitEvent: false });
+      }
     }
   }
 
   get items() { return this.form.get('items') as FormArray; }
 
   get dialogTitle(): string {
+    if (this.trackingOnly) return 'Update Invoice Payment';
     return this.viewOnly ? 'View Invoice' : 'Add Invoice';
   }
 
   get helperText(): string {
+    if (this.trackingOnly) {
+      return 'Update this invoice payment status, amount paid, or due date without changing invoice line details.';
+    }
+
     return this.viewOnly
       ? 'This invoice is read-only. You can change the download format and regenerate it.'
       : 'Copied from the previous invoice. Edit any details before generating.';
@@ -109,12 +128,12 @@ export class AddInvoiceDialogComponent {
   }
 
   addItem() {
-    if (this.viewOnly) return;
+    if (this.viewOnly || this.trackingOnly) return;
     this.items.push(this.createItem());
   }
 
   removeItem(i: number) {
-    if (this.viewOnly) return;
+    if (this.viewOnly || this.trackingOnly) return;
     if (this.items.length > 1) {
       this.items.removeAt(i);
     }
@@ -150,6 +169,8 @@ export class AddInvoiceDialogComponent {
     const subtotal = +items.reduce((sum: number, i: { amount: number }) => sum + i.amount, 0).toFixed(2);
     const vatAmount = includeVat ? +(subtotal * 0.15).toFixed(2) : 0;
     const total = +(subtotal + vatAmount).toFixed(2);
+    const amountPaid = Math.min(Number(formValue.amountPaid) || 0, total);
+    const status = this.resolveInvoiceStatus(formValue.status, total, amountPaid, formValue.dueDate);
 
     const invoiceData = {
       invoice_number: formValue.invoiceNumber,
@@ -191,6 +212,11 @@ export class AddInvoiceDialogComponent {
             excludingVat: subtotal,
             vatAmount,
             total,
+            amountPaid,
+            status,
+            dueDate: formValue.dueDate || null,
+            paidAt: status === 'paid' ? serverTimestamp() : null,
+            updatedAt: serverTimestamp(),
             notes: formValue.notes || '',
             servicesProvided,
             services_rendered: servicesProvided,
@@ -203,7 +229,7 @@ export class AddInvoiceDialogComponent {
             lineItems: items,
             filename,
             downloadFormat: formValue.downloadFormat,
-            createdAt: Date.now(),
+            createdAt: serverTimestamp(),
             createdBy: this.auth.currentUser?.uid
           })
         ).pipe(map(() => filename));
@@ -264,6 +290,61 @@ export class AddInvoiceDialogComponent {
         };
       }).filter(item => item.description || item.rate > 0)
       : [];
+  }
+
+
+  private getCopiedDueDate(): string {
+    if (!this.previousInvoice?.dueDate) return '';
+    return this.toIsoDate(this.previousInvoice.dueDate);
+  }
+
+  private getCopiedAmountPaid(): number {
+    return Number(this.previousInvoice?.amountPaid ?? 0) || 0;
+  }
+
+  saveTracking() {
+    if (!this.trackingOnly || !this.previousInvoice?.id || this.form.invalid || this.saving()) return;
+
+    this.saving.set(true);
+    this.error.set(null);
+
+    const formValue = this.form.getRawValue();
+    const total = Number(this.previousInvoice?.total) || 0;
+    const amountPaid = Math.min(Number(formValue.amountPaid) || 0, total);
+    const status = this.resolveInvoiceStatus(formValue.status, total, amountPaid, formValue.dueDate);
+
+    this.clientSvc.updateInvoiceTracking(this.clientId, this.previousInvoice.id, {
+      amountPaid,
+      status,
+      dueDate: formValue.dueDate || null,
+      paidAt: status === 'paid' ? serverTimestamp() : null,
+    }).pipe(
+      tap(() => this.dialog.close('Invoice payment tracking updated.')),
+      catchError((err) => {
+        console.error(err);
+        this.error.set('Failed to update invoice payment tracking.');
+        return of(undefined);
+      }),
+      finalize(() => this.saving.set(false))
+    ).subscribe();
+  }
+
+  private getCopiedStatus(): string {
+    return this.previousInvoice?.status || 'sent';
+  }
+
+  private resolveInvoiceStatus(status: string, total: number, amountPaid: number, dueDate?: string): string {
+    if (status === 'draft') return 'draft';
+    if (amountPaid >= total && total > 0) return 'paid';
+    if (amountPaid > 0) return 'partial';
+    if (dueDate && new Date(dueDate) < this.startOfToday()) return 'overdue';
+    return status || 'sent';
+  }
+
+  private startOfToday(): Date {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
   }
 
   private getNextInvoiceNumber(lastInvoice: string | null): string {
