@@ -59,6 +59,34 @@
     </ng-template>
   </div>
 
+  <!-- Letters Card -->
+  <div class="card">
+    <div class="header-row">
+      <h3>Letters</h3>
+      <div class="invoice-actions">
+        <button class="primary" (click)="addLetter()">Add Letter</button>
+      </div>
+    </div>
+
+    <ng-container *ngIf="letters().length > 0; else noLetters">
+      <div class="invoice-list">
+        <div class="invoice-item" *ngFor="let letter of letters() | orderByDateDesc">
+          <div>
+            <strong>{{ letter.title || '(untitled letter)' }}</strong><br>
+            <span>{{ letter.date | date }}</span>
+          </div>
+          <div class="invoice-item-actions">
+            <span>{{ letter.signedBy ? 'Signed by ' + letter.signedBy : 'Unsigned' }}</span>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <ng-template #noLetters>
+      <p class="muted">No letters yet for this client.</p>
+    </ng-template>
+  </div>
+
 </div>
 
 <ng-template #loadingTpl>
