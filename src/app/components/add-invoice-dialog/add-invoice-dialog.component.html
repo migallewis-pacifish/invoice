@@ -13,16 +13,16 @@
 
         <div class="item-row header">
             <div>Description</div>
-            <div>Rate (ZAR)</div>
+            <div>Rate ({{ currencySymbol() }})</div>
             <div>Hours</div>
-            <div>Total (ZAR)</div>
+            <div>Total ({{ currencySymbol() }})</div>
             <div></div>
         </div>
 
         <div formArrayName="items" class="items-block">
             <div *ngFor="let item of items.controls; let i = index" [formGroupName]="i" class="item-row">
                 <input placeholder="Description" formControlName="description">
-                <input type="number" placeholder="Rate (ZAR)" formControlName="rate">
+                <input type="number" placeholder="Rate ({{ currencySymbol() }})" formControlName="rate">
                 <input type="number" placeholder="Hours" formControlName="hours">
                 <input type="number" placeholder="Total" formControlName="total" readonly>
                 <button type="button" class="remove" *ngIf="!viewOnly" (click)="removeItem(i)">✕</button>
