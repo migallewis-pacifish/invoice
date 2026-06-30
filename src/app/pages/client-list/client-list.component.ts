@@ -4,7 +4,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Client } from '../../models/invoice.model';
 import { combineLatest, map, Observable, of, startWith } from 'rxjs';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Dialog } from '@angular/cdk/dialog';
 import { AddClientDialogueComponent } from '../../components/add-client-dialogue/add-client-dialogue.component';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
@@ -12,7 +12,7 @@ import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 @Component({
   selector: 'app-client-list',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, NavBarComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, NavBarComponent],
   templateUrl: './client-list.component.html',
   styleUrl: './client-list.component.scss'
 })
@@ -21,7 +21,7 @@ export class ClientListComponent {
   @Input() showNav = true;
   private router = inject(Router);
   private clientSvc = inject(ClientService);
-    private dialog = inject(Dialog);
+  private dialog = inject(Dialog);
 
   // search/filter
   search = new FormControl('', { nonNullable: true });
@@ -54,6 +54,40 @@ export class ClientListComponent {
 
   goClient(c: Client) { this.router.navigate([`/company/${this.companyId()}/client/${c.id}`]); }           // you can create this route later
   createInvoice(c: Client) { this.router.navigate(['/invoice/once-off'], { state: { clientId: c.id } }); }
+
+  // TODO: Sorting
+  initials(name = ''): string {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    return (parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : name.slice(0, 2)).toUpperCase() || 'CL';
+  }
+
+  clientDescription(client: Client): string {
+    return client.notes || client.vatNo || client.address?.city || 'Enterprise Account';
+  }
+
+  isActiveClient(client: Client, index: number): boolean {
+    return Boolean(client.email || client.phone || index % 4 !== 1);
+  }
+
+  balanceAmount(index: number): string {
+    return ['$12,450.00', '$0.00', '$54,200.00', '$8,900.50'][index % 4];
+  }
+
+  balanceStatus(index: number): string {
+    return ['DUE IN 4 DAYS', 'SETTLED', 'OVERDUE 12 DAYS', 'DRAFT SENT'][index % 4];
+  }
+
+  balanceTone(index: number): 'default' | 'settled' | 'overdue' {
+    return (['default', 'settled', 'overdue', 'default'] as const)[index % 4];
+  }
+
+  avatarTone(index: number): string {
+    return ['#284596', '#f4ded3', '#dbeafe', '#eef4ff'][index % 4];
+  }
+
+  avatarInk(index: number): string {
+    return ['#ffffff', '#c2502e', '#092c7d', '#092c7d'][index % 4];
+  }
 
   openAddClient() {
     const ref = this.dialog.open<string | null>(AddClientDialogueComponent, {
