@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { collectionData, Firestore } from '@angular/fire/firestore';
 import { addDoc, collection, deleteDoc, doc, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { CreateExpense, Expense } from '../models/expense.model';
 
 @Injectable({
@@ -24,6 +24,17 @@ export class ExpensesService {
     );
 
     return collectionData(q, { idField: 'id' }) as Observable<Expense[]>;
+  }
+
+
+
+  listByClient(companyId: string, clientId: string): Observable<Expense[]> {
+    const colRef = this.getCollection(companyId);
+    const q = query(colRef, where('clientId', '==', clientId));
+
+    return (collectionData(q, { idField: 'id' }) as Observable<Expense[]>).pipe(
+      map(expenses => expenses.sort((a, b) => (b.date || '').localeCompare(a.date || '')))
+    );
   }
 
   add(companyId: string, expense: CreateExpense) {

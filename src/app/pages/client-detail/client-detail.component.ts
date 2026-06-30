@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ClientService } from '../../services/client.service';
 import { take } from 'rxjs';
@@ -12,6 +12,8 @@ import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 import { InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
+import { CreateExpense, Expense } from '../../models/expense.model';
+import { ExpensesService } from '../../services/expenses.service';
 import { Client } from '../../models/client.model';
 import { CompanyDocumentStorageSettings, DOCUMENT_STORAGE_PROVIDER_LABELS, DocumentStorageProvider } from '../../models/document-storage.model';
 import { DocumentStorageService } from '../../services/document-storage.service';
@@ -20,7 +22,7 @@ import { CreateClientComponent } from '../../components/create-client/create-cli
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, NavBarComponent, OrderByDateDescPipe, CreateClientComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, NavBarComponent, OrderByDateDescPipe, CreateClientComponent],
   templateUrl: './client-detail.component.html',
   styleUrl: './client-detail.component.scss'
 })
@@ -32,12 +34,15 @@ export class ClientDetailComponent {
   private db = inject(Firestore);
   private currencyService = inject(CurrencyService);
   private documentStorageService = inject(DocumentStorageService);
+  private expensesService = inject(ExpensesService);
+  private fb = inject(FormBuilder);
   
   companyId = signal<string | null>(null);
   clientId = signal<string | null>(null);
   client = signal<Client | null>(null);
   invoices = signal<InvoiceRecord[]>([]);
   letters = signal<any[]>([]);
+  expenses = signal<Expense[]>([]);
   lastInvoice = signal<any | null>(null);
   loading = signal(true);
   currency = signal(this.currencyService.defaultCurrency);
@@ -74,17 +79,30 @@ export class ClientDetailComponent {
     { icon: '↻', title: 'Client updated', description: 'Primary contact details refreshed', time: 'Jun 20, 2026', tone: 'slate' }
   ];
 
-  readonly expenseRows = [
-    { expense: 'Travel reimbursement', category: 'Travel', date: 'Jun 18, 2026', amount: 420, status: 'Pending' },
-    { expense: 'Client dinner', category: 'Meals', date: 'Jun 14, 2026', amount: 188.40, status: 'Paid' },
-    { expense: 'Courier documents', category: 'Operations', date: 'Jun 10, 2026', amount: 38, status: 'Draft' }
+  readonly expenseCategories = [
+    'Fuel / Travel',
+    'Software / Subscriptions',
+    'Internet / Phone',
+    'Office Supplies',
+    'Equipment',
+    'Meals / Entertainment',
+    'Rent',
+    'Marketing',
+    'Other'
   ];
 
-  readonly letterRows = [
-    { letter: 'Service agreement', template: 'Enterprise MSA', created: 'Jun 12, 2026', status: 'Generated' },
-    { letter: 'Welcome letter', template: 'Onboarding', created: 'Jun 8, 2026', status: 'Sent' },
-    { letter: 'Renewal notice', template: 'Renewal', created: 'Jun 2, 2026', status: 'Draft' }
-  ];
+  expenseForm = this.fb.nonNullable.group({
+    date: [this.todayISO(), [Validators.required]],
+    description: ['', [Validators.required, Validators.minLength(2)]],
+    category: ['Other', [Validators.required]],
+    supplier: [''],
+    amount: [0, [Validators.required, Validators.min(0.01)]],
+    notes: ['']
+  });
+
+  clientExpenseTotal = computed(() =>
+    this.expenses().reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0)
+  );
 
   constructor() {
     this.route.paramMap.subscribe(params => {
@@ -121,6 +139,10 @@ export class ClientDetailComponent {
 
       this.clientSvc.getLettersForClient(clientId).subscribe(list => {
         this.letters.set(list);
+      });
+
+      this.expensesService.listByClient(companyId, clientId).subscribe(list => {
+        this.expenses.set(list);
       });
     });
   }
@@ -240,6 +262,56 @@ viewInvoice(invoice: any) {
 
 updateInvoiceTracking(invoice: any) {
   this.addInvoice(invoice, false, true);
+}
+
+
+async addClientExpense() {
+  const companyId = this.companyId();
+  const clientId = this.clientId();
+  if (!companyId || !clientId) return;
+  if (this.expenseForm.invalid) {
+    this.expenseForm.markAllAsTouched();
+    return;
+  }
+
+  const value = this.expenseForm.getRawValue();
+  const payload: CreateExpense = {
+    month: value.date.slice(0, 7),
+    date: value.date,
+    description: value.description.trim(),
+    category: value.category,
+    supplier: value.supplier?.trim() || '',
+    amount: Number(value.amount),
+    notes: value.notes?.trim() || '',
+    clientId
+  };
+
+  await this.expensesService.add(companyId, payload);
+  this.expenseForm.patchValue({
+    description: '',
+    supplier: '',
+    amount: 0,
+    notes: ''
+  });
+}
+
+async deleteClientExpense(id: string) {
+  const companyId = this.companyId();
+  if (!companyId) return;
+  await this.expensesService.remove(companyId, id);
+}
+
+formatExpenseDate(value: any): string {
+  return value ? new Date(value).toLocaleDateString() : '—';
+}
+
+pad2(n: number) {
+  return String(n).padStart(2, '0');
+}
+
+todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${this.pad2(d.getMonth() + 1)}-${this.pad2(d.getDate())}`;
 }
 
 addLetter() {
