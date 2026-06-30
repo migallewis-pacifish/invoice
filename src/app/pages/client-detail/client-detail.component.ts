@@ -138,10 +138,16 @@ export class ClientDetailComponent {
   }, 0));
 
   overdueBalance = computed(() => this.invoices().reduce((sum, invoice) => {
-    return this.normalizedInvoiceStatus(invoice) === 'overdue'
+    return this.isInvoiceOverdueForBalance(invoice)
       ? sum + this.invoiceOutstanding(invoice)
       : sum;
   }, 0));
+
+  private isInvoiceOverdueForBalance(invoice: InvoiceRecord): boolean {
+    const status = invoice.status || 'sent';
+    const canBeOverdue = status === 'sent' || status === 'partial' || status === 'overdue';
+    return canBeOverdue && this.invoiceOutstanding(invoice) > 0 && this.isPastDue(invoice.dueDate);
+  }
 
   invoiceOutstanding(invoice: InvoiceRecord): number {
     const total = Number(invoice.total) || 0;
