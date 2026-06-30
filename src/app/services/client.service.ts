@@ -68,6 +68,27 @@ export class ClientService {
     );
   }
 
+  getLettersForClient(id: string): Observable<any[]> {
+    return this.getCompanyId$().pipe(
+      switchMap(companyId => {
+        const ref = collection(this.db, `companies/${companyId}/clients/${id}/letters`);
+        const q = query(ref, orderBy('createdAt', 'desc'));
+        return collectionData(q, { idField: 'id' }).pipe(
+          map((arr: any[] | undefined) => arr ?? [])
+        );
+      })
+    );
+  }
+
+  createLetter(clientId: string, data: any): Observable<string> {
+    return this.getCompanyId$().pipe(
+      switchMap(companyId => {
+        const colRef = collection(this.db, `companies/${companyId}/clients/${clientId}/letters`);
+        return from(addDoc(colRef, data)).pipe(map(ref => ref.id));
+      })
+    );
+  }
+
   /** Creates a client under companies/{companyId}/clients */
   createClient(payload: Omit<Client, 'id' | 'createdAt' | 'createdBy'>): Observable<string> {
     return this.companyContext$().pipe(

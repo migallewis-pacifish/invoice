@@ -10,6 +10,13 @@ export class TemplateService {
   private db = inject(Firestore);
 
   async upload(companyId: string, file: File) {
+    if (!file) {
+      throw new Error('Template file is required.');
+    }
+    if (!file.name.toLowerCase().endsWith('.docx')) {
+      throw new Error('Template must be a .docx file.');
+    }
+
     const path = `companies/${companyId}/templates/invoice.docx`;
     const r = ref(this.storage, path);
     await uploadBytes(r, file);
@@ -19,6 +26,10 @@ export class TemplateService {
   }
 
   async getDownloadUrl(path: string) {
+    if (!path) {
+      throw new Error('Template path is required.');
+    }
+
     return getDownloadURL(ref(this.storage, path));
   }
 }
