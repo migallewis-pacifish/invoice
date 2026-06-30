@@ -7,7 +7,7 @@ import { InvoiceDocxService } from '../../services/invoice-docx.service';
 import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { catchError, finalize, from, map, of, switchMap, take, tap } from 'rxjs';
 import { Auth } from '@angular/fire/auth';
-import { doc, docData, Firestore } from '@angular/fire/firestore';
+import { doc, docData, Firestore, serverTimestamp } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 
 
@@ -42,7 +42,9 @@ export class AddInvoiceDialogComponent {
   lastInvoice: string;
   previousInvoice: any;
   viewOnly = false;
+  trackingOnly = false;
   form: any;
+  private syncingAmountPaid = false;
 
   constructor() {
     this.client = this.data?.client;
@@ -51,6 +53,7 @@ export class AddInvoiceDialogComponent {
     this.lastInvoice = this.data?.lastInvoice;
     this.previousInvoice = this.data?.previousInvoice;
     this.viewOnly = Boolean(this.data?.viewOnly);
+    this.trackingOnly = Boolean(this.data?.trackingOnly);
     const nextInvoiceNumber = this.viewOnly && this.previousInvoice?.invoiceNumber
       ? this.previousInvoice.invoiceNumber
       : this.getNextInvoiceNumber(this.lastInvoice);
@@ -61,8 +64,15 @@ export class AddInvoiceDialogComponent {
       servicesProvided: [this.getCopiedServicesProvided(), Validators.required],
       includeVat: [this.getCopiedIncludeVat()],
       downloadFormat: [this.previousInvoice?.downloadFormat || 'docx' as InvoiceDownloadFormat, Validators.required],
+      dueDate: [this.getCopiedDueDate()],
+      amountPaid: [this.getCopiedAmountPaid(), [Validators.required, Validators.min(0)]],
+      status: [this.getCopiedStatus(), Validators.required],
       items: this.fb.array(copiedItems.length ? copiedItems.map(item => this.createItem(item)) : [this.createItem()])
     });
+    this.form.get('status')?.valueChanges.subscribe(() => this.syncAmountPaidWithStatus());
+    this.form.get('items')?.valueChanges.subscribe(() => this.syncAmountPaidWithStatus());
+    this.form.get('includeVat')?.valueChanges.subscribe(() => this.syncAmountPaidWithStatus());
+    this.syncAmountPaidWithStatus();
 
     if (this.companyId) {
       docData(doc(this.db, `companies/${this.companyId}`)).pipe(take(1)).subscribe((company: any) => {
@@ -72,19 +82,33 @@ export class AddInvoiceDialogComponent {
       });
     }
 
-    if (this.viewOnly) {
+    if (this.viewOnly || this.trackingOnly) {
       this.form.disable({ emitEvent: false });
-      this.form.get('downloadFormat')?.enable({ emitEvent: false });
+
+      if (this.viewOnly) {
+        this.form.get('downloadFormat')?.enable({ emitEvent: false });
+      }
+
+      if (this.trackingOnly) {
+        this.form.get('dueDate')?.enable({ emitEvent: false });
+        this.form.get('amountPaid')?.enable({ emitEvent: false });
+        this.form.get('status')?.enable({ emitEvent: false });
+      }
     }
   }
 
   get items() { return this.form.get('items') as FormArray; }
 
   get dialogTitle(): string {
+    if (this.trackingOnly) return 'Update Invoice Payment';
     return this.viewOnly ? 'View Invoice' : 'Add Invoice';
   }
 
   get helperText(): string {
+    if (this.trackingOnly) {
+      return 'Update this invoice payment status, amount paid, or due date without changing invoice line details.';
+    }
+
     return this.viewOnly
       ? 'This invoice is read-only. You can change the download format and regenerate it.'
       : 'Copied from the previous invoice. Edit any details before generating.';
@@ -109,12 +133,12 @@ export class AddInvoiceDialogComponent {
   }
 
   addItem() {
-    if (this.viewOnly) return;
+    if (this.viewOnly || this.trackingOnly) return;
     this.items.push(this.createItem());
   }
 
   removeItem(i: number) {
-    if (this.viewOnly) return;
+    if (this.viewOnly || this.trackingOnly) return;
     if (this.items.length > 1) {
       this.items.removeAt(i);
     }
@@ -150,6 +174,8 @@ export class AddInvoiceDialogComponent {
     const subtotal = +items.reduce((sum: number, i: { amount: number }) => sum + i.amount, 0).toFixed(2);
     const vatAmount = includeVat ? +(subtotal * 0.15).toFixed(2) : 0;
     const total = +(subtotal + vatAmount).toFixed(2);
+    const amountPaid = this.resolveAmountPaid(formValue.status, total, formValue.amountPaid);
+    const status = this.resolveInvoiceStatus(formValue.status, total, amountPaid, formValue.dueDate);
 
     const invoiceData = {
       invoice_number: formValue.invoiceNumber,
@@ -191,6 +217,11 @@ export class AddInvoiceDialogComponent {
             excludingVat: subtotal,
             vatAmount,
             total,
+            amountPaid,
+            status,
+            dueDate: formValue.dueDate || null,
+            paidAt: status === 'paid' ? serverTimestamp() : null,
+            updatedAt: serverTimestamp(),
             notes: formValue.notes || '',
             servicesProvided,
             services_rendered: servicesProvided,
@@ -203,7 +234,7 @@ export class AddInvoiceDialogComponent {
             lineItems: items,
             filename,
             downloadFormat: formValue.downloadFormat,
-            createdAt: Date.now(),
+            createdAt: serverTimestamp(),
             createdBy: this.auth.currentUser?.uid
           })
         ).pipe(map(() => filename));
@@ -264,6 +295,103 @@ export class AddInvoiceDialogComponent {
         };
       }).filter(item => item.description || item.rate > 0)
       : [];
+  }
+
+
+  private getCopiedDueDate(): string {
+    if (!this.previousInvoice?.dueDate) return '';
+    return this.toIsoDate(this.previousInvoice.dueDate);
+  }
+
+  private getCopiedAmountPaid(): number {
+    return Number(this.previousInvoice?.amountPaid ?? 0) || 0;
+  }
+
+  saveTracking() {
+    if (!this.trackingOnly || !this.previousInvoice?.id || this.form.invalid || this.saving()) return;
+
+    this.saving.set(true);
+    this.error.set(null);
+
+    const formValue = this.form.getRawValue();
+    const total = Number(this.previousInvoice?.total) || 0;
+    const amountPaid = this.resolveAmountPaid(formValue.status, total, formValue.amountPaid);
+    const status = this.resolveInvoiceStatus(formValue.status, total, amountPaid, formValue.dueDate);
+
+    this.clientSvc.updateInvoiceTracking(this.clientId, this.previousInvoice.id, {
+      amountPaid,
+      status,
+      dueDate: formValue.dueDate || null,
+      paidAt: status === 'paid' ? serverTimestamp() : null,
+    }).pipe(
+      tap(() => this.dialog.close('Invoice payment tracking updated.')),
+      catchError((err) => {
+        console.error(err);
+        this.error.set('Failed to update invoice payment tracking.');
+        return of(undefined);
+      }),
+      finalize(() => this.saving.set(false))
+    ).subscribe();
+  }
+
+  private getCopiedStatus(): string {
+    return this.previousInvoice?.status === 'overdue' ? 'sent' : this.previousInvoice?.status || 'sent';
+  }
+
+  canEditAmountPaid(): boolean {
+    return this.form?.get('status')?.value === 'partial';
+  }
+
+  private resolveAmountPaid(status: string, total: number, amountPaid: number): number {
+    if (status === 'paid') return total;
+    if (status === 'partial') {
+      // TODO: Support overpaid invoices when credits/refunds are available.
+      return Math.min(Number(amountPaid) || 0, total);
+    }
+    return 0;
+  }
+
+  private syncAmountPaidWithStatus() {
+    if (this.syncingAmountPaid || !this.form) return;
+
+    const status = this.form.get('status')?.value;
+    if (status === 'partial') return;
+
+    this.syncingAmountPaid = true;
+    this.form.get('amountPaid')?.setValue(
+      status === 'paid' ? this.currentFormTotal() : 0,
+      { emitEvent: false }
+    );
+    this.syncingAmountPaid = false;
+  }
+
+  private currentFormTotal(): number {
+    if (this.previousInvoice?.total && (this.viewOnly || this.trackingOnly)) {
+      return Number(this.previousInvoice.total) || 0;
+    }
+
+    const items = this.form?.getRawValue()?.items ?? [];
+    const subtotal = +items.reduce((sum: number, item: any) => {
+      const rate = Number(item.rate) || 0;
+      const hours = Number(item.hours) || 0;
+      return sum + (rate * hours);
+    }, 0).toFixed(2);
+    const vatAmount = this.form?.getRawValue()?.includeVat ? +(subtotal * 0.15).toFixed(2) : 0;
+    return +(subtotal + vatAmount).toFixed(2);
+  }
+
+  private resolveInvoiceStatus(status: string, total: number, amountPaid: number, dueDate?: string): string {
+    if (status === 'draft') return 'draft';
+    if (amountPaid >= total && total > 0) return 'paid';
+    if (dueDate && new Date(dueDate) < this.startOfToday()) return 'overdue';
+    if (amountPaid > 0) return 'partial';
+    return status || 'sent';
+  }
+
+  private startOfToday(): Date {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
   }
 
   private getNextInvoiceNumber(lastInvoice: string | null): string {

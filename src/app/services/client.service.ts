@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Auth, authState } from '@angular/fire/auth';
 import { collectionData, docData, Firestore } from '@angular/fire/firestore';
-import { addDoc, collection, doc, getDoc, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { Client } from '../models/invoice.model';
 import { defer, from, map, Observable, of, switchMap, throwError } from 'rxjs';
 
@@ -63,7 +63,25 @@ export class ClientService {
     return this.getCompanyId$().pipe(
       switchMap(companyId => {
         const colRef = collection(this.db, `companies/${companyId}/clients/${clientId}/invoices`);
-        return from(addDoc(colRef, data)).pipe(map(ref => ref.id));
+        const amountPaid = Number(data?.amountPaid ?? 0) || 0;
+        return from(addDoc(colRef, {
+          ...data,
+          amountPaid,
+          status: data?.status || (amountPaid > 0 ? 'partial' : 'sent'),
+          updatedAt: data?.updatedAt || serverTimestamp(),
+        })).pipe(map(ref => ref.id));
+      })
+    );
+  }
+
+  updateInvoiceTracking(clientId: string, invoiceId: string, data: { amountPaid: number; status: string; dueDate?: any; paidAt?: any }): Observable<void> {
+    return this.getCompanyId$().pipe(
+      switchMap(companyId => {
+        const invoiceRef = doc(this.db, `companies/${companyId}/clients/${clientId}/invoices/${invoiceId}`);
+        return from(updateDoc(invoiceRef, {
+          ...data,
+          updatedAt: serverTimestamp(),
+        }));
       })
     );
   }

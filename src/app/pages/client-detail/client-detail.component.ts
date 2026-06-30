@@ -11,6 +11,7 @@ import { OrderByDateDescPipe } from './order-by-date-desc.pipe';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
+import { InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
 
 @Component({
   selector: 'app-client-detail',
@@ -30,7 +31,7 @@ export class ClientDetailComponent {
   companyId = signal<string | null>(null);
   clientId = signal<string | null>(null);
   client = signal<any | null>(null);
-  invoices = signal<any[]>([]);
+  invoices = signal<InvoiceRecord[]>([]);
   letters = signal<any[]>([]);
   lastInvoice = signal<any | null>(null);
   loading = signal(true);
@@ -131,16 +132,59 @@ export class ClientDetailComponent {
     return this.client()?.industry || 'FinTech';
   }
 
-  invoiceStatus(index: number): string {
-    // TODO: Replace mock invoice statuses with backend status fields once implemented in Firestore.
-    return ['Pending', 'Paid', 'Overdue', 'Draft'][index % 4];
+  outstandingBalance = computed(() => this.invoices().reduce((sum, invoice) => {
+    if (this.normalizedInvoiceStatus(invoice) === 'draft') return sum;
+    return sum + this.invoiceOutstanding(invoice);
+  }, 0));
+
+  overdueBalance = computed(() => this.invoices().reduce((sum, invoice) => {
+    return this.isInvoiceOverdueForBalance(invoice)
+      ? sum + this.invoiceOutstanding(invoice)
+      : sum;
+  }, 0));
+
+  private isInvoiceOverdueForBalance(invoice: InvoiceRecord): boolean {
+    const status = invoice.status || 'sent';
+    const canBeOverdue = status === 'sent' || status === 'partial' || status === 'overdue';
+    return canBeOverdue && this.invoiceOutstanding(invoice) > 0 && this.isPastDue(invoice.dueDate);
+  }
+
+  invoiceOutstanding(invoice: InvoiceRecord): number {
+    const total = Number(invoice.total) || 0;
+    const amountPaid = Number(invoice.amountPaid) || 0;
+    return Math.max(0, +(total - amountPaid).toFixed(2));
+  }
+
+  normalizedInvoiceStatus(invoice: InvoiceRecord): InvoiceStatus {
+    if (invoice.status === 'draft') return 'draft';
+    const total = Number(invoice.total) || 0;
+    const amountPaid = Number(invoice.amountPaid) || 0;
+    if (total > 0 && amountPaid >= total) return 'paid';
+    if (this.isPastDue(invoice.dueDate) && this.invoiceOutstanding(invoice) > 0) return 'overdue';
+    if (amountPaid > 0) return 'partial';
+    return invoice.status || 'sent';
+  }
+
+  invoiceStatusLabel(invoice: InvoiceRecord): string {
+    const status = this.normalizedInvoiceStatus(invoice);
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+
+  private isPastDue(value: any): boolean {
+    if (!value) return false;
+    const dueDate = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
+    if (Number.isNaN(dueDate.getTime())) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+    return dueDate < today;
   }
 
   updateNote(value: string) {
     this.noteDraft.set(value);
   }
 
-addInvoice(previousInvoice: any | null = null, viewOnly = false) {
+addInvoice(previousInvoice: any | null = null, viewOnly = false, trackingOnly = false) {
   const ref = this.dialog.open(AddInvoiceDialogComponent, {
     backdropClass: 'dlg-backdrop',
     panelClass: 'dlg-panel',
@@ -151,7 +195,8 @@ addInvoice(previousInvoice: any | null = null, viewOnly = false) {
       companyId: this.companyId(),
       lastInvoice: this.lastInvoice()?.invoiceNumber,
       previousInvoice,
-      viewOnly
+      viewOnly,
+      trackingOnly
     }
   });
 
@@ -164,6 +209,10 @@ addInvoice(previousInvoice: any | null = null, viewOnly = false) {
 
 viewInvoice(invoice: any) {
   this.addInvoice(invoice, true);
+}
+
+updateInvoiceTracking(invoice: any) {
+  this.addInvoice(invoice, false, true);
 }
 
 addLetter() {
