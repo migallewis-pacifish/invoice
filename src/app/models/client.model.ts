@@ -1,4 +1,4 @@
-import { Address } from './invoice.model';
+import { Address } from './address.model';
 
 export type ClientStatus = 'active' | 'inactive' | 'prospect' | 'archived' | string;
 
@@ -16,3 +16,6 @@ export interface Client {
   createdAt: number;
   createdBy?: string;
 }
+
+export type ClientCreate = Omit<Client, 'id' | 'createdAt' | 'createdBy'>;
+export type ClientUpdate = Partial<ClientCreate>;

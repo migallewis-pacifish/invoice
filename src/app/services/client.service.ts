@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { Auth, authState } from '@angular/fire/auth';
 import { collectionData, docData, Firestore } from '@angular/fire/firestore';
 import { addDoc, collection, doc, getDoc, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { Client } from '../models/client.model';
+import { Client, ClientUpdate } from '../models/client.model';
 import { defer, from, map, Observable, of, switchMap, throwError } from 'rxjs';
 
 @Injectable({
@@ -119,6 +119,19 @@ export class ClientService {
             createdBy: userId,
           })
         ).pipe(map(docRef => docRef.id));
+      })
+    );
+  }
+
+
+  updateClient(clientId: string, payload: ClientUpdate): Observable<void> {
+    return this.companyContext$().pipe(
+      switchMap(({ companyId }) => {
+        const clientRef = doc(this.db, `companies/${companyId}/clients/${clientId}`);
+        return from(updateDoc(clientRef, {
+          ...payload,
+          updatedAt: serverTimestamp(),
+        }));
       })
     );
   }

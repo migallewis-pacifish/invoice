@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import { of } from 'rxjs';
 import { ClientDetailComponent } from './client-detail.component';
 import { Client } from '../../models/client.model';
 
@@ -9,6 +10,8 @@ describe('ClientDetailComponent client summary', () => {
     component = Object.create(ClientDetailComponent.prototype) as ClientDetailComponent;
     component.client = signal<Client | null>(null);
     component.noteDraft = signal('');
+    component.activeTab = signal('overview' as any);
+    component.editingClient = signal(false);
   });
 
   it('uses the Firestore client displayName as the primary contact', () => {
@@ -53,4 +56,33 @@ describe('ClientDetailComponent client summary', () => {
 
     expect(component.noteDraft()).toBe('Firestore note for this client.');
   });
+
+  it('switches to the details tab when editing a client', () => {
+    component.startEditClient();
+
+    expect(component.activeTab()).toBe('details');
+    expect(component.editingClient()).toBeTrue();
+  });
+
+  it('refreshes the client model after an edit is saved', () => {
+    const updatedClient: Client = {
+      id: 'client-4',
+      displayName: 'Updated Client',
+      createdAt: 123,
+      notes: 'Updated Firestore notes.',
+      status: 'active',
+    };
+    component.clientId = signal('client-4');
+    (component as any).clientSvc = {
+      getClientById: () => of(updatedClient),
+    };
+    component.editingClient.set(true);
+
+    component.onClientSaved();
+
+    expect(component.client()).toEqual(updatedClient);
+    expect(component.noteDraft()).toBe('Updated Firestore notes.');
+    expect(component.editingClient()).toBeFalse();
+  });
+
 });

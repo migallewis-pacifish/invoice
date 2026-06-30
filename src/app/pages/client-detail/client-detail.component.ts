@@ -13,11 +13,12 @@ import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 import { InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
 import { Client } from '../../models/client.model';
+import { CreateClientComponent } from '../../components/create-client/create-client.component';
 
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, NavBarComponent, OrderByDateDescPipe],
+  imports: [CommonModule, FormsModule, RouterLink, NavBarComponent, OrderByDateDescPipe, CreateClientComponent],
   templateUrl: './client-detail.component.html',
   styleUrl: './client-detail.component.scss'
 })
@@ -39,6 +40,7 @@ export class ClientDetailComponent {
   currency = signal(this.currencyService.defaultCurrency);
   currencySymbol = computed(() => this.currencyService.symbolFor(this.currency()));
   activeTab = signal<ClientTab>('overview');
+  editingClient = signal(false);
   noteDraft = signal('');
 
   readonly tabs: { id: ClientTab; label: string }[] = [
@@ -242,6 +244,25 @@ addLetter() {
     if (filename) {
       console.log('Letter created:', filename);
     }
+  });
+}
+
+startEditClient() {
+  this.activeTab.set('details');
+  this.editingClient.set(true);
+}
+
+cancelEditClient() {
+  this.editingClient.set(false);
+}
+
+onClientSaved() {
+  const id = this.clientId();
+  if (!id) return;
+  this.clientSvc.getClientById(id).pipe(take(1)).subscribe(data => {
+    this.client.set(data);
+    this.noteDraft.set(data?.notes || '');
+    this.editingClient.set(false);
   });
 }
 

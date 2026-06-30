@@ -1,8 +1,8 @@
 <div class="client-wrapper">
   <div class="client-card">
     <div class="client-header">
-      <h2>Create Client / Company</h2>
-      <p>Add a new client you can use for once-off or recurring invoices.</p>
+      <h2>{{ isEditMode ? 'Edit Client / Company' : 'Create Client / Company' }}</h2>
+      <p>{{ isEditMode ? 'Update client profile, relationship, and address details.' : 'Add a new client you can use for once-off or recurring invoices.' }}</p>
     </div>
 
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
@@ -66,6 +66,21 @@
 
         <!-- Other info -->
         <div class="form-group half">
+          <label>Relationship Type</label>
+          <input type="text" formControlName="relationshipType" placeholder="e.g. Tenant to landlord">
+        </div>
+
+        <div class="form-group half">
+          <label>Status</label>
+          <select formControlName="status">
+            <option value="active">Active</option>
+            <option value="prospect">Prospect</option>
+            <option value="inactive">Inactive</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+
+        <div class="form-group half">
           <label>VAT Number</label>
           <input type="text" formControlName="vatNo" placeholder="(optional)">
         </div>
@@ -77,12 +92,13 @@
       </div>
 
       <div class="actions">
+        <button type="button" class="secondary" *ngIf="isEditMode" (click)="close()">Cancel</button>
         <button type="submit" [disabled]="saving()" class="primary">
-          <span *ngIf="!saving()">Save Client</span>
+          <span *ngIf="!saving()">{{ isEditMode ? 'Update Client' : 'Save Client' }}</span>
           <span *ngIf="saving()" class="spinner"></span>
         </button>
 
-        <div class="msg success" *ngIf="successId()">Saved ✓ (ID: {{ successId() }})</div>
+        <div class="msg success" *ngIf="successId()">{{ isEditMode ? 'Updated' : 'Saved' }} ✓ (ID: {{ successId() }})</div>
         <div class="msg error" *ngIf="errorMsg()">{{ errorMsg() }}</div>
       </div>
     </form>

@@ -21,7 +21,7 @@
       </div>
       <div class="entity-actions">
         <button class="secondary action-button" type="button">✉ Message</button>
-        <button class="primary action-button" type="button" (click)="setTab('details')">✎ Edit Client</button>
+        <button class="primary action-button" type="button" (click)="startEditClient()">✎ Edit Client</button>
       </div>
     </header>
 
@@ -113,12 +113,15 @@
       </section>
 
       <section *ngSwitchCase="'details'" class="card details-card">
-        <h2 class="section-title">Client Details</h2>
+        <div class="table-toolbar"><div><h2 class="section-title">Client Details</h2><p>View or edit client profile, relationship, and address information.</p></div><button class="secondary" type="button" (click)="startEditClient()" *ngIf="!editingClient()">Edit Client</button></div>
+        <app-create-client *ngIf="editingClient(); else clientDetailsReadOnly" [client]="client()" (clientSaved)="onClientSaved()" (cancel)="cancelEditClient()"></app-create-client>
+        <ng-template #clientDetailsReadOnly>
         <div class="grid-info">
           <div><h4>Address</h4><p>{{ formattedAddress }}</p></div>
           <div><h4>Contact</h4><p *ngIf="client()?.email">📧 {{ client()?.email }}</p><p *ngIf="client()?.phone">📞 {{ client()?.phone }}</p></div>
-          <div><h4>Other Details</h4><p *ngIf="client()?.vatNo">VAT No: {{ client()?.vatNo }}</p><p *ngIf="client()?.notes">Notes: {{ client()?.notes }}</p></div>
+          <div><h4>Other Details</h4><p *ngIf="client()?.relationshipType || client()?.clientType">Relationship Type: {{ relationshipType }}</p><p *ngIf="client()?.status">Status: {{ clientStatus }}</p><p *ngIf="client()?.vatNo">VAT No: {{ client()?.vatNo }}</p><p *ngIf="client()?.notes">Notes: {{ client()?.notes }}</p></div>
         </div>
+        </ng-template>
       </section>
 
       <section *ngSwitchCase="'invoices'" class="card table-card full-table-card">
