@@ -7,16 +7,18 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Dialog } from '@angular/cdk/dialog';
 import { AddClientDialogueComponent } from '../../components/add-client-dialogue/add-client-dialogue.component';
+import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 
 @Component({
   selector: 'app-client-list',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, NavBarComponent],
   templateUrl: './client-list.component.html',
   styleUrl: './client-list.component.scss'
 })
 export class ClientListComponent {
   @Input() companyId = signal<string | null>(null);
+  @Input() showNav = true;
   private router = inject(Router);
   private clientSvc = inject(ClientService);
     private dialog = inject(Dialog);

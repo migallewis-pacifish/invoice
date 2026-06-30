@@ -1,97 +1,89 @@
+<app-nav-bar></app-nav-bar>
 <div class="detail-wrap" *ngIf="!loading(); else loadingTpl">
+  <nav class="crumbs"><a routerLink="/clients">Clients</a> / {{ client()?.displayName }}</nav>
+  <h1>{{ client()?.displayName }}</h1>
 
-  <!-- Client Info Card -->
-  <div class="card">
-    <h2>{{ client()?.displayName }}</h2>
-    <div class="grid-info">
-      <div>
-        <h4>Address</h4>
-        <p>
-          {{ client()?.address?.line1 }} {{ client()?.address?.line2 }}<br>
-          {{ client()?.address?.suburb }}<br>
-          {{ client()?.address?.city }}, {{ client()?.address?.province }}<br>
-          {{ client()?.address?.postalCode }}<br>
-          {{ client()?.address?.country }}
-        </p>
-      </div>
-
-      <div>
-        <h4>Contact</h4>
-        <p *ngIf="client()?.email">📧 {{ client()?.email }}</p>
-        <p *ngIf="client()?.phone">📞 {{ client()?.phone }}</p>
-      </div>
-
-      <div>
-        <h4>Other Details</h4>
-        <p *ngIf="client()?.vatNo">VAT No: {{ client()?.vatNo }}</p>
-        <p *ngIf="client()?.notes">Notes: {{ client()?.notes }}</p>
-      </div>
-    </div>
+  <div class="tabs" aria-label="Client sections">
+    <button type="button" class="tab" [class.active]="activeTab() === 'details'" (click)="setTab('details')">Details</button>
+    <button type="button" class="tab" [class.active]="activeTab() === 'invoices'" (click)="setTab('invoices')">Invoices</button>
+    <button type="button" class="tab" [class.active]="activeTab() === 'expenses'" (click)="setTab('expenses')">Expenses</button>
+    <button type="button" class="tab" [class.active]="activeTab() === 'letters'" (click)="setTab('letters')">Letters</button>
   </div>
 
-  <!-- Invoices Card -->
-  <div class="card">
-    <div class="header-row">
-      <h3>Invoices</h3>
-      <div class="invoice-actions">
-        <button class="secondary" *ngIf="lastInvoice()" (click)="copyLastInvoice()">Copy Last Invoice</button>
-        <button class="primary" (click)="addInvoice()">Add Invoice</button>
-      </div>
-    </div>
-
-    <ng-container *ngIf="invoices().length > 0; else noInvoices">
-      <div class="invoice-list">
-        <div class="invoice-item" *ngFor="let inv of invoices() | orderByDateDesc">
-          <div>
-            <strong>{{ inv.invoiceNumber || '(unnumbered)' }}</strong><br>
-            <span>{{ inv.date | date }}</span>
-          </div>
-          <div class="invoice-item-actions">
-            <span>{{ inv.total | currency:'ZAR':'symbol' }}</span>
-            <button type="button" class="secondary small" (click)="viewInvoice(inv)">View</button>
-          </div>
+  <ng-container [ngSwitch]="activeTab()">
+    <div class="card" *ngSwitchCase="'details'">
+      <h2>Details</h2>
+      <div class="grid-info">
+        <div>
+          <h4>Address</h4>
+          <p>
+            {{ client()?.address?.line1 }} {{ client()?.address?.line2 }}<br>
+            {{ client()?.address?.suburb }}<br>
+            {{ client()?.address?.city }}, {{ client()?.address?.province }}<br>
+            {{ client()?.address?.postalCode }}<br>
+            {{ client()?.address?.country }}
+          </p>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <p *ngIf="client()?.email">📧 {{ client()?.email }}</p>
+          <p *ngIf="client()?.phone">📞 {{ client()?.phone }}</p>
+        </div>
+        <div>
+          <h4>Other Details</h4>
+          <p *ngIf="client()?.vatNo">VAT No: {{ client()?.vatNo }}</p>
+          <p *ngIf="client()?.notes">Notes: {{ client()?.notes }}</p>
         </div>
       </div>
-    </ng-container>
-
-    <ng-template #noInvoices>
-      <p class="muted">No invoices yet for this client.</p>
-    </ng-template>
-  </div>
-
-  <!-- Letters Card -->
-  <div class="card">
-    <div class="header-row">
-      <h3>Letters</h3>
-      <div class="invoice-actions">
-        <button class="primary" (click)="addLetter()">Add Letter</button>
-      </div>
     </div>
 
-    <ng-container *ngIf="letters().length > 0; else noLetters">
-      <div class="invoice-list">
-        <div class="invoice-item" *ngFor="let letter of letters() | orderByDateDesc">
-          <div>
-            <strong>{{ letter.title || '(untitled letter)' }}</strong><br>
-            <span>{{ letter.date | date }}</span>
-          </div>
-          <div class="invoice-item-actions">
-            <span>{{ letter.signedBy ? 'Signed by ' + letter.signedBy : 'Unsigned' }}</span>
-          </div>
+    <div class="card" *ngSwitchCase="'invoices'">
+      <div class="header-row">
+        <h3>Invoices</h3>
+        <div class="invoice-actions">
+          <button class="secondary" *ngIf="lastInvoice()" (click)="copyLastInvoice()">Copy Last Invoice</button>
+          <button class="primary" (click)="addInvoice()">Add Invoice</button>
         </div>
       </div>
-    </ng-container>
+      <ng-container *ngIf="invoices().length > 0; else noInvoices">
+        <div class="invoice-list">
+          <div class="invoice-item" *ngFor="let inv of invoices() | orderByDateDesc">
+            <div><strong>{{ inv.invoiceNumber || '(unnumbered)' }}</strong><br><span>{{ inv.date | date }}</span></div>
+            <div class="invoice-item-actions"><span>{{ inv.total | currency:'ZAR':'symbol' }}</span><button type="button" class="secondary small" (click)="viewInvoice(inv)">View</button></div>
+          </div>
+        </div>
+      </ng-container>
+      <ng-template #noInvoices><p class="muted">No invoices yet for this client.</p></ng-template>
+    </div>
 
-    <ng-template #noLetters>
-      <p class="muted">No letters yet for this client.</p>
-    </ng-template>
-  </div>
+    <div class="card" *ngSwitchCase="'expenses'">
+      <h3>Expenses</h3>
+      <!-- TODO: Implement client-level expenses using companies/{companyId}/clients/{clientId}/expenses. -->
+      <p>This section will manage Expenses.</p>
+    </div>
 
+    <div class="card" *ngSwitchCase="'letters'">
+      <div class="header-row">
+        <h3>Letters</h3>
+        <div class="invoice-actions"><button class="primary" (click)="addLetter()">Add Letter</button></div>
+      </div>
+      <div class="letter-types">
+        <span>Welcome Letter</span><span>Contract Agreement</span><span>Other Client Letters</span>
+      </div>
+      <!-- TODO: Split client letters by type when letter template management is implemented. -->
+      <ng-container *ngIf="letters().length > 0; else noLetters">
+        <div class="invoice-list">
+          <div class="invoice-item" *ngFor="let letter of letters() | orderByDateDesc">
+            <div><strong>{{ letter.title || '(untitled letter)' }}</strong><br><span>{{ letter.date | date }}</span></div>
+            <div class="invoice-item-actions"><span>{{ letter.signedBy ? 'Signed by ' + letter.signedBy : 'Unsigned' }}</span></div>
+          </div>
+        </div>
+      </ng-container>
+      <ng-template #noLetters><p class="muted">No letters yet for this client.</p></ng-template>
+    </div>
+  </ng-container>
 </div>
 
 <ng-template #loadingTpl>
-  <div class="loading">
-    <div class="spinner"></div>
-    <p>Loading client details...</p>
-  </div>
+  <div class="loading"><div class="spinner"></div><p>Loading client details...</p></div>
 </ng-template>

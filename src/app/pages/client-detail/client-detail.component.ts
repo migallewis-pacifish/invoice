@@ -1,17 +1,18 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ClientService } from '../../services/client.service';
 import { take } from 'rxjs';
 import { Dialog } from '@angular/cdk/dialog';
 import { AddInvoiceDialogComponent } from '../../components/add-invoice-dialog/add-invoice-dialog.component';
 import { AddLetterDialogComponent } from '../../components/add-letter-dialog/add-letter-dialog.component';
 import { OrderByDateDescPipe } from './order-by-date-desc.pipe';
+import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [CommonModule, OrderByDateDescPipe],
+  imports: [CommonModule, RouterLink, NavBarComponent, OrderByDateDescPipe],
   templateUrl: './client-detail.component.html',
   styleUrl: './client-detail.component.scss'
 })
@@ -28,6 +29,7 @@ export class ClientDetailComponent {
   letters = signal<any[]>([]);
   lastInvoice = signal<any | null>(null);
   loading = signal(true);
+  activeTab = signal<ClientTab>('details');
 
   constructor() {
     this.route.paramMap.subscribe(params => {
@@ -104,9 +106,17 @@ addLetter() {
   });
 }
 
+setTab(tab: ClientTab) {
+  this.activeTab.set(tab);
+}
+
 copyLastInvoice() {
   if (this.lastInvoice()) {
     this.addInvoice(this.lastInvoice());
   }
 }
+
 }
+
+type ClientTab = 'details' | 'invoices' | 'expenses' | 'letters';
+
