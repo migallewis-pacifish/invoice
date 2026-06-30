@@ -1,14 +1,3 @@
-export interface Client {
-  id: string;
-  displayName: string;
-  address?: Address;
-  email?: string;
-  phone?: string;
-  vatNo?: string;
-  notes?: string;
-  createdAt: number;
-}
-
 export interface InvoiceItem {
   description: string;     
   rate: string;        

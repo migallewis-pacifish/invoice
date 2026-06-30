@@ -52,11 +52,10 @@
           <dl class="summary-list">
             <div><dt>Primary Contact</dt><dd>{{ primaryContact }}</dd></div>
             <div><dt>Email</dt><dd>{{ clientEmail }}</dd></div>
-            <div><dt>Industry</dt><dd>{{ industry }}</dd></div>
+            <div><dt>Relationship Type</dt><dd>{{ relationshipType }}</dd></div>
             <div>
               <dt>Status</dt>
-              <!-- TODO: Load client status from Firestore once the backend field is implemented. -->
-              <dd><span class="status-chip status-paid">Active</span></dd>
+              <dd><span class="status-chip" [ngClass]="clientStatusClass">{{ clientStatus }}</span></dd>
             </div>
           </dl>
         </article>
@@ -108,7 +107,6 @@
             <h2 class="section-title">▱ Client Notes</h2>
             <span class="autosave">Auto-saved at 11:20 AM</span>
           </div>
-          <!-- TODO: Persist client notes to Firestore when relationship notes storage is implemented. -->
           <textarea [ngModel]="noteDraft()" (ngModelChange)="updateNote($event)" rows="6" aria-label="Client notes"></textarea>
           <div class="notes-actions"><button class="text-button" type="button">Discard</button><button class="primary" type="button">Save Note</button></div>
         </article>
