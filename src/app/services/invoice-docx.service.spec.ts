@@ -29,10 +29,10 @@ describe('InvoiceDocxService', () => {
       { description: 'Support', hours: '2.5', rate: '200' }
     ], true);
 
-    expect(totals.items.map(item => item.amount)).toEqual(['R 1,000.00', 'R 500.00']);
-    expect(totals.subtotalStr).toBe('R 1,500.00');
-    expect(totals.vatStr).toBe('R 225.00');
-    expect(totals.grandStr).toBe('R 1,725.00');
+    expect(totals.items.map(item => item.amount)).toEqual(['R 1,000.00', 'R 500.00']);
+    expect(totals.subtotalStr).toBe('R 1,500.00');
+    expect(totals.vatStr).toBe('R 225.00');
+    expect(totals.grandStr).toBe('R 1,725.00');
   });
 
   it('calculates invoice totals without VAT', () => {
@@ -40,8 +40,8 @@ describe('InvoiceDocxService', () => {
       { description: 'Development', hours: '10', rate: '100' }
     ], false);
 
-    expect(totals.subtotalStr).toBe('R 1,000.00');
-    expect(totals.vatStr).toBe('R 0.00');
-    expect(totals.grandStr).toBe('R 1,000.00');
+    expect(totals.subtotalStr).toBe('R 1,000.00');
+    expect(totals.vatStr).toBe('R 0.00');
+    expect(totals.grandStr).toBe('R 1,000.00');
   });
 });

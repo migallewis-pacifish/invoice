@@ -29,9 +29,9 @@ export class InvoiceDocxService {
     const vatNum = includeVat ? +(subtotalNum * this.VAT_RATE).toFixed(2) : 0;
     const grandNum = +(subtotalNum + vatNum).toFixed(2);
 
-    // Format money as ZAR
+    // Format money deterministically for invoice templates and CI snapshots.
     const fmt = (n: number) =>
-      new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(n);
+      `R ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     return {
       items: normalized.map(i => ({ ...i, amount: fmt(parseFloat(i.amount)) })),
