@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Auth, authState } from '@angular/fire/auth';
 import { map, take } from 'rxjs/operators';
+import { resolveAuthGuardTarget } from './guard-state';
 
 export const authGuard = () => {
   const router = inject(Router);
@@ -10,8 +11,9 @@ export const authGuard = () => {
   return authState(auth).pipe(
     take(1),
     map(user => {
-      if (user) return true;
-      router.navigate(['/login']);
+      const target = resolveAuthGuardTarget(user);
+      if (target === true) return true;
+      router.navigate([target]);
       return false;
     })
   );

@@ -3,6 +3,7 @@ import { Auth, authState } from '@angular/fire/auth';
 import { Firestore, doc, docData, getDoc } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { map, of, switchMap, take } from 'rxjs';
+import { resolveCompanyGuardTarget } from './guard-state';
 
 export const companyGuard = async () => {
   const router = inject(Router);
@@ -20,8 +21,9 @@ export const companyGuard = async () => {
       return docData(uDoc).pipe(
         take(1),
         map((u: any) => {
-          if (u?.companyId) return true;
-          router.navigate(['/register-company']);
+          const target = resolveCompanyGuardTarget(user, u?.companyId);
+          if (target === true) return true;
+          router.navigate([target]);
           return false;
         })
       );
