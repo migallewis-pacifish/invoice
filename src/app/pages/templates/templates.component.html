@@ -1,17 +1,112 @@
 <app-nav-bar></app-nav-bar>
-<main class="templates-wrap">
-  <nav class="crumbs"><a routerLink="/">Company</a> / Templates</nav>
-  <h1>Templates</h1>
 
-  <section class="card">
-    <h2>Invoice Templates</h2>
-    <p class="muted">Invoice templates belong to the company and are reused for client invoices.</p>
-    <app-upload-template [inDialog]="true"></app-upload-template>
+<main class="templates-shell">
+  <section class="templates-topbar" aria-label="Template gallery controls">
+    <label class="search-box" aria-label="Search templates">
+      <span aria-hidden="true">⌕</span>
+      <input type="search" placeholder="Search templates..." />
+    </label>
+
+    <div class="topbar-actions">
+      <button class="icon-button" type="button" aria-label="Notifications">⌁</button>
+      <div class="avatar" aria-hidden="true">AS</div>
+      <button class="top-upload" type="button" (click)="openUploadFlow()">Upload</button>
+    </div>
   </section>
 
-  <section class="card">
-    <h2>Letter Templates</h2>
-    <!-- TODO: Add company-level upload and selection for welcome, contract, and other letter templates. -->
-    <p>This section will manage Letter Templates.</p>
+  <section class="gallery-header">
+    <div>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a routerLink="/settings">Admin</a>
+        <span>›</span>
+        <span>Templates</span>
+      </nav>
+      <h1>Template Gallery</h1>
+      <p>Manage and deploy high-fidelity document structures across your workspace.</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="filter-button" type="button" (click)="onFilter()">
+        <span aria-hidden="true">⌄</span>
+        Filter
+      </button>
+      <button class="primary-action" type="button" (click)="openUploadFlow()">
+        <span aria-hidden="true">⊕</span>
+        Upload New Template
+      </button>
+    </div>
+  </section>
+
+  <section class="template-grid" aria-label="Company templates">
+    <article class="template-card" *ngFor="let template of activeTemplates()">
+      <div class="template-preview" [class.preview-letter]="template.type === 'letter'">
+        <div class="preview-paper" [class.invoice-paper]="template.type === 'invoice'">
+          <div class="paper-logo"></div>
+          <div class="paper-line short"></div>
+          <div class="paper-line"></div>
+          <div class="paper-line"></div>
+          <div class="paper-table" *ngIf="template.type === 'invoice'">
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+          </div>
+          <div class="paper-signature" *ngIf="template.type === 'letter'"></div>
+        </div>
+        <span class="template-badge type-badge">{{ template.type }}</span>
+        <span class="template-badge category-badge" *ngIf="template.category">{{ template.category }}</span>
+      </div>
+
+      <div class="template-content">
+        <div class="title-line">
+          <h2>{{ template.name }}</h2>
+          <button class="more-button" type="button" aria-label="More template actions" (click)="openMoreMenu(template)">⋮</button>
+        </div>
+        <p>{{ template.description }}</p>
+      </div>
+
+      <div class="template-actions">
+        <button class="edit-button" type="button" (click)="editTemplate(template)">Edit</button>
+        <button class="square-button" type="button" aria-label="Duplicate template" (click)="duplicateTemplate(template)">⧉</button>
+        <button class="square-button" type="button" aria-label="View or download template" (click)="viewTemplate(template)">▤</button>
+      </div>
+    </article>
+
+    <button class="upload-card" type="button" (click)="openUploadFlow()">
+      <span class="plus-icon" aria-hidden="true">＋</span>
+      <strong>New Template</strong>
+      <small>Start from a blank canvas or import a custom design.</small>
+    </button>
+  </section>
+
+  <section id="template-upload" class="upload-panel" *ngIf="showUpload()">
+    <div class="upload-heading">
+      <div>
+        <p class="eyebrow">Upload flow</p>
+        <h2>Upload New Template</h2>
+      </div>
+      <button class="filter-button" type="button" (click)="showUpload.set(false)">Close</button>
+    </div>
+    <app-upload-template [inDialog]="true" (uploaded)="onUploaded()" (cancel)="showUpload.set(false)"></app-upload-template>
+  </section>
+
+  <section class="stats-grid" aria-label="Template statistics">
+    <article class="stats-card usage-card">
+      <div class="stats-label">Usage Stats <span aria-hidden="true">▥</span></div>
+      <strong>1.2k</strong>
+      <p>Templates deployed this month <span class="trend">+12%</span></p>
+      <div class="mini-bar"><span></span></div>
+    </article>
+
+    <article class="stats-card active-types-card">
+      <div class="stats-label">Active Types <span aria-hidden="true">♧</span></div>
+      <div class="type-row"><span><i class="dot invoice-dot"></i>Invoices</span><strong>64%</strong></div>
+      <div class="type-row"><span><i class="dot letter-dot"></i>Letters</span><strong>36%</strong></div>
+    </article>
+
+    <article class="stats-card storage-card">
+      <div class="stats-label">Storage <span aria-hidden="true">☁</span></div>
+      <div class="progress-ring-placeholder" aria-label="Storage usage placeholder"></div>
+      <p>2.4 GB of 10 GB used</p>
+    </article>
   </section>
 </main>
