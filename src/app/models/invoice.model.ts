@@ -123,3 +123,28 @@ export interface RegisterWizardPayload {
   // step 5
   extraUserEmail?: string;   // optional, max 1 additional user
 }
+
+export interface CompanyTemplate {
+  id: string;
+  companyId: string;
+  type: 'invoice' | 'letter';
+  name: string;
+  storagePath: string;
+  createdAt?: number;
+}
+
+export interface BankStatementUpload {
+  id: string;
+  companyId: string;
+  fileName: string;
+  storagePath: string;
+  uploadedAt?: number;
+}
+
+export interface CompanySettings {
+  companyId: string;
+  invoiceTemplateId?: string;
+  letterTemplateId?: string;
+  storageProvider?: 'local';
+  storagePath?: string;
+}

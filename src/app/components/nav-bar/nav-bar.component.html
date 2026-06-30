@@ -1,4 +1,12 @@
-    <nav class="nav">
-      <span class="brand">Simple Invoice</span>
-      <button class="logout" (click)="logout()">Sign Out</button>
-    </nav>
+<nav class="nav">
+  <a class="brand" routerLink="/">Simple Invoice</a>
+  <div class="nav-links" aria-label="Company navigation">
+    <a routerLink="/company-details" routerLinkActive="active">Company Details</a>
+    <a routerLink="/clients" routerLinkActive="active">Clients</a>
+    <a routerLink="/templates" routerLinkActive="active">Templates</a>
+    <a routerLink="/company-expenses" routerLinkActive="active">Company Expenses</a>
+    <a routerLink="/bank-statements" routerLinkActive="active">Bank Statements</a>
+    <a routerLink="/settings" routerLinkActive="active">Settings</a>
+  </div>
+  <button class="logout" (click)="logout()">Sign Out</button>
+</nav>

@@ -7,7 +7,8 @@ export interface Expense {
   supplier?: string;
   amount: number;
   notes?: string;
-  clientId?: string | null; // optional link to client
+  // TODO: Move client-specific expenses to companies/{companyId}/clients/{clientId}/expenses; keep company expenses separate.
+  clientId?: string | null; // legacy optional link to client
   createdAt?: any;
 }
 
