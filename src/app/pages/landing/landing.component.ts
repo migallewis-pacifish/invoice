@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { Auth, authState } from '@angular/fire/auth';
 import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { take } from 'rxjs';
 import { ClientListComponent } from '../client-list/client-list.component';
 import { CommonModule } from '@angular/common';
@@ -13,7 +13,7 @@ import { LinkFolderDialogueComponent } from '../../components/link-folder-dialog
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [NavBarComponent, CommonModule, ClientListComponent],
+  imports: [NavBarComponent, CommonModule, ClientListComponent, RouterLink],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
 })
@@ -28,6 +28,32 @@ export class LandingComponent {
   templatePath = signal<string | null>(null);
 
   loading = signal(true);
+
+  chartMonths = [
+    { label: 'Jan', income: 56, expenses: 32 },
+    { label: 'Feb', income: 52, expenses: 28 },
+    { label: 'Mar', income: 68, expenses: 40 },
+    { label: 'Apr', income: 72, expenses: 36 },
+    { label: 'May', income: 60, expenses: 48 },
+    { label: 'Jun', income: 76, expenses: 24 },
+  ];
+
+  recentClients = [
+    { name: 'Lumina Digital', status: '3 Active Invoices', initials: '✦', tone: 'mint' },
+    { name: 'Vertex Solutions', status: 'Last viewed 2h ago', initials: '◈', tone: 'blue' },
+    { name: 'Nova Creative', status: 'Awaiting Payment', initials: '●', tone: 'peach' },
+  ];
+
+  upcomingPayments = [
+    { name: 'Cloud Server Subscription', meta: 'AWS Infrastructure · Due in 2 days', amount: '$1,250.00', icon: '▣', tone: 'red' },
+    { name: 'Professional Insurance Premium', meta: 'Allianz · Due in 12 days', amount: '$420.00', icon: '▤', tone: 'green' },
+  ];
+
+  activityItems = [
+    { title: 'Invoice #4203 Paid', copy: 'Lumina Digital cleared their balance of $3,500.00.', time: 'Today, 10:45 AM', icon: '◉', tone: 'navy' },
+    { title: 'New Client Registered', copy: 'Horizon Analytics has been added to your workspace.', time: 'Yesterday, 4:20 PM', icon: '☉', tone: 'light' },
+    { title: 'Expense Rejection', copy: 'The expense report for Office Supplies requires review.', time: 'Oct 24, 11:15 AM', icon: '●', tone: 'brown' },
+  ];
 
   constructor() {
     authState(this.auth).pipe(take(1)).subscribe(async (user) => {
