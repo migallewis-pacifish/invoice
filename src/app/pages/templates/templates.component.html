@@ -1,0 +1,17 @@
+<app-nav-bar></app-nav-bar>
+<main class="templates-wrap">
+  <nav class="crumbs"><a routerLink="/">Company</a> / Templates</nav>
+  <h1>Templates</h1>
+
+  <section class="card">
+    <h2>Invoice Templates</h2>
+    <p class="muted">Invoice templates belong to the company and are reused for client invoices.</p>
+    <app-upload-template [inDialog]="true"></app-upload-template>
+  </section>
+
+  <section class="card">
+    <h2>Letter Templates</h2>
+    <!-- TODO: Add company-level upload and selection for welcome, contract, and other letter templates. -->
+    <p>This section will manage Letter Templates.</p>
+  </section>
+</main>
