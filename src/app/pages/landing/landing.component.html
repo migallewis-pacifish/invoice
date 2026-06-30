@@ -1,40 +1,128 @@
 <app-nav-bar></app-nav-bar>
-<div class="wrap" *ngIf="!loading(); else loadingTpl">
-  <h1 class="title">{{ companyName() }}</h1>
 
-  <div class="card">
-    <h2>Company Details</h2>
-    <!-- TODO: Replace this dashboard summary with editable company profile details. -->
-    <p class="muted">This section will manage Company Details.</p>
-  </div>
+<main class="dashboard-shell" *ngIf="!loading(); else loadingTpl">
+  <section class="dashboard-topbar" aria-label="Workspace controls">
+    <label class="search-box" aria-label="Search workspace">
+      <span aria-hidden="true">⌕</span>
+      <input type="search" placeholder="Search workspace, clients, invoices..." />
+    </label>
 
-  <div class="card">
-    <div class="template-status">
-      <ng-container *ngIf="templatePath(); else noTemplate">
-        <div class="status-row">
-          <span class="badge ok">Invoice Template Available</span>
-          <button class="primary" (click)="openUploadTemplate()">Update Template</button>
-        </div>
-        <p class="muted">Company invoice templates are reused when generating invoices for individual clients.</p>
-      </ng-container>
-
-      <ng-template #noTemplate>
-        <div class="status-row">
-          <span class="badge warn">No Invoice Template Uploaded</span>
-          <button class="primary" (click)="openUploadTemplate()">Upload Template</button>
-        </div>
-        <p class="muted">Please upload your company Word invoice template before creating invoices.</p>
-      </ng-template>
+    <div class="topbar-actions">
+      <button class="icon-button" type="button" aria-label="Notifications">⌁</button>
+      <button class="icon-button" type="button" aria-label="Help and updates">○</button>
+      <div class="user-chip">
+        <span>
+          <strong>Alex Sterling</strong>
+          <small>Administrator</small>
+        </span>
+        <div class="avatar" aria-hidden="true">AS</div>
+      </div>
     </div>
+  </section>
 
-    <div class="status-row mt-3">
-      <span class="badge info">Storage Settings</span>
-      <button class="secondary" (click)="openLinkFolderDialog()">Link Folder</button>
+  <section class="hero-row">
+    <div>
+      <h1>Workspace Dashboard</h1>
+      <p>Welcome back. Here is what's happening with your business today.</p>
     </div>
-  </div>
+    <button class="date-filter" type="button">▣ Last 30 Days</button>
+  </section>
 
-  <app-client-list [companyId]="companyId" [showNav]="false"></app-client-list>
-</div>
+  <section class="metrics-grid" aria-label="Business summary">
+    <article class="metric-card outstanding">
+      <div class="metric-label">Outstanding <span>▣</span></div>
+      <strong>$12,450.00</strong>
+      <small class="down">-2.4% from last month</small>
+    </article>
+    <article class="metric-card revenue">
+      <div class="metric-label">Revenue <span>⌁</span></div>
+      <strong>$48,210.50</strong>
+      <small class="up">+12.8% from last month</small>
+    </article>
+    <article class="metric-card expenses">
+      <div class="metric-label">Expenses <span>▤</span></div>
+      <strong>$18,300.20</strong>
+      <small class="down">+4.1% from last month</small>
+    </article>
+    <article class="metric-card profit">
+      <div class="metric-label">Net Profit <span>▣</span></div>
+      <strong>$29,910.30</strong>
+      <small class="up">+18.5% from last month</small>
+    </article>
+  </section>
+
+  <section class="dashboard-grid">
+    <article class="panel cash-flow-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Cash Flow Analytics</h2>
+          <p>Income vs Expenses monthly comparison</p>
+        </div>
+        <div class="legend"><span class="income-dot"></span> Income <span class="expense-dot"></span> Expenses</div>
+      </div>
+
+      <div class="bar-chart" aria-label="Cash flow chart">
+        <div class="month" *ngFor="let month of chartMonths">
+          <div class="bars">
+            <span class="expense-bar" [style.height.%]="month.expenses"></span>
+            <span class="income-bar" [style.height.%]="month.income"></span>
+          </div>
+          <small>{{ month.label }}</small>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel clients-panel">
+      <div class="panel-heading compact">
+        <h2>Recent Clients</h2>
+        <a routerLink="/clients">View All</a>
+      </div>
+      <div class="client-stack">
+        <a class="client-row" routerLink="/clients" *ngFor="let client of recentClients">
+          <span class="client-logo" [class.peach]="client.tone === 'peach'" [class.blue]="client.tone === 'blue'">{{ client.initials }}</span>
+          <span><strong>{{ client.name }}</strong><small>{{ client.status }}</small></span>
+          <b>›</b>
+        </a>
+      </div>
+    </article>
+
+    <article class="panel payments-panel">
+      <div class="panel-heading compact with-border">
+        <h2>Upcoming Payments</h2>
+        <button type="button">Manage All</button>
+      </div>
+      <div class="payment-row" *ngFor="let payment of upcomingPayments">
+        <span class="payment-icon" [class.green]="payment.tone === 'green'">{{ payment.icon }}</span>
+        <span><strong>{{ payment.name }}</strong><small>{{ payment.meta }}</small></span>
+        <strong class="amount">{{ payment.amount }}</strong>
+      </div>
+    </article>
+
+    <article class="panel activity-panel">
+      <div class="panel-heading compact"><h2>Recent Activity</h2></div>
+      <div class="timeline">
+        <div class="activity-item" *ngFor="let item of activityItems">
+          <span class="activity-dot" [class.light]="item.tone === 'light'" [class.brown]="item.tone === 'brown'">{{ item.icon }}</span>
+          <div><strong>{{ item.title }}</strong><p>{{ item.copy }}</p><small>{{ item.time }}</small></div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section class="quick-actions" aria-label="Quick actions">
+    <button class="action-card invoice" type="button" (click)="openUploadTemplate()">
+      <span>▣</span><strong>{{ templatePath() ? 'Update Invoice Template' : 'Create Invoice' }}</strong>
+      <small>{{ templatePath() ? 'Refresh the company template used for client invoices.' : 'Generate a professional invoice for your clients in seconds.' }}</small>
+      <b>Start Drafting →</b>
+    </button>
+    <a class="action-card client" routerLink="/clients/new">
+      <span>☉</span><strong>Add New Client</strong><small>Register a new client profile and start managing projects.</small><b>Quick Add →</b>
+    </a>
+    <a class="action-card letter" routerLink="/templates">
+      <span>✉</span><strong>New Letter</strong><small>Send a customized formal letter or contract to a stakeholder.</small><b>Write Letter →</b>
+    </a>
+  </section>
+</main>
 
 <ng-template #loadingTpl>
   <div class="loading">
