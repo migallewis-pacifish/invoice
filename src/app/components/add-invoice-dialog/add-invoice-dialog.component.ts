@@ -44,6 +44,7 @@ export class AddInvoiceDialogComponent {
   viewOnly = false;
   trackingOnly = false;
   form: any;
+  private syncingAmountPaid = false;
 
   constructor() {
     this.client = this.data?.client;
@@ -68,6 +69,10 @@ export class AddInvoiceDialogComponent {
       status: [this.getCopiedStatus(), Validators.required],
       items: this.fb.array(copiedItems.length ? copiedItems.map(item => this.createItem(item)) : [this.createItem()])
     });
+    this.form.get('status')?.valueChanges.subscribe(() => this.syncAmountPaidWithStatus());
+    this.form.get('items')?.valueChanges.subscribe(() => this.syncAmountPaidWithStatus());
+    this.form.get('includeVat')?.valueChanges.subscribe(() => this.syncAmountPaidWithStatus());
+    this.syncAmountPaidWithStatus();
 
     if (this.companyId) {
       docData(doc(this.db, `companies/${this.companyId}`)).pipe(take(1)).subscribe((company: any) => {
@@ -169,7 +174,7 @@ export class AddInvoiceDialogComponent {
     const subtotal = +items.reduce((sum: number, i: { amount: number }) => sum + i.amount, 0).toFixed(2);
     const vatAmount = includeVat ? +(subtotal * 0.15).toFixed(2) : 0;
     const total = +(subtotal + vatAmount).toFixed(2);
-    const amountPaid = Math.min(Number(formValue.amountPaid) || 0, total);
+    const amountPaid = this.resolveAmountPaid(formValue.status, total, formValue.amountPaid);
     const status = this.resolveInvoiceStatus(formValue.status, total, amountPaid, formValue.dueDate);
 
     const invoiceData = {
@@ -310,7 +315,7 @@ export class AddInvoiceDialogComponent {
 
     const formValue = this.form.getRawValue();
     const total = Number(this.previousInvoice?.total) || 0;
-    const amountPaid = Math.min(Number(formValue.amountPaid) || 0, total);
+    const amountPaid = this.resolveAmountPaid(formValue.status, total, formValue.amountPaid);
     const status = this.resolveInvoiceStatus(formValue.status, total, amountPaid, formValue.dueDate);
 
     this.clientSvc.updateInvoiceTracking(this.clientId, this.previousInvoice.id, {
@@ -330,14 +335,56 @@ export class AddInvoiceDialogComponent {
   }
 
   private getCopiedStatus(): string {
-    return this.previousInvoice?.status || 'sent';
+    return this.previousInvoice?.status === 'overdue' ? 'sent' : this.previousInvoice?.status || 'sent';
+  }
+
+  canEditAmountPaid(): boolean {
+    return this.form?.get('status')?.value === 'partial';
+  }
+
+  private resolveAmountPaid(status: string, total: number, amountPaid: number): number {
+    if (status === 'paid') return total;
+    if (status === 'partial') {
+      // TODO: Support overpaid invoices when credits/refunds are available.
+      return Math.min(Number(amountPaid) || 0, total);
+    }
+    return 0;
+  }
+
+  private syncAmountPaidWithStatus() {
+    if (this.syncingAmountPaid || !this.form) return;
+
+    const status = this.form.get('status')?.value;
+    if (status === 'partial') return;
+
+    this.syncingAmountPaid = true;
+    this.form.get('amountPaid')?.setValue(
+      status === 'paid' ? this.currentFormTotal() : 0,
+      { emitEvent: false }
+    );
+    this.syncingAmountPaid = false;
+  }
+
+  private currentFormTotal(): number {
+    if (this.previousInvoice?.total && (this.viewOnly || this.trackingOnly)) {
+      return Number(this.previousInvoice.total) || 0;
+    }
+
+    const items = this.form?.getRawValue()?.items ?? [];
+    const subtotal = +items.reduce((sum: number, item: any) => {
+      const rate = Number(item.rate) || 0;
+      const hours = Number(item.hours) || 0;
+      return sum + (rate * hours);
+    }, 0).toFixed(2);
+    const vatAmount = this.form?.getRawValue()?.includeVat ? +(subtotal * 0.15).toFixed(2) : 0;
+    return +(subtotal + vatAmount).toFixed(2);
   }
 
   private resolveInvoiceStatus(status: string, total: number, amountPaid: number, dueDate?: string): string {
     if (status === 'draft') return 'draft';
     if (amountPaid >= total && total > 0) return 'paid';
-    if (amountPaid > 0) return 'partial';
     if (dueDate && new Date(dueDate) < this.startOfToday()) return 'overdue';
+    if (amountPaid > 0) return 'partial';
     return status || 'sent';
   }
 

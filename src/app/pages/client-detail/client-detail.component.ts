@@ -154,8 +154,8 @@ export class ClientDetailComponent {
     const total = Number(invoice.total) || 0;
     const amountPaid = Number(invoice.amountPaid) || 0;
     if (total > 0 && amountPaid >= total) return 'paid';
+    if (this.isPastDue(invoice.dueDate) && this.invoiceOutstanding(invoice) > 0) return 'overdue';
     if (amountPaid > 0) return 'partial';
-    if (this.isPastDue(invoice.dueDate)) return 'overdue';
     return invoice.status || 'sent';
   }
 
