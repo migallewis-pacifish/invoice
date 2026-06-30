@@ -42,8 +42,8 @@
       <section *ngSwitchCase="'overview'" class="overview-grid">
         <article class="card summary-card balance-card">
           <p class="eyebrow">Outstanding Balance</p>
-          <strong class="balance-amount">£12,450.00</strong>
-          <span class="overdue">▣ Overdue: £2,100.00</span>
+          <strong class="balance-amount">{{ currencySymbol() }}{{ 12450 | number:'1.2-2' }}</strong>
+          <span class="overdue">▣ Overdue: {{ currencySymbol() }}{{ 2100 | number:'1.2-2' }}</span>
           <button class="primary wide" type="button">Create Payment Link</button>
         </article>
 

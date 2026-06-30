@@ -31,22 +31,22 @@
   <section class="metrics-grid" aria-label="Business summary">
     <article class="metric-card outstanding">
       <div class="metric-label">Outstanding <span>▣</span></div>
-      <strong>$12,450.00</strong>
+      <strong>{{ currencySymbol() }}{{ 12450 | number:'1.2-2' }}</strong>
       <small class="down">-2.4% from last month</small>
     </article>
     <article class="metric-card revenue">
       <div class="metric-label">Revenue <span>⌁</span></div>
-      <strong>$48,210.50</strong>
+      <strong>{{ currencySymbol() }}{{ 48210.50 | number:'1.2-2' }}</strong>
       <small class="up">+12.8% from last month</small>
     </article>
     <article class="metric-card expenses">
       <div class="metric-label">Expenses <span>▤</span></div>
-      <strong>$18,300.20</strong>
+      <strong>{{ currencySymbol() }}{{ 18300.20 | number:'1.2-2' }}</strong>
       <small class="down">+4.1% from last month</small>
     </article>
     <article class="metric-card profit">
       <div class="metric-label">Net Profit <span>▣</span></div>
-      <strong>$29,910.30</strong>
+      <strong>{{ currencySymbol() }}{{ 29910.30 | number:'1.2-2' }}</strong>
       <small class="up">+18.5% from last month</small>
     </article>
   </section>
