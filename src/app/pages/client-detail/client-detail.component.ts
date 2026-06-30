@@ -13,6 +13,8 @@ import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 import { InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
 import { Client } from '../../models/client.model';
+import { CompanyDocumentStorageSettings, DOCUMENT_STORAGE_PROVIDER_LABELS, DocumentStorageProvider } from '../../models/document-storage.model';
+import { DocumentStorageService } from '../../services/document-storage.service';
 import { CreateClientComponent } from '../../components/create-client/create-client.component';
 
 @Component({
@@ -29,6 +31,7 @@ export class ClientDetailComponent {
   private dialog = inject(Dialog);
   private db = inject(Firestore);
   private currencyService = inject(CurrencyService);
+  private documentStorageService = inject(DocumentStorageService);
   
   companyId = signal<string | null>(null);
   clientId = signal<string | null>(null);
@@ -40,12 +43,18 @@ export class ClientDetailComponent {
   currency = signal(this.currencyService.defaultCurrency);
   currencySymbol = computed(() => this.currencyService.symbolFor(this.currency()));
   activeTab = signal<ClientTab>('overview');
+  companyStorage = signal<CompanyDocumentStorageSettings | null>(null);
+  savingClientStorage = signal(false);
+  clientStorageMessage = signal('');
+  clientStorageProvider = signal<DocumentStorageProvider | 'company_default'>('company_default');
+  clientStorageLocation = signal('');
   editingClient = signal(false);
   noteDraft = signal('');
 
   readonly tabs: { id: ClientTab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'details', label: 'Details' },
+    { id: 'documents', label: 'Documents' },
     { id: 'invoices', label: 'Invoices' },
     { id: 'expenses', label: 'Expenses' },
     { id: 'letters', label: 'Letters' }
@@ -92,10 +101,15 @@ export class ClientDetailComponent {
         this.currency.set(this.currencyService.normalize(company?.currency));
       });
 
+      this.documentStorageService.getCompanySettings(companyId).pipe(take(1)).subscribe(settings => {
+        this.companyStorage.set(settings);
+      });
+
       // Subscribe to client data
       this.clientSvc.getClientById(clientId).pipe(take(1)).subscribe(data => {
         this.client.set(data);
         this.noteDraft.set(data?.notes || '');
+        this.syncClientStorageDraft(data);
         this.loading.set(false);
       });
 
@@ -262,12 +276,72 @@ onClientSaved() {
   this.clientSvc.getClientById(id).pipe(take(1)).subscribe(data => {
     this.client.set(data);
     this.noteDraft.set(data?.notes || '');
+    this.syncClientStorageDraft(data);
     this.editingClient.set(false);
   });
 }
 
 setTab(tab: ClientTab) {
   this.activeTab.set(tab);
+}
+
+get companyDefaultProviderLabel(): string {
+  return DOCUMENT_STORAGE_PROVIDER_LABELS[this.companyStorage()?.defaultProvider || 'nexus_storage'];
+}
+
+get effectiveStorageProviderLabel(): string {
+  const clientStorage = this.client()?.documentStorage;
+  const provider = clientStorage?.inheritCompanyDefault === false && clientStorage.provider
+    ? clientStorage.provider
+    : this.companyStorage()?.defaultProvider;
+  return DOCUMENT_STORAGE_PROVIDER_LABELS[provider || 'nexus_storage'];
+}
+
+get effectiveStorageLocation(): string {
+  const storage = this.client()?.documentStorage;
+  if (storage?.inheritCompanyDefault === false) {
+    return storage.folderName || storage.folderUrl || storage.localPath || storage.externalUrl || 'Client folder not configured';
+  }
+  const company = this.companyStorage();
+  if (!company) return 'Company default loading…';
+  switch (company.defaultProvider) {
+    case 'google_drive': return company.googleDrive?.rootFolderName || company.googleDrive?.rootFolderUrl || 'Default Drive folder not configured';
+    case 'onedrive': return company.oneDrive?.rootFolderName || company.oneDrive?.rootFolderUrl || 'Default OneDrive folder not configured';
+    case 'local': return company.local?.displayName || company.local?.rootPath || 'Local folder metadata not configured';
+    case 'nexus_storage': return company.nexusStorage?.rootPath || 'Nexus Storage root not configured';
+    case 'external_link': return 'External link configured per client';
+    default: return 'Storage location not configured';
+  }
+}
+
+private syncClientStorageDraft(data: Client | null) {
+  const storage = data?.documentStorage;
+  this.clientStorageProvider.set(storage?.inheritCompanyDefault === false && storage.provider ? storage.provider : 'company_default');
+  this.clientStorageLocation.set(storage?.folderName || storage?.folderUrl || storage?.localPath || storage?.externalUrl || '');
+}
+
+async saveClientStorage() {
+  const companyId = this.companyId();
+  const clientId = this.clientId();
+  if (!companyId || !clientId) return;
+  const provider = this.clientStorageProvider();
+  const location = this.clientStorageLocation().trim();
+  this.savingClientStorage.set(true);
+  this.clientStorageMessage.set('');
+  try {
+    await this.documentStorageService.setClientStorage(companyId, clientId, {
+      inheritCompanyDefault: provider === 'company_default',
+      provider: provider === 'company_default' ? undefined : provider,
+      folderName: location || undefined,
+      folderUrl: location.startsWith('http') ? location : undefined,
+      localPath: provider === 'local' ? location || undefined : undefined,
+      externalUrl: provider === 'external_link' ? location || undefined : undefined,
+    });
+    this.clientStorageMessage.set('Client document storage saved.');
+    this.onClientSaved();
+  } finally {
+    this.savingClientStorage.set(false);
+  }
 }
 
 copyLastInvoice() {
@@ -278,4 +352,4 @@ copyLastInvoice() {
 
 }
 
-type ClientTab = 'overview' | 'details' | 'invoices' | 'expenses' | 'letters';
+type ClientTab = 'overview' | 'details' | 'documents' | 'invoices' | 'expenses' | 'letters';
