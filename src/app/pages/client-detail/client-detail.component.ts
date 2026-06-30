@@ -12,11 +12,13 @@ import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 import { InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
+import { Client } from '../../models/client.model';
+import { CreateClientComponent } from '../../components/create-client/create-client.component';
 
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, NavBarComponent, OrderByDateDescPipe],
+  imports: [CommonModule, FormsModule, RouterLink, NavBarComponent, OrderByDateDescPipe, CreateClientComponent],
   templateUrl: './client-detail.component.html',
   styleUrl: './client-detail.component.scss'
 })
@@ -30,7 +32,7 @@ export class ClientDetailComponent {
   
   companyId = signal<string | null>(null);
   clientId = signal<string | null>(null);
-  client = signal<any | null>(null);
+  client = signal<Client | null>(null);
   invoices = signal<InvoiceRecord[]>([]);
   letters = signal<any[]>([]);
   lastInvoice = signal<any | null>(null);
@@ -38,7 +40,8 @@ export class ClientDetailComponent {
   currency = signal(this.currencyService.defaultCurrency);
   currencySymbol = computed(() => this.currencyService.symbolFor(this.currency()));
   activeTab = signal<ClientTab>('overview');
-  noteDraft = signal('Velocity Dynamics is expanding their London office. Sarah mentioned a potential renewal for their enterprise package in Q1 2024. Keep an eye on their usage metrics next week. Their accounting prefers VAT invoices sent directly to invoicing@client.io.');
+  editingClient = signal(false);
+  noteDraft = signal('');
 
   readonly tabs: { id: ClientTab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
@@ -92,6 +95,7 @@ export class ClientDetailComponent {
       // Subscribe to client data
       this.clientSvc.getClientById(clientId).pipe(take(1)).subscribe(data => {
         this.client.set(data);
+        this.noteDraft.set(data?.notes || '');
         this.loading.set(false);
       });
 
@@ -121,15 +125,24 @@ export class ClientDetailComponent {
   }
 
   get primaryContact(): string {
-    return this.client()?.contactName || this.client()?.primaryContact || 'Sarah Jenkins';
+    return this.client()?.displayName || 'Not provided';
   }
 
   get clientEmail(): string {
-    return this.client()?.email || 'sarah@velocity.io';
+    return this.client()?.email || 'Not provided';
   }
 
-  get industry(): string {
-    return this.client()?.industry || 'FinTech';
+  get relationshipType(): string {
+    return this.client()?.relationshipType || this.client()?.clientType || 'Not provided';
+  }
+
+  get clientStatus(): string {
+    return this.client()?.status || 'Not provided';
+  }
+
+  get clientStatusClass(): string {
+    const normalized = this.clientStatus.toLowerCase().replace(/[^a-z0-9-]+/g, '-');
+    return normalized === 'not-provided' ? 'status-draft' : `status-${normalized}`;
   }
 
   outstandingBalance = computed(() => this.invoices().reduce((sum, invoice) => {
@@ -231,6 +244,25 @@ addLetter() {
     if (filename) {
       console.log('Letter created:', filename);
     }
+  });
+}
+
+startEditClient() {
+  this.activeTab.set('details');
+  this.editingClient.set(true);
+}
+
+cancelEditClient() {
+  this.editingClient.set(false);
+}
+
+onClientSaved() {
+  const id = this.clientId();
+  if (!id) return;
+  this.clientSvc.getClientById(id).pipe(take(1)).subscribe(data => {
+    this.client.set(data);
+    this.noteDraft.set(data?.notes || '');
+    this.editingClient.set(false);
   });
 }
 

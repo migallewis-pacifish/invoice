@@ -1,7 +1,7 @@
 import { Component, effect, inject, Input, signal } from '@angular/core';
 import { ClientService } from '../../services/client.service';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { Client } from '../../models/invoice.model';
+import { Client } from '../../models/client.model';
 import { combineLatest, map, Observable, of, startWith, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';

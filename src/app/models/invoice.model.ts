@@ -1,13 +1,4 @@
-export interface Client {
-  id: string;
-  displayName: string;
-  address?: Address;
-  email?: string;
-  phone?: string;
-  vatNo?: string;
-  notes?: string;
-  createdAt: number;
-}
+import { Address } from './address.model';
 
 export interface InvoiceItem {
   description: string;     
@@ -59,16 +50,6 @@ export interface InvoiceRecord {
   updatedAt?: any;
   createdAt?: any;
   createdBy?: string;
-}
-
-export interface Address {
-  line1?: string;
-  line2?: string;
-  suburb?: string;
-  city?: string;
-  province?: string;
-  postalCode?: string;
-  country?: string;
 }
 
 export interface Banking {
