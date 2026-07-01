@@ -414,9 +414,9 @@ async saveClientStorage() {
 }
 
 copyLastInvoice() {
-  if (this.lastInvoice()) {
-    this.addInvoice(this.lastInvoice());
-  }
+  const invoiceToCopy = this.lastInvoice();
+  if (!invoiceToCopy) return;
+  this.addInvoice(invoiceToCopy);
 }
 
 }
