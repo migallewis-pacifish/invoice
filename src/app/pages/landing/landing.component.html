@@ -62,8 +62,8 @@
       </div>
 
       <div class="bar-chart" aria-label="Cash flow chart">
-        <div class="month" *ngFor="let month of chartMonths">
-          <div class="bars">
+        <div class="month" *ngFor="let month of chartMonths()">
+          <div class="bars" [attr.title]="month.label + ': Income ' + currencySymbol() + (month.incomeTotal | number:'1.2-2') + ' · Expenses ' + currencySymbol() + (month.expenseTotal | number:'1.2-2')">
             <span class="expense-bar" [style.height.%]="month.expenses"></span>
             <span class="income-bar" [style.height.%]="month.income"></span>
           </div>

@@ -54,14 +54,30 @@ export class LandingComponent {
 
   loading = signal(true);
 
-  chartMonths = [
-    { label: 'Jan', income: 56, expenses: 32 },
-    { label: 'Feb', income: 52, expenses: 28 },
-    { label: 'Mar', income: 68, expenses: 40 },
-    { label: 'Apr', income: 72, expenses: 36 },
-    { label: 'May', income: 60, expenses: 48 },
-    { label: 'Jun', income: 76, expenses: 24 },
-  ];
+  chartMonths = computed(() => {
+    const months = this.lastSixMonths();
+    const rows = months.map(month => {
+      const incomeTotal = this.invoices()
+        .filter(invoice => this.invoiceMonthKey(invoice) === month.key)
+        .reduce((sum, invoice) => sum + this.invoiceRevenue(invoice), 0);
+      const expenseTotal = this.expenses()
+        .filter(expense => this.expenseMonthKey(expense) === month.key)
+        .reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
+
+      return {
+        ...month,
+        incomeTotal,
+        expenseTotal
+      };
+    });
+    const maxAmount = Math.max(1, ...rows.flatMap(month => [month.incomeTotal, month.expenseTotal]));
+
+    return rows.map(month => ({
+      ...month,
+      income: this.toChartHeight(month.incomeTotal, maxAmount),
+      expenses: this.toChartHeight(month.expenseTotal, maxAmount)
+    }));
+  });
 
   recentClients = [
     { name: 'Lumina Digital', status: '3 Active Invoices', initials: '✦', tone: 'mint' },
@@ -149,6 +165,41 @@ export class LandingComponent {
     if (total > 0 && amountPaid >= total) return 'paid';
     if (amountPaid > 0) return 'partial';
     return invoice.status || 'sent';
+  }
+
+
+  private invoiceMonthKey(invoice: InvoiceRecord): string | null {
+    return this.monthKeyFromValue(invoice.paidAt || invoice.date || invoice.createdAt || invoice.dueDate);
+  }
+
+  private expenseMonthKey(expense: Expense): string | null {
+    if (expense.month) return expense.month;
+    return this.monthKeyFromValue(expense.date || expense.createdAt);
+  }
+
+  private lastSixMonths() {
+    const formatter = new Intl.DateTimeFormat('en', { month: 'short' });
+    const today = new Date();
+
+    return Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(today.getFullYear(), today.getMonth() - (5 - index), 1);
+      return {
+        key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+        label: formatter.format(date)
+      };
+    });
+  }
+
+  private monthKeyFromValue(value: any): string | null {
+    if (!value) return null;
+    const date = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  private toChartHeight(amount: number, maxAmount: number): number {
+    if (amount <= 0) return 0;
+    return Math.max(4, Math.round((amount / maxAmount) * 100));
   }
 
   openLinkFolderDialog() {
