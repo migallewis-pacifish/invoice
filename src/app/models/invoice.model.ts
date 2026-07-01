@@ -133,6 +133,7 @@ export interface CompanyTemplate {
   storagePath: string;
   fileName?: string;
   isDefault?: boolean;
+  archived?: boolean;
   createdAt?: number;
   updatedAt?: number;
 }
