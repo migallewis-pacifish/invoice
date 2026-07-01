@@ -15,7 +15,7 @@ import { ExpensesService } from '../../services/expenses.service';
 import { Expense } from '../../models/expense.model';
 import { ActivityRecord } from '../../models/activity.model';
 import { ActivityService } from '../../services/activity.service';
-import { InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
+import { AppUser, InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
 
 @Component({
   selector: 'app-landing',
@@ -42,6 +42,9 @@ export class LandingComponent {
   invoices = signal<InvoiceRecord[]>([]);
   expenses = signal<Expense[]>([]);
   activities = signal<ActivityRecord[]>([]);
+  signedInUserName = signal('Workspace User');
+  signedInUserRole = signal('Team Member');
+  signedInUserInitials = computed(() => this.initialsFor(this.signedInUserName()));
 
   outstanding = computed(() => this.invoices().reduce((sum, invoice) => {
     if (this.normalizedInvoiceStatus(invoice) === 'draft') return sum;
@@ -83,10 +86,27 @@ export class LandingComponent {
     }));
   });
 
-  upcomingPayments = [
-    { name: 'Cloud Server Subscription', meta: 'AWS Infrastructure · Due in 2 days', amount: 1250, icon: '▣', tone: 'red' },
-    { name: 'Professional Insurance Premium', meta: 'Allianz · Due in 12 days', amount: 420, icon: '▤', tone: 'green' },
-  ];
+  upcomingPayments = computed(() => {
+    const today = this.startOfToday();
+
+    return this.invoices()
+      .map(invoice => ({
+        invoice,
+        dueDate: this.dateFromValue(invoice.dueDate),
+        outstanding: this.invoiceOutstanding(invoice),
+        status: this.normalizedInvoiceStatus(invoice),
+      }))
+      .filter(item => item.dueDate && item.dueDate >= today && item.outstanding > 0 && item.status !== 'draft' && item.status !== 'paid')
+      .sort((a, b) => a.dueDate!.getTime() - b.dueDate!.getTime())
+      .slice(0, 5)
+      .map(item => ({
+        name: item.invoice.invoiceNumber || item.invoice.filename || 'Invoice payment',
+        meta: `${this.invoiceStatusLabel(item.status)} · ${this.formatDueDate(item.dueDate!)}`,
+        amount: item.outstanding,
+        icon: item.status === 'overdue' ? '!' : '▣',
+        tone: item.status === 'partial' ? 'green' : 'red',
+      }));
+  });
 
   activityItems = computed(() => this.activities().map(activity => ({
     ...activity,
@@ -101,7 +121,8 @@ export class LandingComponent {
     authState(this.auth).pipe(take(1)).subscribe(async (user) => {
       if (!user) { this.router.navigate(['/login']); return; }
       const userRef = doc(this.db, `users/${user.uid}`);
-      const userSnap = await docData(userRef).pipe(take(1)).toPromise() as any;
+      const userSnap = await docData(userRef).pipe(take(1)).toPromise() as AppUser | undefined;
+      this.setSignedInUser(user, userSnap);
       const companyId = userSnap?.companyId;
       if (!companyId) { this.router.navigate(['/register-company']); return; }
 
@@ -149,6 +170,58 @@ export class LandingComponent {
     });
   }
 
+  private setSignedInUser(user: { displayName: string | null; email: string | null; }, profile?: AppUser): void {
+    const displayName = user.displayName || profile?.email || user.email || 'Workspace User';
+    this.signedInUserName.set(displayName);
+    this.signedInUserRole.set(this.roleLabel(profile?.role));
+  }
+
+  private roleLabel(role?: AppUser['role']): string {
+    if (!role) return 'Team Member';
+    return role.charAt(0).toUpperCase() + role.slice(1);
+  }
+
+  private initialsFor(name: string): string {
+    const source = name.includes('@') ? name.split('@')[0] : name;
+    const parts = source.split(/[\s._-]+/).filter(Boolean);
+    const initials = parts.slice(0, 2).map(part => part.charAt(0).toUpperCase()).join('');
+    return initials || 'WU';
+  }
+
+  private invoiceStatusLabel(status: InvoiceStatus): string {
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+
+  private formatDueDate(dueDate: Date): string {
+    const today = this.startOfToday();
+    const due = this.startOfDay(dueDate);
+    const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+    if (diffDays === 0) return 'Due today';
+    if (diffDays === 1) return 'Due tomorrow';
+    return `Due in ${diffDays} days`;
+  }
+
+  private isPastDue(value: any): boolean {
+    const date = this.dateFromValue(value);
+    return !!date && this.startOfDay(date) < this.startOfToday();
+  }
+
+  private dateFromValue(value: any): Date | null {
+    if (!value) return null;
+    const date = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  private startOfToday(): Date {
+    return this.startOfDay(new Date());
+  }
+
+  private startOfDay(date: Date): Date {
+    const clone = new Date(date);
+    clone.setHours(0, 0, 0, 0);
+    return clone;
+  }
+
 
   private invoiceOutstanding(invoice: InvoiceRecord): number {
     const total = Number(invoice.total) || 0;
@@ -168,6 +241,7 @@ export class LandingComponent {
     const total = Number(invoice.total) || 0;
     const amountPaid = Number(invoice.amountPaid) || 0;
     if (total > 0 && amountPaid >= total) return 'paid';
+    if (this.isPastDue(invoice.dueDate) && this.invoiceOutstanding(invoice) > 0) return 'overdue';
     if (amountPaid > 0) return 'partial';
     return invoice.status || 'sent';
   }

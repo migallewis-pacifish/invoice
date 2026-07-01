@@ -12,10 +12,10 @@
       <button class="icon-button" type="button" aria-label="Help and updates">○</button>
       <div class="user-chip">
         <span>
-          <strong>Alex Sterling</strong>
-          <small>Administrator</small>
+          <strong>{{ signedInUserName() }}</strong>
+          <small>{{ signedInUserRole() }}</small>
         </span>
-        <div class="avatar" aria-hidden="true">AS</div>
+        <div class="avatar" aria-hidden="true">{{ signedInUserInitials() }}</div>
       </div>
     </div>
   </section>
@@ -77,11 +77,12 @@
         <h2>Upcoming Payments</h2>
         <button type="button">Manage All</button>
       </div>
-      <div class="payment-row" *ngFor="let payment of upcomingPayments">
+      <div class="payment-row" *ngFor="let payment of upcomingPayments()">
         <span class="payment-icon" [class.green]="payment.tone === 'green'">{{ payment.icon }}</span>
         <span><strong>{{ payment.name }}</strong><small>{{ payment.meta }}</small></span>
         <strong class="amount">{{ currencySymbol() }}{{ payment.amount | number:'1.2-2' }}</strong>
       </div>
+      <p class="empty-activity" *ngIf="upcomingPayments().length === 0">No upcoming payments due.</p>
     </article>
 
     <article class="panel activity-panel expanded-activity-panel">
