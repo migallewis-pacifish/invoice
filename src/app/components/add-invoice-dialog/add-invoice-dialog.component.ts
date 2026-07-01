@@ -11,7 +11,7 @@ import { doc, docData, Firestore, serverTimestamp } from '@angular/fire/firestor
 import { CurrencyService } from '../../services/currency.service';
 
 
-type InvoiceDownloadFormat = 'docx' | 'pdf';
+type InvoiceDownloadFormat = 'docx';
 
 @Component({
   selector: 'app-add-invoice-dialog',
@@ -63,10 +63,10 @@ export class AddInvoiceDialogComponent {
       notes: [this.previousInvoice?.notes || ''],
       servicesProvided: [this.getCopiedServicesProvided(), Validators.required],
       includeVat: [this.getCopiedIncludeVat()],
-      downloadFormat: [this.previousInvoice?.downloadFormat || 'docx' as InvoiceDownloadFormat, Validators.required],
+      downloadFormat: ['docx' as InvoiceDownloadFormat, Validators.required],
       dueDate: [this.getCopiedDueDate()],
-      amountPaid: [this.getCopiedAmountPaid(), [Validators.required, Validators.min(0)]],
-      status: [this.getCopiedStatus(), Validators.required],
+      amountPaid: [this.getInitialAmountPaid(), [Validators.required, Validators.min(0)]],
+      status: [this.getInitialStatus(), Validators.required],
       items: this.fb.array(copiedItems.length ? copiedItems.map(item => this.createItem(item)) : [this.createItem()])
     });
     this.form.get('status')?.valueChanges.subscribe(() => this.syncAmountPaidWithStatus());
@@ -84,10 +84,6 @@ export class AddInvoiceDialogComponent {
 
     if (this.viewOnly || this.trackingOnly) {
       this.form.disable({ emitEvent: false });
-
-      if (this.viewOnly) {
-        this.form.get('downloadFormat')?.enable({ emitEvent: false });
-      }
 
       if (this.trackingOnly) {
         this.form.get('dueDate')?.enable({ emitEvent: false });
@@ -110,7 +106,7 @@ export class AddInvoiceDialogComponent {
     }
 
     return this.viewOnly
-      ? 'This invoice is read-only. You can change the download format and regenerate it.'
+      ? 'This invoice is read-only. You can regenerate it as a Word document.'
       : 'Copied from the previous invoice. Edit any details before generating.';
   }
 
@@ -174,8 +170,8 @@ export class AddInvoiceDialogComponent {
     const subtotal = +items.reduce((sum: number, i: { amount: number }) => sum + i.amount, 0).toFixed(2);
     const vatAmount = includeVat ? +(subtotal * 0.15).toFixed(2) : 0;
     const total = +(subtotal + vatAmount).toFixed(2);
-    const amountPaid = this.resolveAmountPaid(formValue.status, total, formValue.amountPaid);
-    const status = this.resolveInvoiceStatus(formValue.status, total, amountPaid, formValue.dueDate);
+    const amountPaid = this.viewOnly ? this.resolveAmountPaid(formValue.status, total, formValue.amountPaid) : 0;
+    const status = this.viewOnly ? this.resolveInvoiceStatus(formValue.status, total, amountPaid, formValue.dueDate) : 'sent';
 
     const invoiceData = {
       invoice_number: formValue.invoiceNumber,
@@ -199,9 +195,7 @@ export class AddInvoiceDialogComponent {
       shouldIncludeVAT: includeVat
     };
 
-    const generate$ = formValue.downloadFormat === 'pdf'
-      ? from(this.invoiceDocx.generatePdf(this.companyId, invoiceData)).pipe(map(() => `${invoiceData.invoice_number}.pdf`))
-      : this.invoiceDocx.generateAndSave(this.companyId, invoiceData);
+    const generate$ = this.invoiceDocx.generateAndSave(this.companyId, invoiceData);
 
     generate$.pipe(
       switchMap(filename => {
@@ -299,12 +293,21 @@ export class AddInvoiceDialogComponent {
 
 
   private getCopiedDueDate(): string {
-    if (!this.previousInvoice?.dueDate) return '';
-    return this.toIsoDate(this.previousInvoice.dueDate);
+    if ((this.viewOnly || this.trackingOnly) && this.previousInvoice?.dueDate) {
+      return this.toIsoDate(this.previousInvoice.dueDate);
+    }
+
+    return this.getDefaultDueDate();
   }
 
-  private getCopiedAmountPaid(): number {
-    return Number(this.previousInvoice?.amountPaid ?? 0) || 0;
+  private getDefaultDueDate(): string {
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 5);
+    return dueDate.toISOString().slice(0, 10);
+  }
+
+  private getInitialAmountPaid(): number {
+    return this.trackingOnly ? Number(this.previousInvoice?.amountPaid ?? 0) || 0 : 0;
   }
 
   saveTracking() {
@@ -334,7 +337,8 @@ export class AddInvoiceDialogComponent {
     ).subscribe();
   }
 
-  private getCopiedStatus(): string {
+  private getInitialStatus(): string {
+    if (!this.trackingOnly) return 'sent';
     return this.previousInvoice?.status === 'overdue' ? 'sent' : this.previousInvoice?.status || 'sent';
   }
 

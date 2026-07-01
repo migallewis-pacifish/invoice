@@ -9,7 +9,8 @@
     "test": "ng test",
     "serve:ssr:invoice": "node dist/invoice/server/server.mjs",
     "test:ci": "ng test --watch=false --browsers=ChromeHeadlessCI --karma-config=karma.conf.cjs --include=src/app/services/invoice-docx.service.spec.ts --include=src/app/services/register.service.spec.ts --include=src/app/services/template.service.spec.ts --include=src/app/utils/guard-state.spec.ts --code-coverage=false",
-    "test:rules": "npx --yes firebase-tools@13.35.1 emulators:exec --only firestore --project demo-invoice-ci \"node test/firestore-rules.test.mjs\""
+    "test:rules": "npx --yes firebase-tools@13.35.1 emulators:exec --only firestore --project demo-invoice-ci \"node test/firestore-rules.test.mjs\"",
+    "migrate:templates": "node scripts/migrate-company-template-paths.mjs"
   },
   "private": true,
   "dependencies": {

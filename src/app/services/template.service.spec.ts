@@ -3,6 +3,7 @@ import { Firestore } from '@angular/fire/firestore';
 import { Storage } from '@angular/fire/storage';
 
 import { TemplateService } from './template.service';
+import { ActivityService } from './activity.service';
 
 describe('TemplateService', () => {
   let service: TemplateService;
@@ -11,7 +12,8 @@ describe('TemplateService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: Storage, useValue: {} },
-        { provide: Firestore, useValue: {} }
+        { provide: Firestore, useValue: {} },
+        { provide: ActivityService, useValue: { track: (_companyId: string, _changeType: string, _entityPath: string, _description: string, operation: () => Promise<unknown>) => operation() } }
       ]
     });
     service = TestBed.inject(TemplateService);
