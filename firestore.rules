@@ -69,7 +69,12 @@ service cloud.firestore {
       }
 
       match /templates/{templateId} {
-        allow read, write: if isCompanyMember(companyId);
+        allow read: if isCompanyMember(companyId);
+        allow create, update: if isCompanyMember(companyId)
+          && request.resource.data.companyId == companyId
+          && request.resource.data.type in ['invoice', 'letter']
+          && request.resource.data.storagePath is string;
+        allow delete: if isCompanyMember(companyId);
       }
     }
 

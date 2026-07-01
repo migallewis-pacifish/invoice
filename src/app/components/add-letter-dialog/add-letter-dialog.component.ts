@@ -128,7 +128,9 @@ export class AddLetterDialogComponent {
   private loadCompanyLetterSettings() {
     if (!this.companyId) return;
     docData(doc(this.db, `companies/${this.companyId}`)).pipe(take(1)).subscribe(async (company: any) => {
-      this.templatePath.set(company?.letterTemplatePath || null);
+      docData(doc(this.db, `companies/${this.companyId}/templates/letter`)).pipe(take(1)).subscribe((template: any) => {
+        this.templatePath.set(template?.storagePath || null);
+      });
       const signatures = await Promise.all((company?.signatures || []).map(async (sig: LetterSignature) => ({
         ...sig,
         url: sig.url || await getDownloadURL(ref(this.storage, sig.path)).catch(() => '')

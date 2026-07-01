@@ -1,12 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { InvoiceData, InvoiceItem, Company } from '../models/invoice.model';
+import { TemplateService } from './template.service';
 import { CurrencyService } from './currency.service';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { saveAs } from 'file-saver';
 import { Observable, catchError, from, map, switchMap, take, throwError } from 'rxjs';
-import { doc, docData, Firestore, getDoc } from '@angular/fire/firestore';
+import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 
 @Injectable({
@@ -14,12 +15,12 @@ import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 })
 export class InvoiceDocxService {
 
-  private templateUrl = 'templates/DhlebelaInc.docx';
   private VAT_RATE = 0.15;
   private storage = inject(Storage);
   private http = inject(HttpClient);
   private db = inject(Firestore);
   private currencyService = inject(CurrencyService);
+  private templateService = inject(TemplateService);
 
   calculateInvoiceTotals(items: InvoiceItem[], includeVat = true, currencyCode?: string | null) {
     // compute per-line totals if missing
@@ -85,13 +86,15 @@ export class InvoiceDocxService {
           return throwError(() => new Error('Company not found.'));
         }
         const company = companyRaw as Company;
-        const templatePath = company?.templatePath;
-        if (!templatePath) {
-          return throwError(() => new Error('No templatePath found for company.'));
-        }
-        const templateRef = ref(this.storage, templatePath);
-        return from(getDownloadURL(templateRef)).pipe(
-          map(url => ({ url, company }))
+        return this.templateService.getDefaultTemplate(companyId, 'invoice').pipe(
+          take(1),
+          switchMap(template => {
+            if (!template?.storagePath) {
+              return throwError(() => new Error('No invoice template found for company.'));
+            }
+            const templateRef = ref(this.storage, template.storagePath);
+            return from(getDownloadURL(templateRef)).pipe(map(url => ({ url, company })));
+          })
         );
       }),
       switchMap(({ url, company }) =>

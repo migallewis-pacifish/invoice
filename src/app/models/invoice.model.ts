@@ -68,8 +68,6 @@ export interface Company {
   email?: string;
   vatNo?: string;
   banking?: Banking;
-  templatePath?: string;
-  letterTemplatePath?: string;
   signatures?: import('./letter.model').LetterSignature[];        
   users: string[];             
   createdAt: number;
@@ -133,7 +131,10 @@ export interface CompanyTemplate {
   type: 'invoice' | 'letter';
   name: string;
   storagePath: string;
+  fileName?: string;
+  isDefault?: boolean;
   createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface BankStatementUpload {
