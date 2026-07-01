@@ -62,15 +62,12 @@
 
         <article class="card summary-card document-list">
           <div class="card-heading compact-heading">
-            <h2 class="section-title">Recent Documents</h2>
-            <button class="link-button" type="button">View All</button>
+            <h2 class="section-title">Invoices</h2>
           </div>
-          <!-- TODO: Replace mock documents with Firestore-backed client document records. -->
-          <div class="document-row" *ngFor="let doc of documents">
-            <span class="document-icon">{{ doc.icon }}</span>
-            <div><strong>{{ doc.name }}</strong><small>{{ doc.created }} · {{ doc.size }}</small></div>
-            <button class="icon-action" type="button" aria-label="Download document">⇩</button>
-          </div>
+          <dl class="summary-list">
+            <div><dt>Total</dt><dd>{{ invoiceTotal() }} total</dd></div>
+            <div><dt>Overdue</dt><dd>{{ overdueInvoiceTotal() }} overdue</dd></div>
+          </dl>
         </article>
 
         <article class="card table-card recent-invoices-card">
@@ -92,14 +89,14 @@
         </article>
 
         <article class="card timeline-card">
-          <h2 class="section-title">Activity Feed</h2>
-          <!-- TODO: Load timeline events from activity history once that backend collection is available. -->
-          <div class="timeline">
-            <div class="timeline-item" *ngFor="let event of activityEvents">
-              <span class="timeline-dot" [ngClass]="event.tone">{{ event.icon }}</span>
-              <div><strong>{{ event.title }}</strong><p>{{ event.description }}</p><small>{{ event.time }}</small></div>
-            </div>
-          </div>
+          <h2 class="section-title">Letters</h2>
+          <dl class="summary-list">
+            <div><dt>Sent</dt><dd>{{ sentLetterTotal() }} sent</dd></div>
+          </dl>
+          <h2 class="section-title documents-total-heading">Documents</h2>
+          <dl class="summary-list">
+            <div><dt>Total</dt><dd>{{ documentTotal }}</dd></div>
+          </dl>
         </article>
 
         <article class="card notes-card">
