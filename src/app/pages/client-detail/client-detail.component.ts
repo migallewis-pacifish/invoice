@@ -14,6 +14,7 @@ import { CurrencyService } from '../../services/currency.service';
 import { InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
 import { CreateExpense, Expense } from '../../models/expense.model';
 import { ExpensesService } from '../../services/expenses.service';
+import { ExpensesComponent } from '../../components/expenses/expenses.component';
 import { Client } from '../../models/client.model';
 import { CompanyDocumentStorageSettings, DOCUMENT_STORAGE_PROVIDER_LABELS, DocumentStorageProvider } from '../../models/document-storage.model';
 import { DocumentStorageService } from '../../services/document-storage.service';
@@ -22,7 +23,7 @@ import { CreateClientComponent } from '../../components/create-client/create-cli
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, NavBarComponent, OrderByDateDescPipe, CreateClientComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, NavBarComponent, OrderByDateDescPipe, CreateClientComponent, ExpensesComponent],
   templateUrl: './client-detail.component.html',
   styleUrl: './client-detail.component.scss'
 })

@@ -179,19 +179,15 @@
         <p class="muted empty-state" *ngIf="invoices().length === 0">No invoices yet for this client.</p><div class="pagination">Page 1 of 1</div>
       </section>
 
-      <section *ngSwitchCase="'expenses'" class="card table-card full-table-card">
-        <div class="table-toolbar"><div><h2 class="section-title">Expenses</h2><p>Create and manage Firestore-backed expenses for this client.</p></div><strong>Total: {{ clientExpenseTotal() | currency:currency():'symbol' }}</strong></div>
-        <form class="workspace-controls" [formGroup]="expenseForm" (ngSubmit)="addClientExpense()">
-          <input type="date" formControlName="date" aria-label="Expense date">
-          <input type="text" formControlName="description" placeholder="Expense description">
-          <select formControlName="category" aria-label="Expense category"><option *ngFor="let category of expenseCategories" [value]="category">{{ category }}</option></select>
-          <input type="text" formControlName="supplier" placeholder="Supplier (optional)">
-          <input type="number" formControlName="amount" min="0.01" step="0.01" placeholder="Amount">
-          <input type="text" formControlName="notes" placeholder="Notes (optional)">
-          <button class="primary" type="submit">Add Expense</button>
-        </form>
-        <div class="data-table"><div class="table-row table-head six"><span>Expense</span><span>Category</span><span>Date</span><span>Amount</span><span>Supplier</span><span>Actions</span></div><div class="table-row six" *ngFor="let expense of expenses()"><strong>{{ expense.description }}</strong><span>{{ expense.category }}</span><span>{{ expense.date | date:'mediumDate' }}</span><span>{{ expense.amount | currency:currency():'symbol' }}</span><span>{{ expense.supplier || '—' }}</span><span class="row-actions"><button class="secondary small" type="button" (click)="deleteClientExpense(expense.id)">Delete</button></span></div></div>
-        <p class="muted empty-state" *ngIf="expenses().length === 0">No expenses saved for this client yet.</p>
+      <section *ngSwitchCase="'expenses'" class="full-table-card">
+        <app-expenses
+          *ngIf="companyId() && clientId()"
+          [companyId]="companyId()!"
+          [clientId]="clientId()!"
+          [showClientPicker]="false"
+          title="Client Expenses"
+          subtitle="Create and manage Firestore-backed expenses for this client."
+        />
       </section>
 
       <section *ngSwitchCase="'letters'" class="card table-card full-table-card">

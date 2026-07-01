@@ -1,0 +1,135 @@
+:host {
+  display: block;
+}
+
+.finance-page {
+  min-height: 100svh;
+  margin-left: 260px;
+  padding: 32px 24px;
+  display: grid;
+  gap: 20px;
+}
+
+.card {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #dfe6f2);
+  border-radius: var(--radius-xl, 24px);
+  padding: 28px;
+  box-shadow: var(--shadow, 0 18px 45px rgba(16, 24, 40, .08));
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 1;
+}
+
+.eyebrow,
+.muted,
+span {
+  color: var(--muted, #667085);
+}
+
+h1,
+h2 {
+  margin: 0 0 8px;
+  color: var(--ink, #101828);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex: 0 0 auto;
+}
+
+.actions label {
+  margin: 0;
+}
+
+input {
+  min-width: 190px;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: block;
+  margin-top: 6px;
+  background: #fff;
+}
+
+.primary {
+  border: 0;
+  border-radius: 999px;
+  padding: 13px 20px;
+  background: #1d4ed8;
+  color: white;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.metrics,
+.vat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.metrics .card {
+  min-height: 112px;
+}
+
+.metrics strong,
+.vat-grid strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.6rem;
+  color: var(--ink, #101828);
+}
+
+.vat-card {
+  display: grid;
+  gap: 16px;
+}
+
+.finance-expenses {
+  display: block;
+}
+
+:host ::ng-deep .finance-expenses .wrap.expenses {
+  width: 100%;
+}
+
+:host ::ng-deep .finance-expenses .card {
+  width: 100%;
+  max-width: none;
+}
+
+@media (max-width: 1024px) {
+  .finance-page {
+    margin-left: 0;
+    padding-top: 112px;
+  }
+}
+
+@media (max-width: 760px) {
+  .finance-page {
+    padding-inline: 16px;
+  }
+
+  .hero,
+  .actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .metrics,
+  .vat-grid {
+    grid-template-columns: 1fr;
+  }
+}
