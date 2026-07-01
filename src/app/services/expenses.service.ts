@@ -26,7 +26,17 @@ export class ExpensesService {
     return collectionData(q, { idField: 'id' }) as Observable<Expense[]>;
   }
 
+  listCompanyLevelByMonth(companyId: string, month: string): Observable<Expense[]> {
+    return this.listByMonth(companyId, month).pipe(
+      map(expenses => expenses.filter(expense => !expense.clientId))
+    );
+  }
 
+  listByClientAndMonth(companyId: string, clientId: string, month: string): Observable<Expense[]> {
+    return this.listByMonth(companyId, month).pipe(
+      map(expenses => expenses.filter(expense => expense.clientId === clientId))
+    );
+  }
 
   listByClient(companyId: string, clientId: string): Observable<Expense[]> {
     const colRef = this.getCollection(companyId);
