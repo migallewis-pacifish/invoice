@@ -149,7 +149,7 @@ export class ClientDetailComponent {
   }
 
   get primaryContact(): string {
-    return this.client()?.displayName || 'Not provided';
+    return this.client()?.phone || 'Not provided';
   }
 
   get clientEmail(): string {
