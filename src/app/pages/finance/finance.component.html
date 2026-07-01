@@ -1,0 +1,37 @@
+<app-nav-bar />
+<main class="finance-page">
+  <section class="hero card">
+    <div>
+      <p class="eyebrow">Finance</p>
+      <h1>Monthly finance summary</h1>
+      <p class="muted">Review paid client invoices, company and client expenses, VAT, and accountant exports.</p>
+    </div>
+    <div class="actions">
+      <label>Month <input type="month" [ngModel]="selectedMonth()" (ngModelChange)="onMonthChange($event)"></label>
+      <button class="primary" type="button" (click)="exportCsv()">Export CSV</button>
+    </div>
+  </section>
+
+  <section class="metrics">
+    <article class="card"><span>Paid invoice totals</span><strong>{{ format(profitSummary().invoiceTotal) }}</strong></article>
+    <article class="card"><span>Total expenses</span><strong>{{ format(profitSummary().expenseTotal) }}</strong></article>
+    <article class="card"><span>Monthly profit</span><strong>{{ format(profitSummary().profit) }}</strong></article>
+  </section>
+
+  <section class="card vat-card">
+    <h2>VAT report</h2>
+    <div class="vat-grid">
+      <div><span>VAT collected</span><strong>{{ format(vatReport().vatCollected) }}</strong></div>
+      <div><span>VAT paid</span><strong>{{ format(vatReport().vatPaid) }}</strong></div>
+      <div><span>Net VAT</span><strong>{{ format(vatReport().netVat) }}</strong></div>
+    </div>
+  </section>
+
+  <app-expenses
+    *ngIf="companyId()"
+    [companyId]="companyId()"
+    [showClientPicker]="false"
+    title="Company-level Expenses"
+    subtitle="Capture expenses saved directly to the company, separate from client expenses."
+  />
+</main>

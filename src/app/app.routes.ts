@@ -11,6 +11,7 @@ import { ClientDetailComponent } from './pages/client-detail/client-detail.compo
 import { MembershipPlanComponent } from './libraries/membership-plan/membership-plan.component';
 import { PlaceholderPageComponent } from './pages/placeholder/placeholder-page.component';
 import { TemplatesComponent } from './pages/templates/templates.component';
+import { FinanceComponent } from './pages/finance/finance.component';
 
 const companyRoutes = [authGuard, companyGuard];
 
@@ -24,7 +25,7 @@ export const routes: Routes = [
   { path: 'clients', component: ClientListComponent, canActivate: companyRoutes },
   { path: 'templates', component: TemplatesComponent, canActivate: companyRoutes },
   { path: 'template', redirectTo: 'templates' },
-  { path: 'company-expenses', component: PlaceholderPageComponent, canActivate: companyRoutes, data: { sectionName: 'Company Expenses' } },
+  { path: 'company-expenses', component: FinanceComponent, canActivate: companyRoutes },
   { path: 'bank-statements', component: PlaceholderPageComponent, canActivate: companyRoutes, data: { sectionName: 'Bank Statement Uploads' } },
   { path: 'settings', component: PlaceholderPageComponent, canActivate: companyRoutes, data: { sectionName: 'Settings' } },
   {
