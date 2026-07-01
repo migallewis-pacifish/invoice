@@ -3,7 +3,8 @@ import { Auth, authState } from '@angular/fire/auth';
 import { collectionData, docData, Firestore } from '@angular/fire/firestore';
 import { addDoc, collection, doc, getDoc, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { Client, ClientUpdate } from '../models/client.model';
-import { defer, from, map, Observable, of, switchMap, throwError } from 'rxjs';
+import { InvoiceRecord } from '../models/invoice.model';
+import { combineLatest, defer, from, map, Observable, of, switchMap, throwError } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -56,6 +57,17 @@ export class ClientService {
       })
     );
     // return of([]);
+  }
+
+
+  getInvoicesForCompany(): Observable<InvoiceRecord[]> {
+    return this.clients$().pipe(
+      switchMap(clients => clients.length
+        ? combineLatest(clients.map(client => this.getInvoicesForClient(client.id)))
+        : of([])
+      ),
+      map(invoiceGroups => (invoiceGroups as InvoiceRecord[][]).flat())
+    );
   }
 
   createInvoice(clientId: string, data: any): Observable<string> {
