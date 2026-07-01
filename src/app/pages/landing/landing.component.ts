@@ -130,8 +130,11 @@ export class LandingComponent {
       const compRef = doc(this.db, `companies/${companyId}`);
       docData(compRef).subscribe((data: any) => {
         this.companyName.set(data?.name ?? 'Your Company');
-        this.templatePath.set(data?.templatePath ?? null);
         this.currency.set(this.currencyService.normalize(data?.currency));
+      });
+
+      docData(doc(this.db, `companies/${companyId}/templates/invoice`)).subscribe((template: any) => {
+        this.templatePath.set(template?.storagePath ?? null);
       });
 
       this.activityService.recent(companyId).subscribe(activities => {

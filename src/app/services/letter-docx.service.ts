@@ -9,6 +9,7 @@ import { catchError, from, map, Observable, switchMap, take, throwError } from '
 import { Company } from '../models/invoice.model';
 import { LetterData, LetterSignature } from '../models/letter.model';
 import { ActivityService } from './activity.service';
+import { TemplateService } from './template.service';
 
 @Injectable({ providedIn: 'root' })
 export class LetterDocxService {
@@ -16,24 +17,13 @@ export class LetterDocxService {
   private http = inject(HttpClient);
   private db = inject(Firestore);
   private activityService = inject(ActivityService);
+  private templateService = inject(TemplateService);
 
   uploadTemplate(companyId: string, file: File): Promise<{ path: string; url: string }> {
-    this.assertDocx(file);
-    const path = `companies/${companyId}/templates/letter.docx`;
-    const storageRef = ref(this.storage, path);
-    return uploadBytes(storageRef, file, {
-      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    }).then(async () => {
-      const url = await getDownloadURL(storageRef);
-      await this.activityService.track(
-        companyId,
-        'update',
-        `companies/${companyId}`,
-        'Updated letter template.',
-        () => updateDoc(doc(this.db, `companies/${companyId}`), { letterTemplatePath: path })
-      );
-      return { path, url };
-    });
+    return this.templateService.upload(companyId, file, 'letter').then(result => ({
+      path: result.path,
+      url: result.url
+    }));
   }
 
   uploadSignature(companyId: string, name: string, file: File): Promise<LetterSignature> {
@@ -95,9 +85,14 @@ export class LetterDocxService {
       take(1),
       switchMap((companyRaw: any) => {
         if (!companyRaw) return throwError(() => new Error('Company not found.'));
-        const company = companyRaw as Company & { letterTemplatePath?: string };
-        if (!company.letterTemplatePath) return throwError(() => new Error('No letter template uploaded for company.'));
-        return from(getDownloadURL(ref(this.storage, company.letterTemplatePath))).pipe(map(url => ({ url, company })));
+        const company = companyRaw as Company;
+        return this.templateService.getDefaultTemplate(companyId, 'letter').pipe(
+          take(1),
+          switchMap(template => {
+            if (!template?.storagePath) return throwError(() => new Error('No letter template uploaded for company.'));
+            return from(getDownloadURL(ref(this.storage, template.storagePath))).pipe(map(url => ({ url, company })));
+          })
+        );
       }),
       switchMap(({ url, company }) => this.http.get(url, { responseType: 'arraybuffer' }).pipe(map(arrayBuffer => ({ arrayBuffer, company })))),
       map(({ arrayBuffer, company }) => {

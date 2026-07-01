@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, inject, Input, Output, signal } from '@angular/core';
 import { Auth, authState } from '@angular/fire/auth';
-import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
+import { doc, docData, Firestore, deleteDoc, setDoc } from '@angular/fire/firestore';
 import { deleteObject, getDownloadURL, ref, Storage, uploadBytesResumable } from '@angular/fire/storage';
 import { take } from 'rxjs';
 import { ActivityService } from '../../services/activity.service';
@@ -52,9 +52,9 @@ export class UploadTemplateComponent {
         const cid = u?.companyId ?? null;
         this.companyId.set(cid);
         if (!cid) return;
-        const compRef = doc(this.db, `companies/${cid}`);
-        docData(compRef).subscribe(async (c: any) => {
-          const path = c?.templatePath ?? null;
+        const templateRef = doc(this.db, `companies/${cid}/templates/invoice`);
+        docData(templateRef).subscribe(async (c: any) => {
+          const path = c?.storagePath ?? null;
           this.templatePath.set(path);
           if (path) {
             try {
@@ -143,9 +143,19 @@ export class UploadTemplateComponent {
           await this.activityService.track(
             cid,
             'update',
-            `companies/${cid}`,
+            `companies/${cid}/templates/invoice`,
             'Updated invoice template.',
-            () => updateDoc(doc(this.db, `companies/${cid}`), { templatePath: path })
+            () => setDoc(doc(this.db, `companies/${cid}/templates/invoice`), {
+              id: 'invoice',
+              companyId: cid,
+              type: 'invoice',
+              name: 'Default invoice template',
+              storagePath: path,
+              fileName: f.name,
+              isDefault: true,
+              updatedAt: Date.now(),
+              createdAt: Date.now()
+            }, { merge: true })
           );
           const url = await getDownloadURL(storageRef);
           this.templatePath.set(path);
@@ -192,9 +202,9 @@ export class UploadTemplateComponent {
     await this.activityService.track(
       cid,
       'update',
-      `companies/${cid}`,
+      `companies/${cid}/templates/invoice`,
       'Removed invoice template.',
-      () => updateDoc(doc(this.db, `companies/${cid}`), { templatePath: null })
+      () => deleteDoc(doc(this.db, `companies/${cid}/templates/invoice`))
     );
     this.templatePath.set(null);
     this.templateUrl.set(null);
