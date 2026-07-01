@@ -65,19 +65,7 @@ export class ClientDetailComponent {
     { id: 'letters', label: 'Letters' }
   ];
 
-  readonly documents = [
-    { icon: '▣', name: 'NDA_V2.pdf', created: '2 days ago', size: '1.2MB' },
-    { icon: '▣', name: 'Service_Agr.pdf', created: '1 week ago', size: '4.5MB' },
-    { icon: '▣', name: 'Onboarding.docx', created: '2 weeks ago', size: '980KB' }
-  ];
-
-  readonly activityEvents = [
-    { icon: '✉', title: 'Email sent to Sarah Jenkins', description: 'Follow up regarding #INV-8711', time: 'Today, 10:45 AM', tone: 'blue' },
-    { icon: '✓', title: 'Payment received', description: 'Cleared for #INV-8794 via Bank Transfer', time: 'Yesterday, 4:12 PM', tone: 'green' },
-    { icon: '□', title: 'Agreement signed', description: 'Service Agreement signed via DocuSign', time: 'Jun 24, 2026', tone: 'navy' },
-    { icon: '•', title: 'Expense created', description: 'Travel expense added to client workspace', time: 'Jun 22, 2026', tone: 'amber' },
-    { icon: '↻', title: 'Client updated', description: 'Primary contact details refreshed', time: 'Jun 20, 2026', tone: 'slate' }
-  ];
+  readonly documentTotal = 14;
 
   readonly expenseCategories = [
     'Fuel / Travel',
@@ -180,6 +168,15 @@ export class ClientDetailComponent {
     const normalized = this.clientStatus.toLowerCase().replace(/[^a-z0-9-]+/g, '-');
     return normalized === 'not-provided' ? 'status-draft' : `status-${normalized}`;
   }
+
+
+  invoiceTotal = computed(() => this.invoices().length);
+
+  overdueInvoiceTotal = computed(() =>
+    this.invoices().filter(invoice => this.normalizedInvoiceStatus(invoice) === 'overdue').length
+  );
+
+  sentLetterTotal = computed(() => this.letters().length);
 
   outstandingBalance = computed(() => this.invoices().reduce((sum, invoice) => {
     if (this.normalizedInvoiceStatus(invoice) === 'draft') return sum;
@@ -417,9 +414,9 @@ async saveClientStorage() {
 }
 
 copyLastInvoice() {
-  if (this.lastInvoice()) {
-    this.addInvoice(this.lastInvoice());
-  }
+  const invoiceToCopy = this.lastInvoice();
+  if (!invoiceToCopy) return;
+  this.addInvoice(invoiceToCopy);
 }
 
 }
