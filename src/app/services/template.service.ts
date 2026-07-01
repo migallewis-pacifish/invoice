@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Storage, ref, uploadBytes, getDownloadURL } from '@angular/fire/storage';
 import { Firestore, doc, updateDoc } from '@angular/fire/firestore';
+import { ActivityService } from './activity.service';
 
 @Injectable({
   providedIn: 'root'
@@ -8,6 +9,7 @@ import { Firestore, doc, updateDoc } from '@angular/fire/firestore';
 export class TemplateService {
   private storage = inject(Storage);
   private db = inject(Firestore);
+  private activityService = inject(ActivityService);
 
   async upload(companyId: string, file: File) {
     if (!file) {
@@ -21,7 +23,13 @@ export class TemplateService {
     const r = ref(this.storage, path);
     await uploadBytes(r, file);
     const url = await getDownloadURL(r);
-    await updateDoc(doc(this.db, `companies/${companyId}`), { templatePath: path });
+    await this.activityService.track(
+      companyId,
+      'update',
+      `companies/${companyId}`,
+      'Updated invoice template.',
+      () => updateDoc(doc(this.db, `companies/${companyId}`), { templatePath: path })
+    );
     return { path, url };
   }
 

@@ -7,10 +7,12 @@ import {
   DEFAULT_DOCUMENT_STORAGE_SETTINGS,
   DocumentStorageProvider,
 } from '../models/document-storage.model';
+import { ActivityService } from './activity.service';
 
 @Injectable({ providedIn: 'root' })
 export class DocumentStorageService {
   private db = inject(Firestore);
+  private activityService = inject(ActivityService);
 
   getCompanySettings(companyId: string): Observable<CompanyDocumentStorageSettings> {
     return docData(doc(this.db, `companies/${companyId}`)).pipe(
@@ -19,22 +21,34 @@ export class DocumentStorageService {
   }
 
   async saveCompanySettings(companyId: string, settings: Partial<CompanyDocumentStorageSettings>): Promise<void> {
-    await setDoc(doc(this.db, `companies/${companyId}`), {
-      documentStorage: {
-        ...settings,
-        companyId,
-        updatedAt: serverTimestamp(),
-      },
-    }, { merge: true });
+    await this.activityService.track(
+      companyId,
+      'update',
+      `companies/${companyId}`,
+      'Updated company document storage settings.',
+      () => setDoc(doc(this.db, `companies/${companyId}`), {
+        documentStorage: {
+          ...settings,
+          companyId,
+          updatedAt: serverTimestamp(),
+        },
+      }, { merge: true })
+    );
   }
 
   async setClientStorage(companyId: string, clientId: string, settings: ClientDocumentStorageSettings): Promise<void> {
-    await updateDoc(doc(this.db, `companies/${companyId}/clients/${clientId}`), {
-      documentStorage: {
-        ...settings,
-        updatedAt: serverTimestamp(),
-      },
-    });
+    await this.activityService.track(
+      companyId,
+      'update',
+      `companies/${companyId}/clients/${clientId}`,
+      `Updated document storage settings for client ${clientId}.`,
+      () => updateDoc(doc(this.db, `companies/${companyId}/clients/${clientId}`), {
+        documentStorage: {
+          ...settings,
+          updatedAt: serverTimestamp(),
+        },
+      })
+    );
   }
 
   providerLabel(provider?: DocumentStorageProvider): string {

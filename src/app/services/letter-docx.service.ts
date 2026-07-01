@@ -8,12 +8,14 @@ import PizZip from 'pizzip';
 import { catchError, from, map, Observable, switchMap, take, throwError } from 'rxjs';
 import { Company } from '../models/invoice.model';
 import { LetterData, LetterSignature } from '../models/letter.model';
+import { ActivityService } from './activity.service';
 
 @Injectable({ providedIn: 'root' })
 export class LetterDocxService {
   private storage = inject(Storage);
   private http = inject(HttpClient);
   private db = inject(Firestore);
+  private activityService = inject(ActivityService);
 
   uploadTemplate(companyId: string, file: File): Promise<{ path: string; url: string }> {
     this.assertDocx(file);
@@ -23,7 +25,13 @@ export class LetterDocxService {
       contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     }).then(async () => {
       const url = await getDownloadURL(storageRef);
-      await updateDoc(doc(this.db, `companies/${companyId}`), { letterTemplatePath: path });
+      await this.activityService.track(
+        companyId,
+        'update',
+        `companies/${companyId}`,
+        'Updated letter template.',
+        () => updateDoc(doc(this.db, `companies/${companyId}`), { letterTemplatePath: path })
+      );
       return { path, url };
     });
   }
@@ -45,7 +53,13 @@ export class LetterDocxService {
       signature.url = await getDownloadURL(storageRef);
       const companyRef = doc(this.db, `companies/${companyId}`);
       const snap: any = await new Promise(resolve => docData(companyRef).pipe(take(1)).subscribe(resolve));
-      await updateDoc(companyRef, { signatures: [...(snap?.signatures || []), signature] });
+      await this.activityService.track(
+        companyId,
+        'update',
+        `companies/${companyId}`,
+        `Added signature ${signature.name}.`,
+        () => updateDoc(companyRef, { signatures: [...(snap?.signatures || []), signature] })
+      );
       return signature;
     });
   }
