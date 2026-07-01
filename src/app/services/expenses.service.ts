@@ -14,6 +14,13 @@ export class ExpensesService {
     return collection(this.fs, `companies/${companyId}/expenses`);
   }
 
+  listAll(companyId: string): Observable<Expense[]> {
+    const colRef = this.getCollection(companyId);
+    const q = query(colRef, orderBy('date', 'desc'));
+
+    return collectionData(q, { idField: 'id' }) as Observable<Expense[]>;
+  }
+
   listByMonth(companyId: string, month: string): Observable<Expense[]> {
     const colRef = this.getCollection(companyId);
 
