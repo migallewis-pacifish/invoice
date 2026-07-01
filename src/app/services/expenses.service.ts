@@ -3,12 +3,14 @@ import { collectionData, Firestore } from '@angular/fire/firestore';
 import { addDoc, collection, deleteDoc, doc, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { map, Observable } from 'rxjs';
 import { CreateExpense, Expense } from '../models/expense.model';
+import { ActivityService } from './activity.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ExpensesService {
   private readonly fs = inject(Firestore);
+  private readonly activityService = inject(ActivityService);
 
   private getCollection(companyId: string) {
     return collection(this.fs, `companies/${companyId}/expenses`);
@@ -57,15 +59,27 @@ export class ExpensesService {
   add(companyId: string, expense: CreateExpense) {
     const colRef = this.getCollection(companyId);
 
-    return addDoc(colRef, {
-      ...expense,
-      amount: Number(expense.amount),
-      clientId: expense.clientId ?? null,
-      createdAt: serverTimestamp()
-    });
+    return this.activityService.track(
+      companyId,
+      'create',
+      `companies/${companyId}/expenses`,
+      `Created expense ${expense.description || expense.category || 'record'}.`,
+      () => addDoc(colRef, {
+        ...expense,
+        amount: Number(expense.amount),
+        clientId: expense.clientId ?? null,
+        createdAt: serverTimestamp()
+      })
+    );
   }
 
   remove(companyId: string, id: string) {
-    return deleteDoc(doc(this.fs, `companies/${companyId}/expenses/${id}`));
+    return this.activityService.track(
+      companyId,
+      'delete',
+      `companies/${companyId}/expenses/${id}`,
+      `Deleted expense ${id}.`,
+      () => deleteDoc(doc(this.fs, `companies/${companyId}/expenses/${id}`))
+    );
   }
 }

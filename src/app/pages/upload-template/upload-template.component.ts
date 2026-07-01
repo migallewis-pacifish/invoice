@@ -4,6 +4,7 @@ import { Auth, authState } from '@angular/fire/auth';
 import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
 import { deleteObject, getDownloadURL, ref, Storage, uploadBytesResumable } from '@angular/fire/storage';
 import { take } from 'rxjs';
+import { ActivityService } from '../../services/activity.service';
 
 @Component({
   selector: 'app-upload-template',
@@ -19,6 +20,7 @@ export class UploadTemplateComponent {
   private auth = inject(Auth);
   private db = inject(Firestore);
   private storage = inject(Storage);
+  private activityService = inject(ActivityService);
 
 
 
@@ -138,7 +140,13 @@ export class UploadTemplateComponent {
       },
       async () => {
         try {
-          await updateDoc(doc(this.db, `companies/${cid}`), { templatePath: path });
+          await this.activityService.track(
+            cid,
+            'update',
+            `companies/${cid}`,
+            'Updated invoice template.',
+            () => updateDoc(doc(this.db, `companies/${cid}`), { templatePath: path })
+          );
           const url = await getDownloadURL(storageRef);
           this.templatePath.set(path);
           this.templateUrl.set(url);
@@ -181,7 +189,13 @@ export class UploadTemplateComponent {
     } catch {
       // ignore missing file
     }
-    await updateDoc(doc(this.db, `companies/${cid}`), { templatePath: null });
+    await this.activityService.track(
+      cid,
+      'update',
+      `companies/${cid}`,
+      'Removed invoice template.',
+      () => updateDoc(doc(this.db, `companies/${cid}`), { templatePath: null })
+    );
     this.templatePath.set(null);
     this.templateUrl.set(null);
     this.info.set('Template removed.');

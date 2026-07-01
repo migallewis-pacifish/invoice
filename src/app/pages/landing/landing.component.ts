@@ -13,6 +13,8 @@ import { CurrencyService } from '../../services/currency.service';
 import { ClientService } from '../../services/client.service';
 import { ExpensesService } from '../../services/expenses.service';
 import { Expense } from '../../models/expense.model';
+import { ActivityRecord } from '../../models/activity.model';
+import { ActivityService } from '../../services/activity.service';
 import { InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
 
 @Component({
@@ -30,6 +32,7 @@ export class LandingComponent {
   private currencyService = inject(CurrencyService);
   private clientService = inject(ClientService);
   private expensesService = inject(ExpensesService);
+  private activityService = inject(ActivityService);
 
   companyId = signal<string >("");
   companyName = signal<string | null>(null);
@@ -38,6 +41,7 @@ export class LandingComponent {
   currencySymbol = computed(() => this.currencyService.symbolFor(this.currency()));
   invoices = signal<InvoiceRecord[]>([]);
   expenses = signal<Expense[]>([]);
+  activities = signal<ActivityRecord[]>([]);
 
   outstanding = computed(() => this.invoices().reduce((sum, invoice) => {
     if (this.normalizedInvoiceStatus(invoice) === 'draft') return sum;
@@ -79,22 +83,19 @@ export class LandingComponent {
     }));
   });
 
-  recentClients = [
-    { name: 'Lumina Digital', status: '3 Active Invoices', initials: '✦', tone: 'mint' },
-    { name: 'Vertex Solutions', status: 'Last viewed 2h ago', initials: '◈', tone: 'blue' },
-    { name: 'Nova Creative', status: 'Awaiting Payment', initials: '●', tone: 'peach' },
-  ];
-
   upcomingPayments = [
     { name: 'Cloud Server Subscription', meta: 'AWS Infrastructure · Due in 2 days', amount: 1250, icon: '▣', tone: 'red' },
     { name: 'Professional Insurance Premium', meta: 'Allianz · Due in 12 days', amount: 420, icon: '▤', tone: 'green' },
   ];
 
-  activityItems = [
-    { title: 'Invoice #4203 Paid', copy: 'Lumina Digital cleared their balance of 3,500.00.', time: 'Today, 10:45 AM', icon: '◉', tone: 'navy' },
-    { title: 'New Client Registered', copy: 'Horizon Analytics has been added to your workspace.', time: 'Yesterday, 4:20 PM', icon: '☉', tone: 'light' },
-    { title: 'Expense Rejection', copy: 'The expense report for Office Supplies requires review.', time: 'Oct 24, 11:15 AM', icon: '●', tone: 'brown' },
-  ];
+  activityItems = computed(() => this.activities().map(activity => ({
+    ...activity,
+    title: this.activityTitle(activity),
+    time: this.formatActivityDate(activity.createdAt),
+    icon: this.activityIcon(activity.changeType),
+    tone: this.activityTone(activity.changeType),
+  })));
+
 
   constructor() {
     authState(this.auth).pipe(take(1)).subscribe(async (user) => {
@@ -110,6 +111,10 @@ export class LandingComponent {
         this.companyName.set(data?.name ?? 'Your Company');
         this.templatePath.set(data?.templatePath ?? null);
         this.currency.set(this.currencyService.normalize(data?.currency));
+      });
+
+      this.activityService.recent(companyId).subscribe(activities => {
+        this.activities.set(activities);
       });
 
       combineLatest([
@@ -201,6 +206,39 @@ export class LandingComponent {
     if (amount <= 0) return 0;
     return Math.max(4, Math.round((amount / maxAmount) * 100));
   }
+  private activityTitle(activity: ActivityRecord): string {
+    const type = activity.changeType.charAt(0).toUpperCase() + activity.changeType.slice(1);
+    return `${type} by ${activity.actorName}`;
+  }
+
+  private activityIcon(changeType: ActivityRecord['changeType']): string {
+    switch (changeType) {
+      case 'create': return '+';
+      case 'delete': return '−';
+      default: return '↻';
+    }
+  }
+
+  private activityTone(changeType: ActivityRecord['changeType']): 'navy' | 'light' | 'brown' {
+    switch (changeType) {
+      case 'create': return 'light';
+      case 'delete': return 'brown';
+      default: return 'navy';
+    }
+  }
+
+  private formatActivityDate(value: any): string {
+    if (!value) return 'Just now';
+    const date = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Just now';
+    return new Intl.DateTimeFormat('en', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(date);
+  }
+
 
   openLinkFolderDialog() {
     const ref = this.dialog.open(LinkFolderDialogueComponent, {
@@ -215,10 +253,16 @@ export class LandingComponent {
         const companyId = this.companyId();
         if (!companyId) return;
         const companyRef = doc(this.db, `companies/${companyId}`);
-        updateDoc(companyRef, {
-          storageProvider: typedResult.provider ?? null,
-          storagePath: typedResult.path ?? null
-        }).catch((error) => console.error('Failed to save storage settings', error));
+        this.activityService.track(
+          companyId,
+          'update',
+          `companies/${companyId}`,
+          'Updated company storage folder settings.',
+          () => updateDoc(companyRef, {
+            storageProvider: typedResult.provider ?? null,
+            storagePath: typedResult.path ?? null
+          })
+        ).catch((error) => console.error('Failed to save storage settings', error));
       }
     }));
   }
