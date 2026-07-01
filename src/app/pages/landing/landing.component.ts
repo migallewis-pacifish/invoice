@@ -3,13 +3,17 @@ import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { Auth, authState } from '@angular/fire/auth';
 import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
 import { Router, RouterLink } from '@angular/router';
-import { take } from 'rxjs';
+import { combineLatest, take } from 'rxjs';
 import { ClientListComponent } from '../client-list/client-list.component';
 import { CommonModule } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
 import { UploadTemplateDialogueComponent } from '../../components/upload-template-dialogue/upload-template-dialogue.component';
 import { LinkFolderDialogueComponent } from '../../components/link-folder-dialogue/link-folder-dialogue.component';
 import { CurrencyService } from '../../services/currency.service';
+import { ClientService } from '../../services/client.service';
+import { ExpensesService } from '../../services/expenses.service';
+import { Expense } from '../../models/expense.model';
+import { InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
 
 @Component({
   selector: 'app-landing',
@@ -24,12 +28,29 @@ export class LandingComponent {
   private router = inject(Router);
   private dialog = inject(Dialog);
   private currencyService = inject(CurrencyService);
+  private clientService = inject(ClientService);
+  private expensesService = inject(ExpensesService);
 
   companyId = signal<string >("");
   companyName = signal<string | null>(null);
   templatePath = signal<string | null>(null);
   currency = signal(this.currencyService.defaultCurrency);
   currencySymbol = computed(() => this.currencyService.symbolFor(this.currency()));
+  invoices = signal<InvoiceRecord[]>([]);
+  expenses = signal<Expense[]>([]);
+
+  outstanding = computed(() => this.invoices().reduce((sum, invoice) => {
+    if (this.normalizedInvoiceStatus(invoice) === 'draft') return sum;
+    return sum + this.invoiceOutstanding(invoice);
+  }, 0));
+
+  revenue = computed(() => this.invoices().reduce((sum, invoice) => {
+    if (this.normalizedInvoiceStatus(invoice) === 'draft') return sum;
+    return sum + this.invoiceRevenue(invoice);
+  }, 0));
+
+  expenseTotal = computed(() => this.expenses().reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0));
+  netProfit = computed(() => this.revenue() - this.expenseTotal());
 
   loading = signal(true);
 
@@ -73,6 +94,14 @@ export class LandingComponent {
         this.companyName.set(data?.name ?? 'Your Company');
         this.templatePath.set(data?.templatePath ?? null);
         this.currency.set(this.currencyService.normalize(data?.currency));
+      });
+
+      combineLatest([
+        this.clientService.getInvoicesForCompany(),
+        this.expensesService.listAll(companyId)
+      ]).subscribe(([invoices, expenses]) => {
+        this.invoices.set(invoices);
+        this.expenses.set(expenses);
         this.loading.set(false);
       });
     });
@@ -99,6 +128,28 @@ export class LandingComponent {
     });
   }
 
+
+  private invoiceOutstanding(invoice: InvoiceRecord): number {
+    const total = Number(invoice.total) || 0;
+    const amountPaid = Number(invoice.amountPaid) || 0;
+    return Math.max(0, +(total - amountPaid).toFixed(2));
+  }
+
+  private invoiceRevenue(invoice: InvoiceRecord): number {
+    const total = Number(invoice.total) || 0;
+    const amountPaid = Number(invoice.amountPaid) || 0;
+    if (amountPaid > 0) return Math.min(amountPaid, total || amountPaid);
+    return invoice.status === 'paid' ? total : 0;
+  }
+
+  private normalizedInvoiceStatus(invoice: InvoiceRecord): InvoiceStatus {
+    if (invoice.status === 'draft') return 'draft';
+    const total = Number(invoice.total) || 0;
+    const amountPaid = Number(invoice.amountPaid) || 0;
+    if (total > 0 && amountPaid >= total) return 'paid';
+    if (amountPaid > 0) return 'partial';
+    return invoice.status || 'sent';
+  }
 
   openLinkFolderDialog() {
     const ref = this.dialog.open(LinkFolderDialogueComponent, {
