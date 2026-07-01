@@ -30,7 +30,6 @@ export class RegisterService {
         tel: data.tel ?? '',
         email: user.email ?? '',
         banking: data.banking ?? null,
-        templatePath: null,
         users: [user.uid],
         pendingUsers: data.extraUserEmail ? [data.extraUserEmail] : [],
         createdAt: serverTimestamp()

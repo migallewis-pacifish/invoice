@@ -57,7 +57,7 @@ await expectDenied(write('companies/company-a/clients/client-2', { name: 'Intrud
 await expectDenied(read('companies/company-a/clients/client-1'), 'unauthenticated read is denied');
 await expectDenied(write('companies/company-a/clients/client-3', { name: 'Anon' }), 'unauthenticated write is denied');
 
-await expectAllowed(write('companies/company-a/templates/invoice', { templatePath: 'companies/company-a/templates/invoice.docx' }, 'alice'), 'member writes template');
+await expectAllowed(write('companies/company-a/templates/invoice', { id: 'invoice', companyId: 'company-a', type: 'invoice', name: 'Default invoice template', storagePath: 'companies/company-a/templates/invoice.docx' }, 'alice'), 'member writes template');
 await expectAllowed(write('companies/company-a/expenses/expense-1', { description: 'Hosting' }, 'alice'), 'member writes expense');
 await expectAllowed(write('companies/company-a/clients/client-1/invoices/invoice-1', { invoiceNo: 'INV-1' }, 'alice'), 'member writes invoice');
 
