@@ -4,6 +4,7 @@ import { Firestore } from '@angular/fire/firestore';
 import { Storage } from '@angular/fire/storage';
 
 import { InvoiceDocxService } from './invoice-docx.service';
+import { TemplateService } from './template.service';
 
 describe('InvoiceDocxService', () => {
   let service: InvoiceDocxService;
@@ -13,7 +14,8 @@ describe('InvoiceDocxService', () => {
       providers: [
         { provide: HttpClient, useValue: {} },
         { provide: Firestore, useValue: {} },
-        { provide: Storage, useValue: {} }
+        { provide: Storage, useValue: {} },
+        { provide: TemplateService, useValue: { getDefaultTemplate: jasmine.createSpy('getDefaultTemplate') } }
       ]
     });
     service = TestBed.inject(InvoiceDocxService);
