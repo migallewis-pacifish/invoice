@@ -5,7 +5,7 @@
 .finance-page {
   min-height: 100svh;
   margin-left: 260px;
-  padding: 32px 24px;
+  padding: 28px 30px 88px;
   display: grid;
   gap: 20px;
 }
@@ -95,6 +95,15 @@ input {
 .vat-card {
   display: grid;
   gap: 16px;
+}
+
+.hero,
+.metrics,
+.vat-card,
+.finance-expenses {
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
 }
 
 .finance-expenses {
