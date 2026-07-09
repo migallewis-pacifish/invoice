@@ -7,6 +7,66 @@ import { ActivityService } from './activity.service';
 import { InvoiceRecord } from '../models/invoice.model';
 import { combineLatest, defer, from, map, Observable, of, switchMap, throwError } from 'rxjs';
 
+
+export interface ClientInvoiceSummary {
+  outstandingBalance: number;
+  overdueAmount: number;
+  nextDueDate: number | null;
+  isSettled: boolean;
+  invoiceCount: number;
+}
+
+function toMillis(value: any): number | null {
+  if (!value) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  if (typeof value?.seconds === 'number') return value.seconds * 1000;
+  return null;
+}
+
+export function calculateClientInvoiceSummary(
+  invoices: Pick<InvoiceRecord, 'total' | 'amountPaid' | 'status' | 'dueDate'>[],
+  now: Date = new Date()
+): ClientInvoiceSummary {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+
+  return invoices.reduce<ClientInvoiceSummary>((summary, invoice) => {
+    const total = Number(invoice.total ?? 0) || 0;
+    const amountPaid = Number(invoice.amountPaid ?? 0) || 0;
+    const balance = Math.max(total - amountPaid, 0);
+    const isPaid = invoice.status === 'paid' || balance <= 0;
+    const dueAt = toMillis(invoice.dueDate);
+
+    summary.invoiceCount += 1;
+    summary.outstandingBalance += isPaid ? 0 : balance;
+
+    if (!isPaid && dueAt !== null) {
+      const due = new Date(dueAt);
+      due.setHours(0, 0, 0, 0);
+      if (due.getTime() < today.getTime()) {
+        summary.overdueAmount += balance;
+      } else if (summary.nextDueDate === null || dueAt < summary.nextDueDate) {
+        summary.nextDueDate = dueAt;
+      }
+    }
+
+    summary.isSettled = summary.outstandingBalance <= 0;
+    return summary;
+  }, {
+    outstandingBalance: 0,
+    overdueAmount: 0,
+    nextDueDate: null,
+    isSettled: true,
+    invoiceCount: 0,
+  });
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -69,6 +129,18 @@ export class ClientService {
         : of([])
       ),
       map(invoiceGroups => (invoiceGroups as InvoiceRecord[][]).flat())
+    );
+  }
+
+  getClientInvoiceSummaries(): Observable<Record<string, ClientInvoiceSummary>> {
+    return this.clients$().pipe(
+      switchMap(clients => clients.length
+        ? combineLatest(clients.map(client => this.getInvoicesForClient(client.id).pipe(
+          map(invoices => [client.id, calculateClientInvoiceSummary(invoices as InvoiceRecord[])] as const)
+        )))
+        : of([])
+      ),
+      map(entries => Object.fromEntries(entries))
     );
   }
 

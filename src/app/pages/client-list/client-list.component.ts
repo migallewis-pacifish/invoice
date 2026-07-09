@@ -1,5 +1,5 @@
 import { Component, effect, inject, Input, signal } from '@angular/core';
-import { ClientService } from '../../services/client.service';
+import { ClientInvoiceSummary, ClientService } from '../../services/client.service';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Client } from '../../models/client.model';
 import { combineLatest, map, Observable, of, startWith, take } from 'rxjs';
@@ -11,6 +11,11 @@ import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { Auth, authState } from '@angular/fire/auth';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
+
+interface ClientListItem {
+  client: Client;
+  invoiceSummary?: ClientInvoiceSummary;
+}
 
 @Component({
   selector: 'app-client-list',
@@ -34,7 +39,7 @@ export class ClientListComponent {
   clients$: Observable<Client[]>;
   currencySymbol = signal(this.currencyService.symbolFor(this.currencyService.defaultCurrency));
 
-  filtered$: Observable<Client[]>;
+  filtered$: Observable<ClientListItem[]>;
 
   constructor() {
     this.clients$ = of([]);
@@ -59,16 +64,21 @@ export class ClientListComponent {
     this.clients$ = this.clientSvc.clients$();
     this.filtered$ = combineLatest([
       this.clients$,
+      this.clientSvc.getClientInvoiceSummaries().pipe(startWith(null)),
       this.search.valueChanges.pipe(startWith(''))
     ]).pipe(
-      map(([clients, term]) => {
+      map(([clients, summaries, term]) => {
         const t = (term || '').trim().toLowerCase();
-        if (!t) return clients;
-        return clients.filter(c =>
+        const filtered = t ? clients.filter(c =>
           (c.displayName || '').toLowerCase().includes(t) ||
           (c.email || '').toLowerCase().includes(t) ||
           (c.phone || '').toLowerCase().includes(t)
-        );
+        ) : clients;
+
+        return filtered.map(client => ({
+          client,
+          invoiceSummary: summaries?.[client.id]
+        }));
       })
     );
   }
@@ -89,20 +99,24 @@ export class ClientListComponent {
     return client.notes || client.vatNo || client.address?.city || 'Enterprise Account';
   }
 
-  isActiveClient(client: Client, index: number): boolean {
-    return Boolean(client.email || client.phone || index % 4 !== 1);
+  isActiveClient(client: Client): boolean {
+    const status = (client.status || 'active').toLowerCase();
+    return !['inactive', 'archived'].includes(status);
   }
 
-  balanceAmount(index: number): number {
-    return [12450, 0, 54200, 8900.50][index % 4];
+  balanceStatus(summary?: ClientInvoiceSummary): string {
+    if (!summary) return 'Loading invoices...';
+    if (summary.invoiceCount === 0) return 'No invoice balance';
+    if (summary.isSettled) return 'Settled';
+    if (summary.overdueAmount > 0) return 'Overdue';
+    if (summary.nextDueDate) return `Due ${new Date(summary.nextDueDate).toLocaleDateString()}`;
+    return 'Payment due';
   }
 
-  balanceStatus(index: number): string {
-    return ['DUE IN 4 DAYS', 'SETTLED', 'OVERDUE 12 DAYS', 'DRAFT SENT'][index % 4];
-  }
-
-  balanceTone(index: number): 'default' | 'settled' | 'overdue' {
-    return (['default', 'settled', 'overdue', 'default'] as const)[index % 4];
+  balanceTone(summary?: ClientInvoiceSummary): 'default' | 'settled' | 'overdue' {
+    if (!summary || summary.invoiceCount === 0) return 'default';
+    if (summary.overdueAmount > 0) return 'overdue';
+    return summary.isSettled ? 'settled' : 'default';
   }
 
   avatarTone(index: number): string {
