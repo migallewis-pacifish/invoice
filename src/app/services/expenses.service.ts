@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { collectionData, Firestore } from '@angular/fire/firestore';
 import { addDoc, collection, deleteDoc, doc, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
-import { map, Observable } from 'rxjs';
+import { combineLatest, map, Observable } from 'rxjs';
 import { CreateExpense, Expense } from '../models/expense.model';
 import { ActivityService } from './activity.service';
 
@@ -12,19 +12,25 @@ export class ExpensesService {
   private readonly fs = inject(Firestore);
   private readonly activityService = inject(ActivityService);
 
-  private getCollection(companyId: string) {
+  private getCompanyExpensesCollection(companyId: string) {
     return collection(this.fs, `companies/${companyId}/expenses`);
   }
 
+  private getClientExpensesCollection(companyId: string, clientId: string) {
+    return collection(this.fs, `companies/${companyId}/clients/${clientId}/expenses`);
+  }
+
   listAll(companyId: string): Observable<Expense[]> {
-    const colRef = this.getCollection(companyId);
+    const colRef = this.getCompanyExpensesCollection(companyId);
     const q = query(colRef, orderBy('date', 'desc'));
 
-    return collectionData(q, { idField: 'id' }) as Observable<Expense[]>;
+    return (collectionData(q, { idField: 'id' }) as Observable<Expense[]>).pipe(
+      map(expenses => filterCompanyLevelExpenses(expenses))
+    );
   }
 
   listByMonth(companyId: string, month: string): Observable<Expense[]> {
-    const colRef = this.getCollection(companyId);
+    const colRef = this.getCompanyExpensesCollection(companyId);
 
     const q = query(
       colRef,
@@ -36,50 +42,107 @@ export class ExpensesService {
   }
 
   listCompanyLevelByMonth(companyId: string, month: string): Observable<Expense[]> {
-    return this.listByMonth(companyId, month).pipe(
-      map(expenses => expenses.filter(expense => !expense.clientId))
+    const colRef = this.getCompanyExpensesCollection(companyId);
+    const q = query(
+      colRef,
+      where('month', '==', month),
+      orderBy('date', 'desc')
+    );
+
+    return (collectionData(q, { idField: 'id' }) as Observable<Expense[]>).pipe(
+      map(expenses => filterCompanyLevelExpenses(expenses))
     );
   }
 
   listByClientAndMonth(companyId: string, clientId: string, month: string): Observable<Expense[]> {
-    return this.listByMonth(companyId, month).pipe(
-      map(expenses => expenses.filter(expense => expense.clientId === clientId))
+    const clientColRef = this.getClientExpensesCollection(companyId, clientId);
+    const clientQuery = query(
+      clientColRef,
+      where('month', '==', month),
+      orderBy('date', 'desc')
+    );
+    const legacyQuery = query(
+      this.getCompanyExpensesCollection(companyId),
+      where('clientId', '==', clientId),
+      where('month', '==', month),
+      orderBy('date', 'desc')
+    );
+
+    return combineLatest([
+      collectionData(clientQuery, { idField: 'id' }) as Observable<Expense[]>,
+      collectionData(legacyQuery, { idField: 'id' }) as Observable<Expense[]>
+    ]).pipe(
+      map(([clientExpenses, legacyExpenses]) => mergeClientExpenseLists(clientExpenses, legacyExpenses))
     );
   }
 
   listByClient(companyId: string, clientId: string): Observable<Expense[]> {
-    const colRef = this.getCollection(companyId);
-    const q = query(colRef, where('clientId', '==', clientId));
+    const clientQuery = query(this.getClientExpensesCollection(companyId, clientId), orderBy('date', 'desc'));
+    const legacyQuery = query(this.getCompanyExpensesCollection(companyId), where('clientId', '==', clientId));
 
-    return (collectionData(q, { idField: 'id' }) as Observable<Expense[]>).pipe(
-      map(expenses => expenses.sort((a, b) => (b.date || '').localeCompare(a.date || '')))
+    return combineLatest([
+      collectionData(clientQuery, { idField: 'id' }) as Observable<Expense[]>,
+      collectionData(legacyQuery, { idField: 'id' }) as Observable<Expense[]>
+    ]).pipe(
+      map(([clientExpenses, legacyExpenses]) => mergeClientExpenseLists(clientExpenses, legacyExpenses))
     );
   }
 
   add(companyId: string, expense: CreateExpense) {
-    const colRef = this.getCollection(companyId);
+    const clientId = expense.clientId ?? null;
+    const colRef = clientId
+      ? this.getClientExpensesCollection(companyId, clientId)
+      : this.getCompanyExpensesCollection(companyId);
+    const path = clientId
+      ? `companies/${companyId}/clients/${clientId}/expenses`
+      : `companies/${companyId}/expenses`;
+    const { clientId: _clientId, ...expenseData } = expense;
 
     return this.activityService.track(
       companyId,
       'create',
-      `companies/${companyId}/expenses`,
+      path,
       `Created expense ${expense.description || expense.category || 'record'}.`,
       () => addDoc(colRef, {
-        ...expense,
+        ...expenseData,
         amount: Number(expense.amount),
-        clientId: expense.clientId ?? null,
+        ...(clientId ? { clientId } : {}),
         createdAt: serverTimestamp()
       })
     );
   }
 
-  remove(companyId: string, id: string) {
+  remove(companyId: string, id: string, clientId?: string | null, source?: Expense['source']) {
+    const path = source === 'client' && clientId
+      ? `companies/${companyId}/clients/${clientId}/expenses/${id}`
+      : `companies/${companyId}/expenses/${id}`;
+
     return this.activityService.track(
       companyId,
       'delete',
-      `companies/${companyId}/expenses/${id}`,
+      path,
       `Deleted expense ${id}.`,
-      () => deleteDoc(doc(this.fs, `companies/${companyId}/expenses/${id}`))
+      () => deleteDoc(doc(this.fs, path))
     );
   }
+
+}
+
+export function filterCompanyLevelExpenses(expenses: Expense[]): Expense[] {
+  return expenses.filter(expense => !expense.clientId);
+}
+
+export function mergeClientExpenseLists(clientExpenses: Expense[], legacyExpenses: Expense[]): Expense[] {
+  return sortByDateDesc([
+    ...clientExpenses.map(expense => withSource(expense, 'client')),
+    ...legacyExpenses.map(expense => withSource(expense, 'legacyCompanyClient'))
+  ]);
+}
+
+function withSource(expense: Expense, source: NonNullable<Expense['source']>): Expense {
+  return { ...expense, source };
+}
+
+function sortByDateDesc(expenses: Expense[]): Expense[] {
+  return expenses.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 }
