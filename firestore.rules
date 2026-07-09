@@ -67,6 +67,10 @@ service cloud.firestore {
         allow read, write: if isCompanyMember(companyId);
       }
 
+      match /invoiceSummaries/{invoiceId} {
+        allow read, write: if isCompanyMember(companyId);
+      }
+
       match /activities/{activityId} {
         allow read, create: if isCompanyMember(companyId);
         allow update, delete: if false;

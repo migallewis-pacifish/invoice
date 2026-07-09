@@ -1,4 +1,4 @@
-import { calculateClientInvoiceSummary } from './client.service';
+import { buildInvoiceSummaryRecord, calculateClientInvoiceSummary, mergeInvoiceTrackingUpdate } from './client.service';
 import { InvoiceRecord } from '../models/invoice.model';
 
 describe('calculateClientInvoiceSummary', () => {
@@ -39,6 +39,64 @@ describe('calculateClientInvoiceSummary', () => {
       nextDueDate: null,
       isSettled: true,
       invoiceCount: 0,
+    });
+  });
+});
+
+describe('company invoice summary records', () => {
+  it('copies invoice creation metadata into a company-level summary', () => {
+    const summary = buildInvoiceSummaryRecord('invoice-1', 'client-1', {
+      invoiceNumber: 'INV-001',
+      filename: 'INV-001.docx',
+      total: 1250,
+      amountPaid: 250,
+      status: 'partial',
+      dueDate: '2026-07-20',
+      createdAt: 123,
+      updatedAt: 456,
+    });
+
+    expect(summary).toEqual({
+      id: 'invoice-1',
+      clientId: 'client-1',
+      invoiceNumber: 'INV-001',
+      filename: 'INV-001.docx',
+      total: 1250,
+      amountPaid: 250,
+      status: 'partial',
+      dueDate: '2026-07-20',
+      createdAt: 123,
+      updatedAt: 456,
+    });
+  });
+
+  it('merges payment tracking updates without losing invoice metadata', () => {
+    const currentInvoice = invoice({
+      total: 1000,
+      amountPaid: 100,
+      status: 'partial',
+      dueDate: '2026-07-20',
+    });
+    currentInvoice.invoiceNumber = 'INV-002';
+    currentInvoice.filename = 'INV-002.docx';
+
+    const updated = mergeInvoiceTrackingUpdate(currentInvoice, {
+      amountPaid: 1000,
+      status: 'paid',
+      paidAt: '2026-07-09',
+    });
+    const summary = buildInvoiceSummaryRecord('invoice-2', 'client-2', updated);
+
+    expect(summary).toEqual({
+      id: 'invoice-2',
+      clientId: 'client-2',
+      invoiceNumber: 'INV-002',
+      filename: 'INV-002.docx',
+      total: 1000,
+      amountPaid: 1000,
+      status: 'paid',
+      dueDate: '2026-07-20',
+      paidAt: '2026-07-09',
     });
   });
 });

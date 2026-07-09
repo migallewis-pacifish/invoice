@@ -9,11 +9,14 @@ import { saveAs } from 'file-saver';
 import { Observable, catchError, from, map, switchMap, take, throwError } from 'rxjs';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
+import { NotificationService } from './notification.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class InvoiceDocxService {
+
+  static readonly GENERATE_INVOICE_ERROR_MESSAGE = 'Failed to generate invoice document.';
 
   private VAT_RATE = 0.15;
   private storage = inject(Storage);
@@ -21,6 +24,7 @@ export class InvoiceDocxService {
   private db = inject(Firestore);
   private currencyService = inject(CurrencyService);
   private templateService = inject(TemplateService);
+  private notifications = inject(NotificationService);
 
   calculateInvoiceTotals(items: InvoiceItem[], includeVat = true, currencyCode?: string | null) {
     // compute per-line totals if missing
@@ -60,11 +64,12 @@ export class InvoiceDocxService {
 
     return this.generateInvoiceDocx(companyId, data).pipe(
       switchMap(({ blob, company, fileName }) =>
-        from(this.saveLocally(blob, company, data.client_name, fileName)).pipe(map(() => fileName))
+        from(this.downloadInBrowser(blob, data.client_name, fileName)).pipe(map(() => fileName))
       ),
       catchError(err => {
-        console.error('Invoice generation error:', err);
-        return throwError(() => new Error('Failed to generate invoice document.'));
+        const userError = new Error(InvoiceDocxService.GENERATE_INVOICE_ERROR_MESSAGE);
+        this.notifications.error(InvoiceDocxService.GENERATE_INVOICE_ERROR_MESSAGE, err);
+        return throwError(() => userError);
       })
     );
   }
@@ -76,8 +81,6 @@ export class InvoiceDocxService {
       'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'
     > & { invoice_number: string; includeVat?: boolean }
   ): Observable<{ blob: Blob; company: Company; fileName: string }> {
-    console.log('generating invoice for company:', companyId);
-
     const companyDoc = doc(this.db, `companies/${companyId}`);
     return docData(companyDoc).pipe(
       take(1),
@@ -173,10 +176,10 @@ export class InvoiceDocxService {
     }[char] || char));
   }
 
-  async saveLocally(file: Blob, company: Company, clientName: string, fileName: string): Promise<void> {
-    if (!company.storagePath) throw new Error('No storagePath defined for company');
-    // Simulate folder structure in filename
-    const fullFileName = `${clientName}/${fileName}`;
-    saveAs(file, fullFileName);
+  async downloadInBrowser(file: Blob, clientName: string, fileName: string): Promise<void> {
+    // Browser downloads cannot write directly to arbitrary local folders. The slash keeps
+    // the client name in the suggested filename for users to organize after download.
+    const suggestedFileName = `${clientName}/${fileName}`;
+    saveAs(file, suggestedFileName);
   }
 }

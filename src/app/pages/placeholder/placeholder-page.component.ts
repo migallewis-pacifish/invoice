@@ -40,7 +40,7 @@ import { CompanyDocumentStorageSettings, DocumentStorageProvider } from '../../m
             <div>
               <p class="eyebrow">Document Storage</p>
               <h2>Default document storage provider</h2>
-              <p>Choose where client documents should be saved by default. Individual clients can still record a client-specific folder.</p>
+              <p>Choose where client documents should be saved by default. Browser downloads, cloud providers, and future local-folder integrations are tracked separately.</p>
             </div>
             <button class="primary" type="button" (click)="saveDocumentStorage()" [disabled]="savingStorage() || !companyId()">
               {{ savingStorage() ? 'Saving…' : 'Save Storage Settings' }}
@@ -49,14 +49,19 @@ import { CompanyDocumentStorageSettings, DocumentStorageProvider } from '../../m
 
           <label for="defaultProvider">Company default provider</label>
           <select id="defaultProvider" formControlName="defaultProvider">
+            <option value="browser_download">Browser Download</option>
             <option value="google_drive">Google Drive</option>
             <option value="onedrive">OneDrive</option>
-            <option value="nexus_storage">Nexus Storage</option>
-            <option value="local">Local Folder</option>
+            <option value="local_folder">Local Folder (future)</option>
             <option value="external_link">External Link</option>
           </select>
 
           <div class="provider-grid">
+            <article class="provider-card">
+              <h3>Browser Download</h3><span class="status">Always available</span>
+              <p class="muted">Generated DOCX files are saved with the browser download flow. Users choose or move files using their browser or operating-system download settings.</p>
+              <label>Suggested subfolder label<input formControlName="browserDownloadFolder" placeholder="e.g. Client documents"></label>
+            </article>
             <article class="provider-card">
               <h3>Google Drive</h3><span class="status">{{ storage()?.googleDrive?.connected ? 'Connected' : 'Not connected' }}</span>
               <button class="secondary" type="button">Connect Google Drive</button>
@@ -67,16 +72,11 @@ import { CompanyDocumentStorageSettings, DocumentStorageProvider } from '../../m
               <button class="secondary" type="button">Connect OneDrive</button>
               <label>Default OneDrive Folder<input formControlName="oneDriveFolder" placeholder="Select or link a company folder"></label>
             </article>
-            <article class="provider-card">
-              <h3>Nexus Storage</h3><button class="secondary" type="button">Buy Storage</button>
-              <label>Storage plan<select formControlName="nexusPlan"><option value="none">Free / None</option><option value="1gb">1GB</option><option value="5gb">5GB</option><option value="10gb">10GB</option></select></label>
-              <p class="muted">Storage used: {{ storage()?.nexusStorage?.usedBytes || 0 }} bytes (placeholder)</p>
-            </article>
-            <article class="provider-card">
-              <h3>Local Folder</h3><button class="secondary" type="button">Set Local Folder</button>
-              <label>Selected folder path<input formControlName="localPath" placeholder="Metadata-only path or display name"></label>
-              <p class="muted">Local folder support is metadata-only for now because browsers cannot freely access local paths without user action.</p>
-              <!-- TODO: Evaluate File System Access API or a desktop wrapper for durable local-folder document sync. -->
+            <article class="provider-card future-card">
+              <h3>Local Folder (future)</h3><span class="status">{{ localFolderSupportMessage }}</span>
+              <button class="secondary" type="button" disabled>Set Local Folder</button>
+              <label>Folder metadata<input formControlName="localFolderPath" placeholder="Future folder handle display name or path"></label>
+              <p class="muted">Evaluation: File System Access API is the best browser-local option for Chromium browsers, but unsupported browsers must fall back to browser downloads until a desktop wrapper or cloud provider is selected.</p>
             </article>
           </div>
         </section>
@@ -99,7 +99,8 @@ export class PlaceholderPageComponent {
   private route = inject(ActivatedRoute); private fb = inject(FormBuilder); private db = inject(Firestore); private currencyService = inject(CurrencyService); private storageService = inject(DocumentStorageService); private activityService = inject(ActivityService); private companyContext = inject(CompanyContextService);
   sectionName = this.route.snapshot.data['sectionName'] ?? 'this section'; isSettings = this.sectionName === 'Settings'; currencyOptions = this.currencyService.options; companyId = signal<string | null>(null); saving = signal(false); savingStorage = signal(false); message = signal(''); storage = signal<CompanyDocumentStorageSettings | null>(null);
   form = this.fb.nonNullable.group({ currency: [this.currencyService.defaultCurrency] });
-  storageForm = this.fb.nonNullable.group({ defaultProvider: ['nexus_storage' as DocumentStorageProvider], googleDriveFolder: [''], oneDriveFolder: [''], nexusPlan: ['none' as 'none' | '1gb' | '5gb' | '10gb'], localPath: [''] });
+  storageForm = this.fb.nonNullable.group({ defaultProvider: ['browser_download' as DocumentStorageProvider], browserDownloadFolder: [''], googleDriveFolder: [''], oneDriveFolder: [''], localFolderPath: [''] });
+  localFolderSupportMessage = this.storageService.localFolderFallbackMessage();
 
   constructor() {
     if (!this.isSettings) return;
@@ -111,12 +112,20 @@ export class PlaceholderPageComponent {
       });
       this.storageService.getCompanySettings(companyId).pipe(take(1)).subscribe(settings => {
         this.storage.set(settings);
-        this.storageForm.patchValue({ defaultProvider: settings.defaultProvider, googleDriveFolder: settings.googleDrive?.rootFolderName || settings.googleDrive?.rootFolderUrl || '', oneDriveFolder: settings.oneDrive?.rootFolderName || settings.oneDrive?.rootFolderUrl || '', nexusPlan: settings.nexusStorage?.plan || 'none', localPath: settings.local?.rootPath || settings.local?.displayName || '' });
+        this.storageForm.patchValue({ defaultProvider: settings.defaultProvider, browserDownloadFolder: settings.browserDownload?.suggestedSubfolder || '', googleDriveFolder: settings.googleDrive?.rootFolderName || settings.googleDrive?.rootFolderUrl || '', oneDriveFolder: settings.oneDrive?.rootFolderName || settings.oneDrive?.rootFolderUrl || '', localFolderPath: settings.localFolder?.rootPath || settings.localFolder?.displayName || '' });
       });
     });
   }
 
   async saveCurrency() { const companyId = this.companyId(); if (!companyId) return; this.saving.set(true); this.message.set(''); try { await this.activityService.track(companyId, 'update', `companies/${companyId}`, 'Updated company currency settings.', () => updateDoc(doc(this.db, `companies/${companyId}`), { currency: this.currencyService.normalize(this.form.controls.currency.value) })); this.message.set('Currency settings saved.'); } finally { this.saving.set(false); } }
 
-  async saveDocumentStorage() { const companyId = this.companyId(); if (!companyId) return; const value = this.storageForm.getRawValue(); this.savingStorage.set(true); this.message.set(''); try { await this.storageService.saveCompanySettings(companyId, { defaultProvider: value.defaultProvider, googleDrive: { connected: this.storage()?.googleDrive?.connected || false, rootFolderName: value.googleDriveFolder || undefined }, oneDrive: { connected: this.storage()?.oneDrive?.connected || false, rootFolderName: value.oneDriveFolder || undefined }, nexusStorage: { enabled: value.defaultProvider === 'nexus_storage', plan: value.nexusPlan, usedBytes: this.storage()?.nexusStorage?.usedBytes || 0, rootPath: 'documents' }, local: { enabled: value.defaultProvider === 'local', rootPath: value.localPath || undefined, displayName: value.localPath || undefined } }); this.message.set('Document storage settings saved.'); } finally { this.savingStorage.set(false); } }
+  async saveDocumentStorage() { const companyId = this.companyId(); if (!companyId) return; const value = this.storageForm.getRawValue(); const selectedFolder = this.folderMetadataFor(value.defaultProvider, value); this.savingStorage.set(true); this.message.set(''); try { await this.storageService.saveCompanySettings(companyId, { defaultProvider: value.defaultProvider, selectedProvider: value.defaultProvider, selectedFolder, browserDownload: { enabled: true, suggestedSubfolder: value.browserDownloadFolder || undefined }, googleDrive: { connected: this.storage()?.googleDrive?.connected || false, rootFolderName: value.googleDriveFolder || undefined }, oneDrive: { connected: this.storage()?.oneDrive?.connected || false, rootFolderName: value.oneDriveFolder || undefined }, localFolder: { enabled: value.defaultProvider === 'local_folder', supported: this.storageService.supportsLocalFolderAccess(), rootPath: value.localFolderPath || undefined, displayName: value.localFolderPath || undefined, fallbackProvider: 'browser_download' } }); this.message.set(value.defaultProvider === 'local_folder' && !this.storageService.supportsLocalFolderAccess() ? 'Local folder APIs are unsupported in this browser. Browser download fallback saved.' : 'Document storage settings saved.'); } finally { this.savingStorage.set(false); } }
+
+  private folderMetadataFor(provider: DocumentStorageProvider, value: ReturnType<typeof this.storageForm.getRawValue>) {
+    if (provider === 'google_drive') return { folderName: value.googleDriveFolder || undefined, folderUrl: value.googleDriveFolder?.startsWith('http') ? value.googleDriveFolder : undefined };
+    if (provider === 'onedrive') return { folderName: value.oneDriveFolder || undefined, folderUrl: value.oneDriveFolder?.startsWith('http') ? value.oneDriveFolder : undefined };
+    if (provider === 'local_folder') return { displayName: value.localFolderPath || undefined, path: value.localFolderPath || undefined };
+    if (provider === 'browser_download') return { displayName: value.browserDownloadFolder || 'Browser downloads' };
+    return undefined;
+  }
 }

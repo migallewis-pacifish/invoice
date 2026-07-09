@@ -19,20 +19,20 @@ describe('DocumentStorageService', () => {
   it('returns user-friendly provider labels', () => {
     expect(service.providerLabel('google_drive')).toBe('Google Drive');
     expect(service.providerLabel('onedrive')).toBe('OneDrive');
-    expect(service.providerLabel('nexus_storage')).toBe('Nexus Storage');
-    expect(service.providerLabel('local')).toBe('Local Folder');
+    expect(service.providerLabel('browser_download')).toBe('Browser Download');
+    expect(service.providerLabel('local_folder')).toBe('Local Folder (future)');
     expect(service.providerLabel('external_link')).toBe('External Link');
     expect(service.providerLabel(undefined)).toBe('Company default');
   });
 
   it('normalizes missing nested settings with safe defaults', () => {
-    const normalized = (service as any).normalizeCompanySettings('company-1', { defaultProvider: 'local', local: { rootPath: '/docs' } });
+    const normalized = (service as any).normalizeCompanySettings('company-1', { defaultProvider: 'local_folder', localFolder: { rootPath: '/docs' } });
 
     expect(normalized.companyId).toBe('company-1');
-    expect(normalized.defaultProvider).toBe('local');
+    expect(normalized.defaultProvider).toBe('local_folder');
     expect(normalized.googleDrive.connected).toBeFalse();
     expect(normalized.oneDrive.connected).toBeFalse();
-    expect(normalized.nexusStorage).toEqual(jasmine.objectContaining({ enabled: true, plan: 'none', usedBytes: 0, rootPath: 'documents' }));
-    expect(normalized.local).toEqual(jasmine.objectContaining({ enabled: false, rootPath: '/docs' }));
+    expect(normalized.browserDownload).toEqual(jasmine.objectContaining({ enabled: true }));
+    expect(normalized.localFolder).toEqual(jasmine.objectContaining({ enabled: false, rootPath: '/docs', fallbackProvider: 'browser_download' }));
   });
 });

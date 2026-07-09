@@ -155,8 +155,8 @@
               <option value="company_default">Use company default</option>
               <option value="google_drive">Google Drive</option>
               <option value="onedrive">OneDrive</option>
-              <option value="nexus_storage">Nexus Storage</option>
-              <option value="local">Local Folder</option>
+              <option value="browser_download">Browser Download</option>
+              <option value="local_folder">Local Folder (future)</option>
               <option value="external_link">External Link</option>
             </select>
           </label>
@@ -168,7 +168,7 @@
             {{ savingClientStorage() ? 'Saving…' : 'Save Client Storage' }}
           </button>
         </div>
-        <p class="muted">Local folder values are metadata-only until browser File System Access API or desktop wrapper support is implemented.</p>
+        <p class="muted">Browser downloads are available now. Local folder values are metadata-only until File System Access API or desktop wrapper support is implemented, and fall back to browser downloads when unsupported.</p>
         <p class="muted" *ngIf="clientStorageMessage()">{{ clientStorageMessage() }}</p>
       </section>
 
