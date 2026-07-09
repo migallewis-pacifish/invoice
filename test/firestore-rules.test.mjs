@@ -60,5 +60,7 @@ await expectDenied(write('companies/company-a/clients/client-3', { name: 'Anon' 
 await expectAllowed(write('companies/company-a/templates/invoice', { id: 'invoice', companyId: 'company-a', type: 'invoice', name: 'Default invoice template', storagePath: 'companies/company-a/templates/invoice.docx' }, 'alice'), 'member writes template');
 await expectAllowed(write('companies/company-a/expenses/expense-1', { description: 'Hosting' }, 'alice'), 'member writes expense');
 await expectAllowed(write('companies/company-a/clients/client-1/invoices/invoice-1', { invoiceNo: 'INV-1' }, 'alice'), 'member writes invoice');
+await expectAllowed(write('companies/company-a/invoiceSummaries/invoice-1', { clientId: 'client-1', invoiceNo: 'INV-1' }, 'alice'), 'member writes invoice summary');
+await expectDenied(read('companies/company-a/invoiceSummaries/invoice-1', 'bob'), 'cross-company invoice summary read is denied');
 
 console.log('Firestore rules tests passed');

@@ -64,6 +64,10 @@ export interface InvoiceRecord {
   createdBy?: string;
 }
 
+export interface InvoiceSummaryRecord extends InvoiceRecord {
+  clientId: string;
+}
+
 export interface Banking {
   bankName: string;  
   accountName: string;

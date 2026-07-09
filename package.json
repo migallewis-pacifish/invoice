@@ -8,10 +8,11 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "serve:ssr:invoice": "node dist/invoice/server/server.mjs",
-    "test:ci": "ng test --watch=false --browsers=ChromeHeadlessCI --karma-config=karma.conf.cjs --include=src/app/services/invoice-docx.service.spec.ts --include=src/app/services/register.service.spec.ts --include=src/app/services/template.service.spec.ts --include=src/app/utils/guard-state.spec.ts --code-coverage=false",
+    "test:ci": "ng test --watch=false --browsers=ChromeHeadlessCI --karma-config=karma.conf.cjs --include=src/app/services/client.service.spec.ts --include=src/app/services/invoice-docx.service.spec.ts --include=src/app/services/register.service.spec.ts --include=src/app/services/template.service.spec.ts --include=src/app/utils/guard-state.spec.ts --code-coverage=false",
     "test:rules": "npx --yes firebase-tools@13.35.1 emulators:exec --only firestore --project demo-invoice-ci \"node test/firestore-rules.test.mjs\"",
     "migrate:templates": "node scripts/migrate-company-template-paths.mjs",
-    "migrate:client-expenses": "node scripts/migrate-client-expenses.mjs"
+    "migrate:client-expenses": "node scripts/migrate-client-expenses.mjs",
+    "backfill:invoice-summaries": "node scripts/backfill-invoice-summaries.mjs"
   },
   "private": true,
   "dependencies": {

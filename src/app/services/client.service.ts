@@ -1,10 +1,10 @@
 import { inject, Injectable } from '@angular/core';
 import { collectionData, Firestore } from '@angular/fire/firestore';
-import { addDoc, collection, doc, getDoc, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { Client, ClientUpdate } from '../models/client.model';
 import { ActivityService } from './activity.service';
 import { CompanyContextService } from './company-context.service';
-import { InvoiceRecord } from '../models/invoice.model';
+import { InvoiceRecord, InvoiceSummaryRecord } from '../models/invoice.model';
 import { combineLatest, from, map, Observable, of, switchMap } from 'rxjs';
 
 
@@ -14,6 +14,14 @@ export interface ClientInvoiceSummary {
   nextDueDate: number | null;
   isSettled: boolean;
   invoiceCount: number;
+}
+
+type InvoiceSummaryInput = Partial<InvoiceRecord> & Pick<InvoiceRecord, 'total' | 'amountPaid' | 'status'>;
+
+function withoutUndefined<T extends Record<string, any>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, fieldValue]) => fieldValue !== undefined)
+  ) as T;
 }
 
 function toMillis(value: any): number | null {
@@ -67,6 +75,47 @@ export function calculateClientInvoiceSummary(
   });
 }
 
+export function buildInvoiceSummaryRecord(
+  invoiceId: string,
+  clientId: string,
+  invoice: InvoiceSummaryInput
+): InvoiceSummaryRecord {
+  const total = Number(invoice.total ?? 0) || 0;
+  const amountPaid = Number(invoice.amountPaid ?? 0) || 0;
+
+  return withoutUndefined({
+    id: invoiceId,
+    clientId,
+    invoiceNumber: invoice.invoiceNumber,
+    date: invoice.date,
+    filename: invoice.filename,
+    total,
+    amountPaid,
+    creditAmount: invoice.creditAmount,
+    refundAmount: invoice.refundAmount,
+    overpaidAmount: invoice.overpaidAmount,
+    status: invoice.status,
+    dueDate: invoice.dueDate,
+    paidAt: invoice.paidAt,
+    updatedAt: invoice.updatedAt,
+    createdAt: invoice.createdAt,
+    createdBy: invoice.createdBy,
+  });
+}
+
+export function mergeInvoiceTrackingUpdate(
+  currentInvoice: Partial<InvoiceRecord>,
+  trackingUpdate: Partial<InvoiceRecord>
+): InvoiceSummaryInput {
+  return {
+    ...currentInvoice,
+    ...trackingUpdate,
+    total: Number(trackingUpdate.total ?? currentInvoice.total ?? 0) || 0,
+    amountPaid: Number(trackingUpdate.amountPaid ?? currentInvoice.amountPaid ?? 0) || 0,
+    status: trackingUpdate.status ?? currentInvoice.status ?? 'sent',
+  };
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -109,12 +158,13 @@ export class ClientService {
 
 
   getInvoicesForCompany(): Observable<InvoiceRecord[]> {
-    return this.clients$().pipe(
-      switchMap(clients => clients.length
-        ? combineLatest(clients.map(client => this.getInvoicesForClient(client.id)))
-        : of([])
-      ),
-      map(invoiceGroups => (invoiceGroups as InvoiceRecord[][]).flat())
+    return this.getCompanyId$().pipe(
+      switchMap(companyId => {
+        const ref = collection(this.db, `companies/${companyId}/invoiceSummaries`);
+        return collectionData(ref, { idField: 'id' }).pipe(
+          map((arr: any[] | undefined) => (arr ?? []) as InvoiceRecord[])
+        );
+      })
     );
   }
 
@@ -135,20 +185,60 @@ export class ClientService {
       switchMap(companyId => {
         const colRef = collection(this.db, `companies/${companyId}/clients/${clientId}/invoices`);
         const amountPaid = Number(data?.amountPaid ?? 0) || 0;
+        const status = data?.status || (amountPaid > 0 ? 'partial' : 'sent');
+        const updatedAt = data?.updatedAt || serverTimestamp();
         return from(this.activityService.track(
           companyId,
           'create',
           `companies/${companyId}/clients/${clientId}/invoices`,
           `Created invoice ${data?.invoiceNumber || data?.filename || 'draft'} for client ${clientId}.`,
-          () => addDoc(colRef, {
-            ...data,
-            amountPaid,
-            status: data?.status || (amountPaid > 0 ? 'partial' : 'sent'),
-            updatedAt: data?.updatedAt || serverTimestamp(),
-          })
+          async () => {
+            const invoiceRef = await addDoc(colRef, {
+              ...data,
+              amountPaid,
+              status,
+              updatedAt,
+            });
+            await this.upsertInvoiceSummary(companyId, clientId, invoiceRef.id, {
+              ...data,
+              amountPaid,
+              status,
+              updatedAt,
+            });
+            return invoiceRef;
+          }
         )).pipe(map(ref => ref.id));
       })
     );
+  }
+
+  backfillInvoiceSummaries(): Observable<number> {
+    return this.getCompanyId$().pipe(
+      switchMap(companyId => this.clients$().pipe(
+        switchMap(async clients => {
+          let migrated = 0;
+          for (const client of clients) {
+            const invoicesRef = collection(this.db, `companies/${companyId}/clients/${client.id}/invoices`);
+            const invoices = await getDocs(invoicesRef);
+            for (const invoiceDoc of invoices.docs) {
+              await this.upsertInvoiceSummary(companyId, client.id, invoiceDoc.id, invoiceDoc.data() as InvoiceRecord);
+              migrated += 1;
+            }
+          }
+          return migrated;
+        })
+      ))
+    );
+  }
+
+  private async upsertInvoiceSummary(
+    companyId: string,
+    clientId: string,
+    invoiceId: string,
+    invoice: InvoiceSummaryInput
+  ): Promise<void> {
+    const summaryRef = doc(this.db, `companies/${companyId}/invoiceSummaries/${invoiceId}`);
+    await setDoc(summaryRef, buildInvoiceSummaryRecord(invoiceId, clientId, invoice), { merge: true });
   }
 
   updateInvoiceTracking(clientId: string, invoiceId: string, data: { amountPaid: number; status: string; dueDate?: any; paidAt?: any; creditAmount?: number; refundAmount?: number; overpaidAmount?: number; paymentHistory?: any[] }): Observable<void> {
@@ -160,10 +250,21 @@ export class ClientService {
           'update',
           `companies/${companyId}/clients/${clientId}/invoices/${invoiceId}`,
           `Updated invoice ${invoiceId} tracking to ${data.status}.`,
-          () => updateDoc(invoiceRef, {
-            ...data,
-            updatedAt: serverTimestamp(),
-          })
+          async () => {
+            const updatedAt = serverTimestamp();
+            await updateDoc(invoiceRef, {
+              ...data,
+              updatedAt,
+            });
+            const invoiceSnap = await getDoc(invoiceRef);
+            const currentInvoice = invoiceSnap.exists() ? invoiceSnap.data() as InvoiceRecord : {};
+            await this.upsertInvoiceSummary(
+              companyId,
+              clientId,
+              invoiceId,
+              mergeInvoiceTrackingUpdate(currentInvoice, { ...data, updatedAt } as Partial<InvoiceRecord>)
+            );
+          }
         ));
       })
     );
