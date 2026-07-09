@@ -2,15 +2,15 @@ import { Component, effect, inject, Input, signal } from '@angular/core';
 import { ClientInvoiceSummary, ClientService } from '../../services/client.service';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Client } from '../../models/client.model';
-import { combineLatest, map, Observable, of, startWith, take } from 'rxjs';
+import { combineLatest, firstValueFrom, map, Observable, of, startWith, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { Dialog } from '@angular/cdk/dialog';
 import { AddClientDialogueComponent } from '../../components/add-client-dialogue/add-client-dialogue.component';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
-import { Auth, authState } from '@angular/fire/auth';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
+import { CompanyContextService } from '../../services/company-context.service';
 import { downloadClientsCsv } from '../../utils/client-csv';
 
 export interface ClientListItem {
@@ -90,9 +90,9 @@ export class ClientListComponent {
   private router = inject(Router);
   private clientSvc = inject(ClientService);
   private dialog = inject(Dialog);
-  private auth = inject(Auth);
   private db = inject(Firestore);
   private currencyService = inject(CurrencyService);
+  private companyContext = inject(CompanyContextService);
 
   // search/filter
   search = new FormControl('', { nonNullable: true });
@@ -119,10 +119,8 @@ export class ClientListComponent {
         return;
       }
 
-      authState(this.auth).pipe(take(1)).subscribe(async user => {
-        if (!user) return;
-        const userData = await docData(doc(this.db, `users/${user.uid}`)).pipe(take(1)).toPromise() as any;
-        if (userData?.companyId) this.loadCurrency(userData.companyId);
+      this.companyContext.currentCompanyId$().pipe(take(1)).subscribe(companyId => {
+        if (companyId) this.loadCurrency(companyId);
       });
     });
   }
@@ -256,11 +254,7 @@ export class ClientListComponent {
   }
 
   private async currentUserCompanyId(): Promise<string | null> {
-    const user = await authState(this.auth).pipe(take(1)).toPromise();
-    if (!user) return null;
-
-    const userData = await docData(doc(this.db, `users/${user.uid}`)).pipe(take(1)).toPromise() as { companyId?: string } | undefined;
-    return userData?.companyId ?? null;
+    return firstValueFrom(this.companyContext.currentCompanyId$().pipe(take(1)));
   }
 
   private loadCurrency(companyId: string) {
