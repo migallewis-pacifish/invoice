@@ -338,7 +338,7 @@ h4 { margin: 0 0 8px; color: var(--ink); } p { margin: 0; }
 .table-toolbar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 12px;
 }
 
