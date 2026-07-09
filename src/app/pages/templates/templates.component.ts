@@ -1,12 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { Auth, authState } from '@angular/fire/auth';
-import { collection, collectionData, doc, docData, Firestore } from '@angular/fire/firestore';
-import { take } from 'rxjs';
+import { collection, collectionData, Firestore } from '@angular/fire/firestore';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
-import { AppUser, CompanyTemplate } from '../../models/invoice.model';
+import { CompanyTemplate } from '../../models/invoice.model';
 import { TemplateService } from '../../services/template.service';
+import { CompanyContextService } from '../../services/company-context.service';
 import { UploadTemplateComponent } from '../upload-template/upload-template.component';
 
 type TemplateType = 'invoice' | 'letter';
@@ -32,10 +31,10 @@ interface TemplateCard extends TemplateDocument {
   styleUrl: './templates.component.scss'
 })
 export class TemplatesComponent {
-  private auth = inject(Auth);
   private db = inject(Firestore);
   private router = inject(Router);
   private templateService = inject(TemplateService);
+  private companyContext = inject(CompanyContextService);
 
   protected readonly showUpload = signal(false);
   protected readonly loading = signal(true);
@@ -86,20 +85,9 @@ export class TemplatesComponent {
     // TODO: Replace placeholder with overflow menu actions (archive, rename, set default).
   }
 
-  private loadCompanyTemplates(): void {
-    authState(this.auth).pipe(take(1)).subscribe(async user => {
-      if (!user) {
-        await this.router.navigate(['/login']);
-        return;
-      }
-
-      const userSnap = await docData(doc(this.db, `users/${user.uid}`)).pipe(take(1)).toPromise() as AppUser | undefined;
-      const companyId = userSnap?.companyId;
-      if (!companyId) {
-        await this.router.navigate(['/register']);
-        return;
-      }
-
+  private async loadCompanyTemplates(): Promise<void> {
+    try {
+      const companyId = await this.companyContext.requireCompanyIdOnce();
       collectionData(collection(this.db, `companies/${companyId}/templates`), { idField: 'id' }).subscribe({
         next: templates => {
           this.templates.set((templates as CompanyTemplate[]).map(template => this.toTemplateCard(companyId, template)));
@@ -112,7 +100,9 @@ export class TemplatesComponent {
           this.loading.set(false);
         }
       });
-    });
+    } catch (err: any) {
+      await this.router.navigate([err?.message === 'Not authenticated' ? '/login' : '/register']);
+    }
   }
 
   private toTemplateCard(companyId: string, template: CompanyTemplate): TemplateCard {

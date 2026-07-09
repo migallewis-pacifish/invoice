@@ -1,11 +1,11 @@
 import { inject, Injectable } from '@angular/core';
-import { Auth, authState } from '@angular/fire/auth';
-import { collectionData, docData, Firestore } from '@angular/fire/firestore';
+import { collectionData, Firestore } from '@angular/fire/firestore';
 import { addDoc, collection, doc, getDoc, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { Client, ClientUpdate } from '../models/client.model';
 import { ActivityService } from './activity.service';
+import { CompanyContextService } from './company-context.service';
 import { InvoiceRecord } from '../models/invoice.model';
-import { combineLatest, defer, from, map, Observable, of, switchMap, throwError } from 'rxjs';
+import { combineLatest, from, map, Observable, of, switchMap } from 'rxjs';
 
 
 export interface ClientInvoiceSummary {
@@ -72,32 +72,18 @@ export function calculateClientInvoiceSummary(
 })
 export class ClientService {
 
-  private auth = inject(Auth);
   private db = inject(Firestore);
   private activityService = inject(ActivityService);
+  private companyContext = inject(CompanyContextService);
 
-  /** Reads companyId from users/{uid} */
-  private companyContext$(): Observable<{ userId: string; companyId: string }> {
-    return defer(() => {
-      const user = this.auth.currentUser;
-      if (!user) {
-        return throwError(() => new Error('Not authenticated'));
-      }
-      const userDoc = doc(this.db, `users/${user.uid}`);
-      return from(getDoc(userDoc)).pipe(
-        map(snap => {
-          if (!snap.exists()) throw new Error('User profile not found');
-          const data = snap.data() as any;
-          const companyId = data?.companyId as string | undefined;
-          if (!companyId) throw new Error('User has no companyId');
-          return { userId: user.uid, companyId };
-        })
-      );
-    });
+  private companyContext$() {
+    return this.companyContext.currentContext$().pipe(
+      map(ctx => ({ userId: ctx.user.uid, companyId: ctx.companyId }))
+    );
   }
 
   private getCompanyId$(): Observable<string> {
-    return this.companyContext$().pipe(map(ctx => ctx.companyId));
+    return this.companyContext.currentContext$().pipe(map(ctx => ctx.companyId));
   }
 
   getClientById(id: string): Observable<Client | null> {
@@ -251,22 +237,13 @@ export class ClientService {
   }
 
   clients$(): Observable<Client[]> {
-    return authState(this.auth).pipe(
-      switchMap(user => {
-        if (!user) return of([]);
-        const userDoc = doc(this.db, `users/${user.uid}`);
-        return docData(userDoc).pipe(
-          switchMap((u: any) => {
-            const companyId = u?.companyId as string | undefined;
-            if (!companyId) return of([]);
-            const col = collection(this.db, `companies/${companyId}/clients`);
-            const q = query(col, orderBy('displayName'));
-            return collectionData(q, { idField: 'id' }).pipe(
-              map((arr: any[]) =>
-                arr.map(x => this.toClient(x))
-              )
-            );
-          })
+    return this.companyContext.currentCompanyId$().pipe(
+      switchMap(companyId => {
+        if (!companyId) return of([]);
+        const col = collection(this.db, `companies/${companyId}/clients`);
+        const q = query(col, orderBy('displayName'));
+        return collectionData(q, { idField: 'id' }).pipe(
+          map((arr: any[]) => arr.map(x => this.toClient(x)))
         );
       })
     );
