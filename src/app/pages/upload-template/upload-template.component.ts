@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, inject, Input, Output, signal } from '@angular/core';
 import { Auth, authState } from '@angular/fire/auth';
-import { doc, docData, Firestore, deleteDoc, setDoc } from '@angular/fire/firestore';
-import { deleteObject, getDownloadURL, ref, Storage, uploadBytesResumable } from '@angular/fire/storage';
+import { collection, collectionData, doc, docData, Firestore } from '@angular/fire/firestore';
+import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 import { take } from 'rxjs';
 import { ActivityService } from '../../services/activity.service';
+import { TemplateService } from '../../services/template.service';
 
 @Component({
   selector: 'app-upload-template',
@@ -21,11 +22,13 @@ export class UploadTemplateComponent {
   private db = inject(Firestore);
   private storage = inject(Storage);
   private activityService = inject(ActivityService);
+  private templateService = inject(TemplateService);
 
 
 
   // State
   companyId = signal<string | null>(null);
+  templateId = signal<string | null>(null);
   templatePath = signal<string | null>(null);
   templateUrl = signal<string | null>(null);
 
@@ -37,7 +40,7 @@ export class UploadTemplateComponent {
   // Upload
   uploading = signal(false);
   progress = signal<number>(0);
-  private currentTask: ReturnType<typeof uploadBytesResumable> | null = null;
+  private currentTask: { cancel: () => void } | null = null;
 
   // Config
   readonly maxSizeMB = 5;
@@ -52,9 +55,11 @@ export class UploadTemplateComponent {
         const cid = u?.companyId ?? null;
         this.companyId.set(cid);
         if (!cid) return;
-        const templateRef = doc(this.db, `companies/${cid}/templates/invoice`);
-        docData(templateRef).subscribe(async (c: any) => {
+        collectionData(collection(this.db, `companies/${cid}/templates`), { idField: 'id' }).subscribe(async (templates: any[]) => {
+          const c = templates.find(template => template.type === 'invoice' && template.isDefault && !template.archived)
+            ?? templates.find(template => template.type === 'invoice' && !template.archived);
           const path = c?.storagePath ?? null;
+          this.templateId.set(c?.id ?? null);
           this.templatePath.set(path);
           if (path) {
             try {
@@ -116,64 +121,26 @@ export class UploadTemplateComponent {
     const cid = this.companyId();
     if (!f || !cid) { this.error.set('No file or company'); return; }
 
-    // Decide storage path (replace same filename)
-    // If you want versioned files, append a timestamp to name.
-    const path = `companies/${cid}/templates/invoice.docx`;
-    const storageRef = ref(this.storage, path);
-
     this.uploading.set(true);
     this.progress.set(0);
 
-    const task = uploadBytesResumable(storageRef, f, {
-      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    });
-    this.currentTask = task;
-
-    task.on('state_changed',
-      (snap) => {
-        const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-        this.progress.set(pct);
-      },
-      (err) => {
-        this.uploading.set(false);
-        this.error.set(err?.message ?? 'Upload failed');
-      },
-      async () => {
-        try {
-          await this.activityService.track(
-            cid,
-            'update',
-            `companies/${cid}/templates/invoice`,
-            'Updated invoice template.',
-            () => setDoc(doc(this.db, `companies/${cid}/templates/invoice`), {
-              id: 'invoice',
-              companyId: cid,
-              type: 'invoice',
-              name: 'Default invoice template',
-              storagePath: path,
-              fileName: f.name,
-              isDefault: true,
-              updatedAt: Date.now(),
-              createdAt: Date.now()
-            }, { merge: true })
-          );
-          const url = await getDownloadURL(storageRef);
-          this.templatePath.set(path);
-          this.templateUrl.set(url);
-          this.info.set('Template uploaded successfully.');
-          this.file.set(null);
-
-          // 🔽 notify dialog wrapper
-          this.uploaded.emit(path);
-        } catch (e: any) {
-          this.error.set(e?.message ?? 'Failed to save template path.');
-        } finally {
-          this.uploading.set(false);
-          this.progress.set(0);
-          this.currentTask = null;
-        }
-      }
-    );
+    try {
+      const result = await this.templateService.upload(cid, f, 'invoice');
+      const url = await getDownloadURL(ref(this.storage, result.path));
+      this.templateId.set(result.template.id);
+      this.templatePath.set(result.path);
+      this.templateUrl.set(url);
+      this.info.set('Template uploaded successfully.');
+      this.file.set(null);
+      this.progress.set(100);
+      this.uploaded.emit(result.path);
+    } catch (e: any) {
+      this.error.set(e?.message ?? 'Failed to save template path.');
+    } finally {
+      this.uploading.set(false);
+      this.progress.set(0);
+      this.currentTask = null;
+    }
   }
 
   cancelUpload() {
@@ -195,17 +162,19 @@ export class UploadTemplateComponent {
     if (!cid || !path) return;
 
     try {
-      await deleteObject(ref(this.storage, path));
-    } catch {
-      // ignore missing file
+      const id = this.templateId();
+      if (!id) throw new Error('Template document not found.');
+      await this.activityService.track(
+        cid,
+        'update',
+        `companies/${cid}/templates/${id}`,
+        'Removed invoice template.',
+        () => this.templateService.deleteTemplate(cid, { id, companyId: cid, type: 'invoice', name: 'Invoice template', storagePath: path })
+      );
+    } catch (e: any) {
+      this.error.set(e?.message ?? 'Failed to remove template.');
+      return;
     }
-    await this.activityService.track(
-      cid,
-      'update',
-      `companies/${cid}/templates/invoice`,
-      'Removed invoice template.',
-      () => deleteDoc(doc(this.db, `companies/${cid}/templates/invoice`))
-    );
     this.templatePath.set(null);
     this.templateUrl.set(null);
     this.info.set('Template removed.');
