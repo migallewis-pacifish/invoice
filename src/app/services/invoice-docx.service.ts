@@ -64,7 +64,7 @@ export class InvoiceDocxService {
 
     return this.generateInvoiceDocx(companyId, data).pipe(
       switchMap(({ blob, company, fileName }) =>
-        from(this.saveLocally(blob, company, data.client_name, fileName)).pipe(map(() => fileName))
+        from(this.downloadInBrowser(blob, data.client_name, fileName)).pipe(map(() => fileName))
       ),
       catchError(err => {
         const userError = new Error(InvoiceDocxService.GENERATE_INVOICE_ERROR_MESSAGE);
@@ -176,10 +176,10 @@ export class InvoiceDocxService {
     }[char] || char));
   }
 
-  async saveLocally(file: Blob, company: Company, clientName: string, fileName: string): Promise<void> {
-    if (!company.storagePath) throw new Error('No storagePath defined for company');
-    // Simulate folder structure in filename
-    const fullFileName = `${clientName}/${fileName}`;
-    saveAs(file, fullFileName);
+  async downloadInBrowser(file: Blob, clientName: string, fileName: string): Promise<void> {
+    // Browser downloads cannot write directly to arbitrary local folders. The slash keeps
+    // the client name in the suggested filename for users to organize after download.
+    const suggestedFileName = `${clientName}/${fileName}`;
+    saveAs(file, suggestedFileName);
   }
 }
