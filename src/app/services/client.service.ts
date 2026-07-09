@@ -166,7 +166,7 @@ export class ClientService {
     );
   }
 
-  updateInvoiceTracking(clientId: string, invoiceId: string, data: { amountPaid: number; status: string; dueDate?: any; paidAt?: any }): Observable<void> {
+  updateInvoiceTracking(clientId: string, invoiceId: string, data: { amountPaid: number; status: string; dueDate?: any; paidAt?: any; creditAmount?: number; refundAmount?: number; overpaidAmount?: number; paymentHistory?: any[] }): Observable<void> {
     return this.getCompanyId$().pipe(
       switchMap(companyId => {
         const invoiceRef = doc(this.db, `companies/${companyId}/clients/${clientId}/invoices/${invoiceId}`);

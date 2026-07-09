@@ -13,6 +13,48 @@ import { CurrencyService } from '../../services/currency.service';
 
 type InvoiceDownloadFormat = 'docx';
 
+export interface InvoicePaymentAdjustment {
+  creditAmount?: number;
+  refundAmount?: number;
+}
+
+export function resolveTrackedAmountPaid(status: string, total: number, amountPaid: number, adjustment: InvoicePaymentAdjustment = {}): number {
+  const paid = Math.max(Number(amountPaid) || 0, 0);
+  const invoiceTotal = Math.max(Number(total) || 0, 0);
+  const creditAmount = Math.max(Number(adjustment.creditAmount) || 0, 0);
+  const refundAmount = Math.max(Number(adjustment.refundAmount) || 0, 0);
+  const allowsOverpayment = status === 'overpaid' || status === 'credited' || status === 'refunded' || creditAmount > 0 || refundAmount > 0;
+
+  if (status === 'paid') return invoiceTotal;
+  if (status === 'partial' || allowsOverpayment) {
+    return allowsOverpayment ? paid : Math.min(paid, invoiceTotal);
+  }
+  return 0;
+}
+
+export function resolveTrackedInvoiceStatus(status: string, total: number, amountPaid: number, dueDate?: string, adjustment: InvoicePaymentAdjustment = {}, now: Date = new Date()): string {
+  const invoiceTotal = Math.max(Number(total) || 0, 0);
+  const paid = Math.max(Number(amountPaid) || 0, 0);
+  const creditAmount = Math.max(Number(adjustment.creditAmount) || 0, 0);
+  const refundAmount = Math.max(Number(adjustment.refundAmount) || 0, 0);
+
+  if (status === 'draft') return 'draft';
+  if (refundAmount > 0 || status === 'refunded') return 'refunded';
+  if (creditAmount > 0 || status === 'credited') return 'credited';
+  if (paid > invoiceTotal && invoiceTotal > 0) return 'overpaid';
+  if (paid >= invoiceTotal && invoiceTotal > 0) return 'paid';
+
+  if (dueDate) {
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    if (new Date(dueDate) < today) return 'overdue';
+  }
+
+  if (paid > 0) return 'partial';
+  return status || 'sent';
+}
+
+
 @Component({
   selector: 'app-add-invoice-dialog',
   standalone: true,
@@ -66,6 +108,8 @@ export class AddInvoiceDialogComponent {
       downloadFormat: ['docx' as InvoiceDownloadFormat, Validators.required],
       dueDate: [this.getCopiedDueDate()],
       amountPaid: [this.getInitialAmountPaid(), [Validators.required, Validators.min(0)]],
+      creditAmount: [this.getInitialCreditAmount(), [Validators.min(0)]],
+      refundAmount: [this.getInitialRefundAmount(), [Validators.min(0)]],
       status: [this.getInitialStatus(), Validators.required],
       items: this.fb.array(copiedItems.length ? copiedItems.map(item => this.createItem(item)) : [this.createItem()])
     });
@@ -88,6 +132,8 @@ export class AddInvoiceDialogComponent {
       if (this.trackingOnly) {
         this.form.get('dueDate')?.enable({ emitEvent: false });
         this.form.get('amountPaid')?.enable({ emitEvent: false });
+        this.form.get('creditAmount')?.enable({ emitEvent: false });
+        this.form.get('refundAmount')?.enable({ emitEvent: false });
         this.form.get('status')?.enable({ emitEvent: false });
       }
     }
@@ -310,6 +356,14 @@ export class AddInvoiceDialogComponent {
     return this.trackingOnly ? Number(this.previousInvoice?.amountPaid ?? 0) || 0 : 0;
   }
 
+  private getInitialCreditAmount(): number {
+    return this.trackingOnly ? Number(this.previousInvoice?.creditAmount ?? 0) || 0 : 0;
+  }
+
+  private getInitialRefundAmount(): number {
+    return this.trackingOnly ? Number(this.previousInvoice?.refundAmount ?? 0) || 0 : 0;
+  }
+
   saveTracking() {
     if (!this.trackingOnly || !this.previousInvoice?.id || this.form.invalid || this.saving()) return;
 
@@ -318,14 +372,23 @@ export class AddInvoiceDialogComponent {
 
     const formValue = this.form.getRawValue();
     const total = Number(this.previousInvoice?.total) || 0;
-    const amountPaid = this.resolveAmountPaid(formValue.status, total, formValue.amountPaid);
-    const status = this.resolveInvoiceStatus(formValue.status, total, amountPaid, formValue.dueDate);
+    const adjustment = { creditAmount: formValue.creditAmount, refundAmount: formValue.refundAmount };
+    const amountPaid = this.resolveAmountPaid(formValue.status, total, formValue.amountPaid, adjustment);
+    const status = this.resolveInvoiceStatus(formValue.status, total, amountPaid, formValue.dueDate, adjustment);
+    const overpaidAmount = Math.max(amountPaid - total, 0);
+    const creditAmount = Math.max(Number(formValue.creditAmount) || 0, 0);
+    const refundAmount = Math.max(Number(formValue.refundAmount) || 0, 0);
+    const paymentHistory = this.buildPaymentHistory(amountPaid, creditAmount, refundAmount);
 
     this.clientSvc.updateInvoiceTracking(this.clientId, this.previousInvoice.id, {
       amountPaid,
       status,
       dueDate: formValue.dueDate || null,
-      paidAt: status === 'paid' ? serverTimestamp() : null,
+      creditAmount,
+      refundAmount,
+      overpaidAmount,
+      paymentHistory,
+      paidAt: ['paid', 'overpaid', 'credited', 'refunded'].includes(status) ? serverTimestamp() : null,
     }).pipe(
       tap(() => this.dialog.close('Invoice payment tracking updated.')),
       catchError((err) => {
@@ -343,23 +406,18 @@ export class AddInvoiceDialogComponent {
   }
 
   canEditAmountPaid(): boolean {
-    return this.form?.get('status')?.value === 'partial';
+    return ['partial', 'overpaid', 'credited', 'refunded'].includes(this.form?.get('status')?.value);
   }
 
-  private resolveAmountPaid(status: string, total: number, amountPaid: number): number {
-    if (status === 'paid') return total;
-    if (status === 'partial') {
-      // TODO: Support overpaid invoices when credits/refunds are available.
-      return Math.min(Number(amountPaid) || 0, total);
-    }
-    return 0;
+  private resolveAmountPaid(status: string, total: number, amountPaid: number, adjustment: InvoicePaymentAdjustment = {}): number {
+    return resolveTrackedAmountPaid(status, total, amountPaid, adjustment);
   }
 
   private syncAmountPaidWithStatus() {
     if (this.syncingAmountPaid || !this.form) return;
 
     const status = this.form.get('status')?.value;
-    if (status === 'partial') return;
+    if (['partial', 'overpaid', 'credited', 'refunded'].includes(status)) return;
 
     this.syncingAmountPaid = true;
     this.form.get('amountPaid')?.setValue(
@@ -384,12 +442,19 @@ export class AddInvoiceDialogComponent {
     return +(subtotal + vatAmount).toFixed(2);
   }
 
-  private resolveInvoiceStatus(status: string, total: number, amountPaid: number, dueDate?: string): string {
-    if (status === 'draft') return 'draft';
-    if (amountPaid >= total && total > 0) return 'paid';
-    if (dueDate && new Date(dueDate) < this.startOfToday()) return 'overdue';
-    if (amountPaid > 0) return 'partial';
-    return status || 'sent';
+  private resolveInvoiceStatus(status: string, total: number, amountPaid: number, dueDate?: string, adjustment: InvoicePaymentAdjustment = {}): string {
+    return resolveTrackedInvoiceStatus(status, total, amountPaid, dueDate, adjustment, this.startOfToday());
+  }
+
+  private buildPaymentHistory(amountPaid: number, creditAmount: number, refundAmount: number) {
+    const createdBy = this.auth.currentUser?.uid;
+    const history = [
+      amountPaid > 0 ? { type: 'payment', amount: amountPaid, createdAt: serverTimestamp(), createdBy } : null,
+      creditAmount > 0 ? { type: 'credit', amount: creditAmount, createdAt: serverTimestamp(), createdBy } : null,
+      refundAmount > 0 ? { type: 'refund', amount: refundAmount, createdAt: serverTimestamp(), createdBy } : null,
+    ];
+
+    return history.filter(Boolean);
   }
 
   private startOfToday(): Date {

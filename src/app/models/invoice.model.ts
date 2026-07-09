@@ -33,7 +33,15 @@ export interface InvoiceData {
 }
 
 
-export type InvoiceStatus = 'draft' | 'sent' | 'partial' | 'paid' | 'overdue';
+export type InvoiceStatus = 'draft' | 'sent' | 'partial' | 'paid' | 'overdue' | 'overpaid' | 'credited' | 'refunded';
+
+export interface InvoicePaymentHistoryEntry {
+  type: 'payment' | 'credit' | 'refund';
+  amount: number;
+  createdAt?: any;
+  createdBy?: string;
+  notes?: string;
+}
 
 export interface InvoiceRecord {
   id?: string;
@@ -44,6 +52,10 @@ export interface InvoiceRecord {
   subtotal?: number;
   total: number;
   amountPaid: number;
+  creditAmount?: number;
+  refundAmount?: number;
+  overpaidAmount?: number;
+  paymentHistory?: InvoicePaymentHistoryEntry[];
   status: InvoiceStatus;
   dueDate?: any;
   paidAt?: any;
