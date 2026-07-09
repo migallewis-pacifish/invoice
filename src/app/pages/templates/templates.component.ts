@@ -96,7 +96,7 @@ export class TemplatesComponent {
       const userSnap = await docData(doc(this.db, `users/${user.uid}`)).pipe(take(1)).toPromise() as AppUser | undefined;
       const companyId = userSnap?.companyId;
       if (!companyId) {
-        await this.router.navigate(['/register-company']);
+        await this.router.navigate(['/register']);
         return;
       }
 

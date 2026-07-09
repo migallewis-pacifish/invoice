@@ -73,8 +73,11 @@ export class ClientListComponent {
     );
   }
 
-  goClient(c: Client) { this.router.navigate([`/company/${this.companyId()}/client/${c.id}`]); }           // you can create this route later
-  createInvoice(c: Client) { this.router.navigate(['/invoice/once-off'], { state: { clientId: c.id } }); }
+  goClient(c: Client) { this.openClientDetail(c); }
+
+  async createInvoice(c: Client) {
+    await this.openClientDetail(c, { openInvoiceDialog: true });
+  }
 
   // TODO: Sorting
   initials(name = ''): string {
@@ -108,6 +111,24 @@ export class ClientListComponent {
 
   avatarInk(index: number): string {
     return ['#ffffff', '#c2502e', '#092c7d', '#092c7d'][index % 4];
+  }
+
+
+  private async openClientDetail(c: Client, state?: { openInvoiceDialog: boolean }): Promise<boolean> {
+    const companyId = this.companyId() || await this.currentUserCompanyId();
+    if (!companyId) {
+      return this.router.navigate(['/register']);
+    }
+
+    return this.router.navigate([`/company/${companyId}/client/${c.id}`], { state });
+  }
+
+  private async currentUserCompanyId(): Promise<string | null> {
+    const user = await authState(this.auth).pipe(take(1)).toPromise();
+    if (!user) return null;
+
+    const userData = await docData(doc(this.db, `users/${user.uid}`)).pipe(take(1)).toPromise() as { companyId?: string } | undefined;
+    return userData?.companyId ?? null;
   }
 
   private loadCurrency(companyId: string) {
