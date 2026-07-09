@@ -56,6 +56,7 @@ export class ClientDetailComponent {
   clientStorageLocation = signal('');
   editingClient = signal(false);
   noteDraft = signal('');
+  private openedInvoiceFromNavigation = false;
 
   readonly tabs: { id: ClientTab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
@@ -118,6 +119,7 @@ export class ClientDetailComponent {
         this.noteDraft.set(data?.notes || '');
         this.syncClientStorageDraft(data);
         this.loading.set(false);
+        this.openInvoiceDialogFromNavigation();
       });
 
       // Real-time invoices
@@ -257,6 +259,15 @@ addInvoice(previousInvoice: any | null = null, viewOnly = false, trackingOnly = 
 viewInvoice(invoice: any) {
   this.addInvoice(invoice, true);
 }
+
+
+  private openInvoiceDialogFromNavigation(): void {
+    if (this.openedInvoiceFromNavigation || !history.state?.openInvoiceDialog) return;
+
+    this.openedInvoiceFromNavigation = true;
+    queueMicrotask(() => this.addInvoice());
+  }
+
 
 updateInvoiceTracking(invoice: any) {
   this.addInvoice(invoice, false, true);

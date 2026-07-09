@@ -124,7 +124,7 @@ export class LandingComponent {
       const userSnap = await docData(userRef).pipe(take(1)).toPromise() as AppUser | undefined;
       this.setSignedInUser(user, userSnap);
       const companyId = userSnap?.companyId;
-      if (!companyId) { this.router.navigate(['/register-company']); return; }
+      if (!companyId) { this.router.navigate(['/register']); return; }
 
       this.companyId.set(companyId);
       const compRef = doc(this.db, `companies/${companyId}`);
