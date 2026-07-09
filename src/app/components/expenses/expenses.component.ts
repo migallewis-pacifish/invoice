@@ -25,6 +25,10 @@ export class ExpensesComponent {
 
   // Provided by parent
   companyId = input.required<string>();
+  clientId = input<string | null>(null);
+  showClientPicker = input(true);
+  title = input('Expenses');
+  subtitle = input('Capture and manage business expenses per month');
 
   // Month selection
   selectedMonth = signal<string>(this.toMonthKey(new Date()));
@@ -72,7 +76,12 @@ export class ExpensesComponent {
   // Expenses list for selected month
   expenses = toSignal(
     this.month$.pipe(
-      switchMap(month => this.expensesService.listByMonth(this.companyId(), month))
+      switchMap(month => {
+        const clientId = this.clientId();
+        return clientId
+          ? this.expensesService.listByClientAndMonth(this.companyId(), clientId, month)
+          : this.expensesService.listCompanyLevelByMonth(this.companyId(), month);
+      })
     ),
     { initialValue: [] as Expense[] }
   );
@@ -109,7 +118,7 @@ export class ExpensesComponent {
       supplier: v.supplier?.trim() || "",
       amount: Number(v.amount),
       notes: v.notes?.trim() || "",
-      clientId: v.clientId ?? null,
+      clientId: this.clientId() ?? v.clientId ?? null,
     };
 
     await this.expensesService.add(this.companyId(), payload);
@@ -119,7 +128,7 @@ export class ExpensesComponent {
     this.form.controls.supplier.setValue('');
     this.form.controls.amount.setValue(0);
     this.form.controls.notes.setValue('');
-    this.form.controls.clientId.setValue(null);
+    this.form.controls.clientId.setValue(this.clientId());
   }
 
   async deleteExpense(id: string) {

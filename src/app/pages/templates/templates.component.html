@@ -37,6 +37,12 @@
     </div>
   </section>
 
+  <section class="template-grid mb-24" aria-label="no templates">
+    <p class="muted" *ngIf="loading()">Loading templates…</p>
+    <p class="error" *ngIf="error()">{{ error() }}</p>
+    <p class="muted" *ngIf="!loading() && !error() && activeTemplates().length === 0">No templates uploaded yet.</p>
+  </section>
+
   <section class="template-grid" aria-label="Company templates">
     <article class="template-card" *ngFor="let template of activeTemplates()">
       <div class="template-preview" [class.preview-letter]="template.type === 'letter'">

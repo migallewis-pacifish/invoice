@@ -12,10 +12,10 @@
       <button class="icon-button" type="button" aria-label="Help and updates">○</button>
       <div class="user-chip">
         <span>
-          <strong>Alex Sterling</strong>
-          <small>Administrator</small>
+          <strong>{{ signedInUserName() }}</strong>
+          <small>{{ signedInUserRole() }}</small>
         </span>
-        <div class="avatar" aria-hidden="true">AS</div>
+        <div class="avatar" aria-hidden="true">{{ signedInUserInitials() }}</div>
       </div>
     </div>
   </section>
@@ -31,23 +31,23 @@
   <section class="metrics-grid" aria-label="Business summary">
     <article class="metric-card outstanding">
       <div class="metric-label">Outstanding <span>▣</span></div>
-      <strong>{{ currencySymbol() }}{{ 12450 | number:'1.2-2' }}</strong>
-      <small class="down">-2.4% from last month</small>
+      <strong>{{ currencySymbol() }}{{ outstanding() | number:'1.2-2' }}</strong>
+      <small>{{ invoices().length }} invoices tracked</small>
     </article>
     <article class="metric-card revenue">
       <div class="metric-label">Revenue <span>⌁</span></div>
-      <strong>{{ currencySymbol() }}{{ 48210.50 | number:'1.2-2' }}</strong>
-      <small class="up">+12.8% from last month</small>
+      <strong>{{ currencySymbol() }}{{ revenue() | number:'1.2-2' }}</strong>
+      <small class="up">Collected from paid and partial invoices</small>
     </article>
     <article class="metric-card expenses">
       <div class="metric-label">Expenses <span>▤</span></div>
-      <strong>{{ currencySymbol() }}{{ 18300.20 | number:'1.2-2' }}</strong>
-      <small class="down">+4.1% from last month</small>
+      <strong>{{ currencySymbol() }}{{ expenseTotal() | number:'1.2-2' }}</strong>
+      <small>{{ expenses().length }} expenses recorded</small>
     </article>
     <article class="metric-card profit">
       <div class="metric-label">Net Profit <span>▣</span></div>
-      <strong>{{ currencySymbol() }}{{ 29910.30 | number:'1.2-2' }}</strong>
-      <small class="up">+18.5% from last month</small>
+      <strong>{{ currencySymbol() }}{{ netProfit() | number:'1.2-2' }}</strong>
+      <small [class.up]="netProfit() >= 0" [class.down]="netProfit() < 0">Revenue minus expenses</small>
     </article>
   </section>
 
@@ -62,8 +62,8 @@
       </div>
 
       <div class="bar-chart" aria-label="Cash flow chart">
-        <div class="month" *ngFor="let month of chartMonths">
-          <div class="bars">
+        <div class="month" *ngFor="let month of chartMonths()">
+          <div class="bars" [attr.title]="month.label + ': Income ' + currencySymbol() + (month.incomeTotal | number:'1.2-2') + ' · Expenses ' + currencySymbol() + (month.expenseTotal | number:'1.2-2')">
             <span class="expense-bar" [style.height.%]="month.expenses"></span>
             <span class="income-bar" [style.height.%]="month.income"></span>
           </div>
@@ -72,40 +72,28 @@
       </div>
     </article>
 
-    <article class="panel clients-panel">
-      <div class="panel-heading compact">
-        <h2>Recent Clients</h2>
-        <a routerLink="/clients">View All</a>
-      </div>
-      <div class="client-stack">
-        <a class="client-row" routerLink="/clients" *ngFor="let client of recentClients">
-          <span class="client-logo" [class.peach]="client.tone === 'peach'" [class.blue]="client.tone === 'blue'">{{ client.initials }}</span>
-          <span><strong>{{ client.name }}</strong><small>{{ client.status }}</small></span>
-          <b>›</b>
-        </a>
-      </div>
-    </article>
-
     <article class="panel payments-panel">
       <div class="panel-heading compact with-border">
         <h2>Upcoming Payments</h2>
         <button type="button">Manage All</button>
       </div>
-      <div class="payment-row" *ngFor="let payment of upcomingPayments">
+      <div class="payment-row" *ngFor="let payment of upcomingPayments()">
         <span class="payment-icon" [class.green]="payment.tone === 'green'">{{ payment.icon }}</span>
         <span><strong>{{ payment.name }}</strong><small>{{ payment.meta }}</small></span>
         <strong class="amount">{{ currencySymbol() }}{{ payment.amount | number:'1.2-2' }}</strong>
       </div>
+      <p class="empty-activity" *ngIf="upcomingPayments().length === 0">No upcoming payments due.</p>
     </article>
 
-    <article class="panel activity-panel">
+    <article class="panel activity-panel expanded-activity-panel">
       <div class="panel-heading compact"><h2>Recent Activity</h2></div>
       <div class="timeline">
-        <div class="activity-item" *ngFor="let item of activityItems">
+        <div class="activity-item" *ngFor="let item of activityItems()">
           <span class="activity-dot" [class.light]="item.tone === 'light'" [class.brown]="item.tone === 'brown'">{{ item.icon }}</span>
-          <div><strong>{{ item.title }}</strong><p>{{ item.title === 'Invoice #4203 Paid' ? 'Lumina Digital cleared their balance of ' + currencySymbol() + '3,500.00.' : item.copy }}</p><small>{{ item.time }}</small></div>
+          <div><strong>{{ item.title }}</strong><p>{{ item.description }}</p><small>{{ item.time }}</small></div>
         </div>
       </div>
+      <p class="empty-activity" *ngIf="activityItems().length === 0">No database changes have been recorded yet.</p>
     </article>
   </section>
 

@@ -3,7 +3,9 @@ import { Auth, authState } from '@angular/fire/auth';
 import { collectionData, docData, Firestore } from '@angular/fire/firestore';
 import { addDoc, collection, doc, getDoc, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { Client, ClientUpdate } from '../models/client.model';
-import { defer, from, map, Observable, of, switchMap, throwError } from 'rxjs';
+import { ActivityService } from './activity.service';
+import { InvoiceRecord } from '../models/invoice.model';
+import { combineLatest, defer, from, map, Observable, of, switchMap, throwError } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -12,6 +14,7 @@ export class ClientService {
 
   private auth = inject(Auth);
   private db = inject(Firestore);
+  private activityService = inject(ActivityService);
 
   /** Reads companyId from users/{uid} */
   private companyContext$(): Observable<{ userId: string; companyId: string }> {
@@ -58,18 +61,35 @@ export class ClientService {
     // return of([]);
   }
 
+
+  getInvoicesForCompany(): Observable<InvoiceRecord[]> {
+    return this.clients$().pipe(
+      switchMap(clients => clients.length
+        ? combineLatest(clients.map(client => this.getInvoicesForClient(client.id)))
+        : of([])
+      ),
+      map(invoiceGroups => (invoiceGroups as InvoiceRecord[][]).flat())
+    );
+  }
+
   createInvoice(clientId: string, data: any): Observable<string> {
     console.log('creating invoice for client:', clientId);
     return this.getCompanyId$().pipe(
       switchMap(companyId => {
         const colRef = collection(this.db, `companies/${companyId}/clients/${clientId}/invoices`);
         const amountPaid = Number(data?.amountPaid ?? 0) || 0;
-        return from(addDoc(colRef, {
-          ...data,
-          amountPaid,
-          status: data?.status || (amountPaid > 0 ? 'partial' : 'sent'),
-          updatedAt: data?.updatedAt || serverTimestamp(),
-        })).pipe(map(ref => ref.id));
+        return from(this.activityService.track(
+          companyId,
+          'create',
+          `companies/${companyId}/clients/${clientId}/invoices`,
+          `Created invoice ${data?.invoiceNumber || data?.filename || 'draft'} for client ${clientId}.`,
+          () => addDoc(colRef, {
+            ...data,
+            amountPaid,
+            status: data?.status || (amountPaid > 0 ? 'partial' : 'sent'),
+            updatedAt: data?.updatedAt || serverTimestamp(),
+          })
+        )).pipe(map(ref => ref.id));
       })
     );
   }
@@ -78,10 +98,16 @@ export class ClientService {
     return this.getCompanyId$().pipe(
       switchMap(companyId => {
         const invoiceRef = doc(this.db, `companies/${companyId}/clients/${clientId}/invoices/${invoiceId}`);
-        return from(updateDoc(invoiceRef, {
-          ...data,
-          updatedAt: serverTimestamp(),
-        }));
+        return from(this.activityService.track(
+          companyId,
+          'update',
+          `companies/${companyId}/clients/${clientId}/invoices/${invoiceId}`,
+          `Updated invoice ${invoiceId} tracking to ${data.status}.`,
+          () => updateDoc(invoiceRef, {
+            ...data,
+            updatedAt: serverTimestamp(),
+          })
+        ));
       })
     );
   }
@@ -102,7 +128,13 @@ export class ClientService {
     return this.getCompanyId$().pipe(
       switchMap(companyId => {
         const colRef = collection(this.db, `companies/${companyId}/clients/${clientId}/letters`);
-        return from(addDoc(colRef, data)).pipe(map(ref => ref.id));
+        return from(this.activityService.track(
+          companyId,
+          'create',
+          `companies/${companyId}/clients/${clientId}/letters`,
+          `Created letter ${data?.title || 'record'} for client ${clientId}.`,
+          () => addDoc(colRef, data)
+        )).pipe(map(ref => ref.id));
       })
     );
   }
@@ -112,13 +144,17 @@ export class ClientService {
     return this.companyContext$().pipe(
       switchMap(({ userId, companyId }) => {
         const colRef = collection(this.db, `companies/${companyId}/clients`);
-        return from(
-          addDoc(colRef, {
+        return from(this.activityService.track(
+          companyId,
+          'create',
+          `companies/${companyId}/clients`,
+          `Created client ${payload.displayName}.`,
+          () => addDoc(colRef, {
             ...payload,
             createdAt: serverTimestamp(),
             createdBy: userId,
           })
-        ).pipe(map(docRef => docRef.id));
+        )).pipe(map(docRef => docRef.id));
       })
     );
   }
@@ -128,10 +164,16 @@ export class ClientService {
     return this.companyContext$().pipe(
       switchMap(({ companyId }) => {
         const clientRef = doc(this.db, `companies/${companyId}/clients/${clientId}`);
-        return from(updateDoc(clientRef, {
-          ...payload,
-          updatedAt: serverTimestamp(),
-        }));
+        return from(this.activityService.track(
+          companyId,
+          'update',
+          `companies/${companyId}/clients/${clientId}`,
+          `Updated client ${payload.displayName || clientId}.`,
+          () => updateDoc(clientRef, {
+            ...payload,
+            updatedAt: serverTimestamp(),
+          })
+        ));
       })
     );
   }
