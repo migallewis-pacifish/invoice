@@ -4,6 +4,8 @@ import { Functions, httpsCallable } from '@angular/fire/functions';
 import { Firestore, doc, getDoc, serverTimestamp, setDoc, updateDoc } from '@angular/fire/firestore';
 import { from, Observable, switchMap } from 'rxjs';
 import { ActivityService } from './activity.service';
+import { CompanyEmailTemplateType, EmailTemplateVariables } from '../models/company-email-template.model';
+import { EmailTemplateService, validateRenderedEmail } from './email-template.service';
 
 export type EmailDocumentType = 'invoice' | 'letter';
 
@@ -65,9 +67,10 @@ export class EmailService {
   private readonly db = inject(Firestore);
   private readonly auth = inject(Auth);
   private readonly activityService = inject(ActivityService);
+  private readonly emailTemplateService = inject(EmailTemplateService);
 
   send(request: SendEmailRequest): Observable<SendEmailResponse> {
-    const errors = validateSendEmailRequest(request);
+    const errors = [...validateSendEmailRequest(request), ...this.validateRenderedRequest(request)];
     if (errors.length) throw new Error(errors.join(' '));
 
     const callable = httpsCallable<SendEmailRequest, SendEmailResponse>(this.functions, 'sendDocumentEmail');
@@ -111,6 +114,16 @@ export class EmailService {
     return response;
   }
 
+  async buildDefaultRequest(documentType: EmailDocumentType, document: any, companyId: string, clientId: string, recipient = '', client?: any): Promise<SendEmailRequest> {
+    const request = this.defaultRequest(documentType, document, companyId, clientId, recipient);
+    const templateType = this.templateTypeFor(documentType, document);
+    const template = await this.emailTemplateService.getTemplate(companyId, templateType);
+    const variables = await this.buildTemplateVariables(companyId, document, client);
+    const rendered = this.emailTemplateService.render(template, variables);
+    if (rendered.errors.length) throw new Error(rendered.errors.join(' '));
+    return { ...request, subject: rendered.subject, messageBody: rendered.body };
+  }
+
   defaultRequest(documentType: EmailDocumentType, document: any, companyId: string, clientId: string, recipient = ''): SendEmailRequest {
     const label = documentType === 'invoice' ? (document.invoiceNumber || document.filename || 'invoice') : (document.title || document.filename || 'letter');
     return {
@@ -127,5 +140,40 @@ export class EmailService {
         fileName: document.filename || `${label}.pdf`,
       }
     };
+  }
+
+  validateRenderedRequest(request: SendEmailRequest): string[] {
+    return validateRenderedEmail(request.subject, request.messageBody);
+  }
+
+  private templateTypeFor(documentType: EmailDocumentType, document: any): CompanyEmailTemplateType {
+    if (documentType === 'letter') return 'letter';
+    if (document?.status === 'overdue') return 'overdueNotice';
+    if (document?.status === 'sent' || document?.status === 'partial') return 'paymentReminder';
+    return 'invoice';
+  }
+
+  private async buildTemplateVariables(companyId: string, document: any, client?: any): Promise<EmailTemplateVariables> {
+    const companySnap = await getDoc(doc(this.db, `companies/${companyId}`));
+    const company = companySnap.exists() ? companySnap.data() as any : {};
+    const invoiceNumber = document?.invoiceNumber || document?.invoice_number || document?.filename || document?.title || document?.id || '';
+    return {
+      clientName: client?.name || client?.client_name || document?.client_name || 'client',
+      invoiceNumber,
+      dueDate: this.formatTemplateDate(document?.dueDate || document?.due_date),
+      total: this.formatTemplateTotal(document?.total),
+      companyName: company?.name || company?.companyName || 'our team',
+      paymentReference: document?.reference || document?.paymentReference || invoiceNumber
+    };
+  }
+
+  private formatTemplateDate(value: any): string {
+    const date = value?.toDate ? value.toDate() : value ? new Date(value) : null;
+    return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : 'the due date';
+  }
+
+  private formatTemplateTotal(value: any): string {
+    if (value === undefined || value === null || value === '') return 'the invoice total';
+    return typeof value === 'number' ? value.toFixed(2) : String(value);
   }
 }
