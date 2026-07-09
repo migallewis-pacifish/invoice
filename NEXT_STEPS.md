@@ -118,10 +118,6 @@ PDF export should stay out of scope for now. The current browser flow generates 
    - Configurable prefixes such as `INV-2026-0001`.
 3. Client improvements:
    - Client search/filtering.
-4. Expenses and reporting:
-   - Monthly profit summary: invoice totals minus expenses.
-   - VAT collected and VAT paid report.
-   - CSV export for accountant handoff.
 5. Template management:
    - Template preview metadata.
    - Validate required placeholders before saving a template.
