@@ -439,11 +439,11 @@ copyLastInvoice() {
   this.addInvoice(invoiceToCopy);
 }
 
-sendDocumentEmail(documentType: EmailDocumentType, document: any): void {
+async sendDocumentEmail(documentType: EmailDocumentType, document: any): Promise<void> {
   const companyId = this.companyId();
   const clientId = this.clientId();
   if (!companyId || !clientId || !document?.id) return;
-  const request = this.emailService.defaultRequest(documentType, document, companyId, clientId, this.client()?.email || '');
+  const request = await this.emailService.buildDefaultRequest(documentType, document, companyId, clientId, this.client()?.email || '', this.client());
   const ref = this.dialog.open(EmailComposeDialogComponent, {
     backdropClass: 'dlg-backdrop',
     panelClass: 'dlg-panel',

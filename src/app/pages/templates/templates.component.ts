@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { collection, collectionData, Firestore } from '@angular/fire/firestore';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { CompanyTemplate } from '../../models/invoice.model';
@@ -8,6 +9,8 @@ import { TemplateService } from '../../services/template.service';
 import { LetterDocxService } from '../../services/letter-docx.service';
 import { CompanyContextService } from '../../services/company-context.service';
 import { UploadTemplateComponent } from '../upload-template/upload-template.component';
+import { CompanyEmailTemplate, EMAIL_TEMPLATE_VARIABLE_LABELS, EMAIL_TEMPLATE_VARIABLES } from '../../models/company-email-template.model';
+import { EmailTemplateService, validateEmailTemplate } from '../../services/email-template.service';
 
 type TemplateType = 'invoice' | 'letter';
 
@@ -43,7 +46,7 @@ export function filterTemplates(templates: TemplateCard[], filter: TemplateFilte
 @Component({
   selector: 'app-templates',
   standalone: true,
-  imports: [CommonModule, RouterLink, NavBarComponent, UploadTemplateComponent],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, NavBarComponent, UploadTemplateComponent],
   templateUrl: './templates.component.html',
   styleUrl: './templates.component.scss'
 })
@@ -53,12 +56,24 @@ export class TemplatesComponent {
   private templateService = inject(TemplateService);
   private letterDocx = inject(LetterDocxService);
   private companyContext = inject(CompanyContextService);
+  private emailTemplateService = inject(EmailTemplateService);
+  private fb = inject(FormBuilder);
 
   protected readonly showUpload = signal(false);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly templates = signal<TemplateCard[]>([]);
   protected readonly filter = signal<'active' | 'archived' | TemplateType>('active');
+  protected readonly emailTemplates = signal<CompanyEmailTemplate[]>([]);
+  protected readonly selectedEmailTemplate = signal<CompanyEmailTemplate | null>(null);
+  protected readonly emailTemplateMessage = signal('');
+  protected readonly variables = EMAIL_TEMPLATE_VARIABLES;
+  protected readonly variableLabels = EMAIL_TEMPLATE_VARIABLE_LABELS;
+
+  protected readonly emailTemplateForm = this.fb.nonNullable.group({
+    subject: ['', [Validators.required]],
+    body: ['', [Validators.required]]
+  });
 
   constructor() {
     this.loadCompanyTemplates();
@@ -152,9 +167,45 @@ export class TemplatesComponent {
     }
   }
 
+
+  protected selectEmailTemplate(template: CompanyEmailTemplate): void {
+    this.selectedEmailTemplate.set(template);
+    this.emailTemplateMessage.set('');
+    this.emailTemplateForm.setValue({ subject: template.subject, body: template.body });
+  }
+
+  protected insertVariable(variable: string): void {
+    const body = this.emailTemplateForm.controls.body;
+    body.setValue(`${body.value} {{${variable}}}`.trim());
+    body.markAsDirty();
+  }
+
+  protected async saveEmailTemplate(): Promise<void> {
+    const template = this.selectedEmailTemplate();
+    if (!template) return;
+    const value = this.emailTemplateForm.getRawValue();
+    const errors = validateEmailTemplate(value.subject, value.body);
+    if (errors.length) {
+      this.emailTemplateMessage.set(errors.join(' '));
+      return;
+    }
+    try {
+      const companyId = await this.companyContext.requireCompanyIdOnce();
+      await this.emailTemplateService.save(companyId, { ...template, subject: value.subject, body: value.body });
+      this.emailTemplateMessage.set('Email template saved.');
+    } catch (e: any) {
+      this.emailTemplateMessage.set(e?.message ?? 'Unable to save email template.');
+    }
+  }
+
   private async loadCompanyTemplates(): Promise<void> {
     try {
       const companyId = await this.companyContext.requireCompanyIdOnce();
+      await this.emailTemplateService.ensureDefaults(companyId);
+      this.emailTemplateService.list(companyId).subscribe(templates => {
+        this.emailTemplates.set(templates);
+        if (!this.selectedEmailTemplate() && templates.length) this.selectEmailTemplate(templates[0]);
+      });
       collectionData(collection(this.db, `companies/${companyId}/templates`), { idField: 'id' }).subscribe({
         next: templates => {
           this.templates.set((templates as CompanyTemplate[]).map(template => this.toTemplateCard(companyId, template)));
