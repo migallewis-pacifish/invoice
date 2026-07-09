@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { InvoiceDocxService } from '../../services/invoice-docx.service';
+import { NotificationService } from '../../services/notification.service';
 
 @Component({
   selector: 'app-invoice',
@@ -9,7 +10,10 @@ import { InvoiceDocxService } from '../../services/invoice-docx.service';
   styleUrl: './invoice.component.scss'
 })
 export class InvoiceComponent {
-  constructor(private invoiceDocxService: InvoiceDocxService) {}
+  constructor(
+    private invoiceDocxService: InvoiceDocxService,
+    private notifications: NotificationService
+  ) {}
 
   async download() {
     this.invoiceDocxService.generateAndSave('',{
@@ -31,10 +35,13 @@ export class InvoiceComponent {
         { description: 'Consultation', rate:'300', hours: '2' },
         { description: 'Drafting of Letter of Demand', rate: '1800', hours: '1' },
       ],
-    }).subscribe(filename => {
-      if (filename) {
-        console.log('Invoice created:', filename);
-      }
+    }).subscribe({
+      next: filename => {
+        if (filename) {
+          this.notifications.success(`Invoice created: ${filename}`);
+        }
+      },
+      error: err => this.notifications.error('Failed to generate invoice document.', err)
     });
   }
 }

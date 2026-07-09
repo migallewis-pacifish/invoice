@@ -23,7 +23,8 @@ describe('TemplateService', () => {
     expect(service).toBeTruthy();
   });
 
-  it('rejects missing templates', async () => {
+
+  it('shows the expected user-facing message when template generation receives a missing file', async () => {
     await expectAsync(service.upload('company-a', undefined as unknown as File))
       .toBeRejectedWithError('Template file is required.');
   });
