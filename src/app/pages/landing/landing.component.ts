@@ -1,9 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
-import { Auth, authState } from '@angular/fire/auth';
 import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
 import { Router, RouterLink } from '@angular/router';
-import { combineLatest, take } from 'rxjs';
+import { combineLatest } from 'rxjs';
 import { ClientListComponent } from '../client-list/client-list.component';
 import { CommonModule } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
@@ -15,6 +14,7 @@ import { ExpensesService } from '../../services/expenses.service';
 import { Expense } from '../../models/expense.model';
 import { ActivityRecord } from '../../models/activity.model';
 import { ActivityService } from '../../services/activity.service';
+import { CompanyContextService } from '../../services/company-context.service';
 import { AppUser, InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
 
 @Component({
@@ -25,7 +25,6 @@ import { AppUser, InvoiceRecord, InvoiceStatus } from '../../models/invoice.mode
   styleUrl: './landing.component.scss'
 })
 export class LandingComponent {
-  private auth = inject(Auth);
   private db = inject(Firestore);
   private router = inject(Router);
   private dialog = inject(Dialog);
@@ -33,6 +32,7 @@ export class LandingComponent {
   private clientService = inject(ClientService);
   private expensesService = inject(ExpensesService);
   private activityService = inject(ActivityService);
+  private companyContext = inject(CompanyContextService);
 
   companyId = signal<string >("");
   companyName = signal<string | null>(null);
@@ -118,37 +118,36 @@ export class LandingComponent {
 
 
   constructor() {
-    authState(this.auth).pipe(take(1)).subscribe(async (user) => {
-      if (!user) { this.router.navigate(['/login']); return; }
-      const userRef = doc(this.db, `users/${user.uid}`);
-      const userSnap = await docData(userRef).pipe(take(1)).toPromise() as AppUser | undefined;
-      this.setSignedInUser(user, userSnap);
-      const companyId = userSnap?.companyId;
-      if (!companyId) { this.router.navigate(['/register-company']); return; }
+    this.companyContext.currentContext$().subscribe({
+      next: ({ user, profile, companyId }) => {
+        this.setSignedInUser(user, profile);
+        this.companyId.set(companyId);
+        const compRef = doc(this.db, `companies/${companyId}`);
+        docData(compRef).subscribe((data: any) => {
+          this.companyName.set(data?.name ?? 'Your Company');
+          this.currency.set(this.currencyService.normalize(data?.currency));
+        });
 
-      this.companyId.set(companyId);
-      const compRef = doc(this.db, `companies/${companyId}`);
-      docData(compRef).subscribe((data: any) => {
-        this.companyName.set(data?.name ?? 'Your Company');
-        this.currency.set(this.currencyService.normalize(data?.currency));
-      });
+        docData(doc(this.db, `companies/${companyId}/templates/invoice`)).subscribe((template: any) => {
+          this.templatePath.set(template?.storagePath ?? null);
+        });
 
-      docData(doc(this.db, `companies/${companyId}/templates/invoice`)).subscribe((template: any) => {
-        this.templatePath.set(template?.storagePath ?? null);
-      });
+        this.activityService.recent(companyId).subscribe(activities => {
+          this.activities.set(activities);
+        });
 
-      this.activityService.recent(companyId).subscribe(activities => {
-        this.activities.set(activities);
-      });
-
-      combineLatest([
-        this.clientService.getInvoicesForCompany(),
-        this.expensesService.listAll(companyId)
-      ]).subscribe(([invoices, expenses]) => {
-        this.invoices.set(invoices);
-        this.expenses.set(expenses);
-        this.loading.set(false);
-      });
+        combineLatest([
+          this.clientService.getInvoicesForCompany(),
+          this.expensesService.listAll(companyId)
+        ]).subscribe(([invoices, expenses]) => {
+          this.invoices.set(invoices);
+          this.expenses.set(expenses);
+          this.loading.set(false);
+        });
+      },
+      error: err => {
+        this.router.navigate([err?.message === 'Not authenticated' ? '/login' : '/register']);
+      }
     });
   }
 

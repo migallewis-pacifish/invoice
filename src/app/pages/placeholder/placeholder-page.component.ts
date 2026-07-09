@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { Auth, authState } from '@angular/fire/auth';
 import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { take } from 'rxjs';
@@ -9,6 +8,7 @@ import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { CurrencyService } from '../../services/currency.service';
 import { DocumentStorageService } from '../../services/document-storage.service';
 import { ActivityService } from '../../services/activity.service';
+import { CompanyContextService } from '../../services/company-context.service';
 import { CompanyDocumentStorageSettings, DocumentStorageProvider } from '../../models/document-storage.model';
 
 @Component({
@@ -96,12 +96,25 @@ import { CompanyDocumentStorageSettings, DocumentStorageProvider } from '../../m
   `]
 })
 export class PlaceholderPageComponent {
-  private route = inject(ActivatedRoute); private fb = inject(FormBuilder); private auth = inject(Auth); private db = inject(Firestore); private currencyService = inject(CurrencyService); private storageService = inject(DocumentStorageService); private activityService = inject(ActivityService);
+  private route = inject(ActivatedRoute); private fb = inject(FormBuilder); private db = inject(Firestore); private currencyService = inject(CurrencyService); private storageService = inject(DocumentStorageService); private activityService = inject(ActivityService); private companyContext = inject(CompanyContextService);
   sectionName = this.route.snapshot.data['sectionName'] ?? 'this section'; isSettings = this.sectionName === 'Settings'; currencyOptions = this.currencyService.options; companyId = signal<string | null>(null); saving = signal(false); savingStorage = signal(false); message = signal(''); storage = signal<CompanyDocumentStorageSettings | null>(null);
   form = this.fb.nonNullable.group({ currency: [this.currencyService.defaultCurrency] });
   storageForm = this.fb.nonNullable.group({ defaultProvider: ['nexus_storage' as DocumentStorageProvider], googleDriveFolder: [''], oneDriveFolder: [''], nexusPlan: ['none' as 'none' | '1gb' | '5gb' | '10gb'], localPath: [''] });
 
-  constructor() { if (!this.isSettings) return; authState(this.auth).pipe(take(1)).subscribe(async user => { if (!user) return; const userData = await docData(doc(this.db, `users/${user.uid}`)).pipe(take(1)).toPromise() as any; const companyId = userData?.companyId ?? null; this.companyId.set(companyId); if (!companyId) return; docData(doc(this.db, `companies/${companyId}`)).pipe(take(1)).subscribe((company: any) => this.form.controls.currency.setValue(this.currencyService.normalize(company?.currency))); this.storageService.getCompanySettings(companyId).pipe(take(1)).subscribe(settings => { this.storage.set(settings); this.storageForm.patchValue({ defaultProvider: settings.defaultProvider, googleDriveFolder: settings.googleDrive?.rootFolderName || settings.googleDrive?.rootFolderUrl || '', oneDriveFolder: settings.oneDrive?.rootFolderName || settings.oneDrive?.rootFolderUrl || '', nexusPlan: settings.nexusStorage?.plan || 'none', localPath: settings.local?.rootPath || settings.local?.displayName || '' }); }); }); }
+  constructor() {
+    if (!this.isSettings) return;
+    this.companyContext.currentCompanyId$().pipe(take(1)).subscribe(companyId => {
+      this.companyId.set(companyId);
+      if (!companyId) return;
+      this.companyContext.currentCompany$().pipe(take(1)).subscribe((company: any) => {
+        this.form.controls.currency.setValue(this.currencyService.normalize(company?.currency));
+      });
+      this.storageService.getCompanySettings(companyId).pipe(take(1)).subscribe(settings => {
+        this.storage.set(settings);
+        this.storageForm.patchValue({ defaultProvider: settings.defaultProvider, googleDriveFolder: settings.googleDrive?.rootFolderName || settings.googleDrive?.rootFolderUrl || '', oneDriveFolder: settings.oneDrive?.rootFolderName || settings.oneDrive?.rootFolderUrl || '', nexusPlan: settings.nexusStorage?.plan || 'none', localPath: settings.local?.rootPath || settings.local?.displayName || '' });
+      });
+    });
+  }
 
   async saveCurrency() { const companyId = this.companyId(); if (!companyId) return; this.saving.set(true); this.message.set(''); try { await this.activityService.track(companyId, 'update', `companies/${companyId}`, 'Updated company currency settings.', () => updateDoc(doc(this.db, `companies/${companyId}`), { currency: this.currencyService.normalize(this.form.controls.currency.value) })); this.message.set('Currency settings saved.'); } finally { this.saving.set(false); } }
 

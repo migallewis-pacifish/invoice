@@ -17,7 +17,7 @@ describe('guard state resolution', () => {
   });
 
   it('redirects authenticated users without a company to registration', () => {
-    expect(resolveCompanyGuardTarget(user, null)).toBe('/register-company');
-    expect(resolveCompanyGuardTarget(user, undefined)).toBe('/register-company');
+    expect(resolveCompanyGuardTarget(user, null)).toBe('/register');
+    expect(resolveCompanyGuardTarget(user, undefined)).toBe('/register');
   });
 });

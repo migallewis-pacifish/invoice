@@ -131,8 +131,8 @@ export class ExpensesComponent {
     this.form.controls.clientId.setValue(this.clientId());
   }
 
-  async deleteExpense(id: string) {
-    await this.expensesService.remove(this.companyId(), id);
+  async deleteExpense(expense: Expense) {
+    await this.expensesService.remove(this.companyId(), expense.id, expense.clientId, expense.source);
   }
 
   formatCurrency(value: number) {

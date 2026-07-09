@@ -57,7 +57,7 @@ export class RegisterService {
     if (userSnap.exists() && userSnap.data()?.['companyId']) {
       await this.router.navigate(['/landing']);
     } else {
-      await this.router.navigate(['/register-company']);
+      await this.router.navigate(['/register']);
     }
     return;
   }

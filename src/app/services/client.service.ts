@@ -1,43 +1,89 @@
 import { inject, Injectable } from '@angular/core';
-import { Auth, authState } from '@angular/fire/auth';
-import { collectionData, docData, Firestore } from '@angular/fire/firestore';
+import { collectionData, Firestore } from '@angular/fire/firestore';
 import { addDoc, collection, doc, getDoc, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { Client, ClientUpdate } from '../models/client.model';
 import { ActivityService } from './activity.service';
+import { CompanyContextService } from './company-context.service';
 import { InvoiceRecord } from '../models/invoice.model';
-import { combineLatest, defer, from, map, Observable, of, switchMap, throwError } from 'rxjs';
+import { combineLatest, from, map, Observable, of, switchMap } from 'rxjs';
+
+
+export interface ClientInvoiceSummary {
+  outstandingBalance: number;
+  overdueAmount: number;
+  nextDueDate: number | null;
+  isSettled: boolean;
+  invoiceCount: number;
+}
+
+function toMillis(value: any): number | null {
+  if (!value) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  if (typeof value?.seconds === 'number') return value.seconds * 1000;
+  return null;
+}
+
+export function calculateClientInvoiceSummary(
+  invoices: Pick<InvoiceRecord, 'total' | 'amountPaid' | 'status' | 'dueDate'>[],
+  now: Date = new Date()
+): ClientInvoiceSummary {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+
+  return invoices.reduce<ClientInvoiceSummary>((summary, invoice) => {
+    const total = Number(invoice.total ?? 0) || 0;
+    const amountPaid = Number(invoice.amountPaid ?? 0) || 0;
+    const balance = Math.max(total - amountPaid, 0);
+    const isPaid = invoice.status === 'paid' || balance <= 0;
+    const dueAt = toMillis(invoice.dueDate);
+
+    summary.invoiceCount += 1;
+    summary.outstandingBalance += isPaid ? 0 : balance;
+
+    if (!isPaid && dueAt !== null) {
+      const due = new Date(dueAt);
+      due.setHours(0, 0, 0, 0);
+      if (due.getTime() < today.getTime()) {
+        summary.overdueAmount += balance;
+      } else if (summary.nextDueDate === null || dueAt < summary.nextDueDate) {
+        summary.nextDueDate = dueAt;
+      }
+    }
+
+    summary.isSettled = summary.outstandingBalance <= 0;
+    return summary;
+  }, {
+    outstandingBalance: 0,
+    overdueAmount: 0,
+    nextDueDate: null,
+    isSettled: true,
+    invoiceCount: 0,
+  });
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class ClientService {
 
-  private auth = inject(Auth);
   private db = inject(Firestore);
   private activityService = inject(ActivityService);
+  private companyContext = inject(CompanyContextService);
 
-  /** Reads companyId from users/{uid} */
-  private companyContext$(): Observable<{ userId: string; companyId: string }> {
-    return defer(() => {
-      const user = this.auth.currentUser;
-      if (!user) {
-        return throwError(() => new Error('Not authenticated'));
-      }
-      const userDoc = doc(this.db, `users/${user.uid}`);
-      return from(getDoc(userDoc)).pipe(
-        map(snap => {
-          if (!snap.exists()) throw new Error('User profile not found');
-          const data = snap.data() as any;
-          const companyId = data?.companyId as string | undefined;
-          if (!companyId) throw new Error('User has no companyId');
-          return { userId: user.uid, companyId };
-        })
-      );
-    });
+  private companyContext$() {
+    return this.companyContext.currentContext$().pipe(
+      map(ctx => ({ userId: ctx.user.uid, companyId: ctx.companyId }))
+    );
   }
 
   private getCompanyId$(): Observable<string> {
-    return this.companyContext$().pipe(map(ctx => ctx.companyId));
+    return this.companyContext.currentContext$().pipe(map(ctx => ctx.companyId));
   }
 
   getClientById(id: string): Observable<Client | null> {
@@ -72,6 +118,18 @@ export class ClientService {
     );
   }
 
+  getClientInvoiceSummaries(): Observable<Record<string, ClientInvoiceSummary>> {
+    return this.clients$().pipe(
+      switchMap(clients => clients.length
+        ? combineLatest(clients.map(client => this.getInvoicesForClient(client.id).pipe(
+          map(invoices => [client.id, calculateClientInvoiceSummary(invoices as InvoiceRecord[])] as const)
+        )))
+        : of([])
+      ),
+      map(entries => Object.fromEntries(entries))
+    );
+  }
+
   createInvoice(clientId: string, data: any): Observable<string> {
     console.log('creating invoice for client:', clientId);
     return this.getCompanyId$().pipe(
@@ -94,7 +152,7 @@ export class ClientService {
     );
   }
 
-  updateInvoiceTracking(clientId: string, invoiceId: string, data: { amountPaid: number; status: string; dueDate?: any; paidAt?: any }): Observable<void> {
+  updateInvoiceTracking(clientId: string, invoiceId: string, data: { amountPaid: number; status: string; dueDate?: any; paidAt?: any; creditAmount?: number; refundAmount?: number; overpaidAmount?: number; paymentHistory?: any[] }): Observable<void> {
     return this.getCompanyId$().pipe(
       switchMap(companyId => {
         const invoiceRef = doc(this.db, `companies/${companyId}/clients/${clientId}/invoices/${invoiceId}`);
@@ -179,22 +237,13 @@ export class ClientService {
   }
 
   clients$(): Observable<Client[]> {
-    return authState(this.auth).pipe(
-      switchMap(user => {
-        if (!user) return of([]);
-        const userDoc = doc(this.db, `users/${user.uid}`);
-        return docData(userDoc).pipe(
-          switchMap((u: any) => {
-            const companyId = u?.companyId as string | undefined;
-            if (!companyId) return of([]);
-            const col = collection(this.db, `companies/${companyId}/clients`);
-            const q = query(col, orderBy('displayName'));
-            return collectionData(q, { idField: 'id' }).pipe(
-              map((arr: any[]) =>
-                arr.map(x => this.toClient(x))
-              )
-            );
-          })
+    return this.companyContext.currentCompanyId$().pipe(
+      switchMap(companyId => {
+        if (!companyId) return of([]);
+        const col = collection(this.db, `companies/${companyId}/clients`);
+        const q = query(col, orderBy('displayName'));
+        return collectionData(q, { idField: 'id' }).pipe(
+          map((arr: any[]) => arr.map(x => this.toClient(x)))
         );
       })
     );
