@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Firestore } from '@angular/fire/firestore';
 import { Storage } from '@angular/fire/storage';
 
-import { TemplateService } from './template.service';
+import { selectDefaultTemplate, TemplateService } from './template.service';
 import { ActivityService } from './activity.service';
 
 describe('TemplateService', () => {
@@ -36,8 +36,33 @@ describe('TemplateService', () => {
       .toBeRejectedWithError('Template must be a .docx file.');
   });
 
+
+  it('selects configured default templates before flag fallback', () => {
+    const templates = [
+      template('invoice-a', 'invoice', true),
+      template('invoice-b', 'invoice', false),
+      template('letter-a', 'letter', true)
+    ];
+
+    expect(selectDefaultTemplate(templates, 'invoice', 'invoice-b')?.id).toBe('invoice-b');
+    expect(selectDefaultTemplate(templates, 'letter')?.id).toBe('letter-a');
+  });
+
+  it('does not select archived default templates', () => {
+    const templates = [
+      template('invoice-archived', 'invoice', true, true),
+      template('invoice-active', 'invoice', false)
+    ];
+
+    expect(selectDefaultTemplate(templates, 'invoice')?.id).toBe('invoice-active');
+  });
+
   it('rejects missing template paths', async () => {
     await expectAsync(service.getDownloadUrl(''))
       .toBeRejectedWithError('Template path is required.');
   });
 });
+
+function template(id: string, type: 'invoice' | 'letter', isDefault: boolean, archived = false) {
+  return { id, companyId: 'company-a', type, name: id, storagePath: `${id}.docx`, isDefault, archived };
+}

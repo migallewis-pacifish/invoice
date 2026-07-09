@@ -28,7 +28,7 @@
     <div class="header-actions">
       <button class="filter-button" type="button" (click)="onFilter()">
         <span aria-hidden="true">⌄</span>
-        Filter
+        Filter: {{ filter() }}
       </button>
       <button class="primary-action" type="button" (click)="openUploadFlow()">
         <span aria-hidden="true">⊕</span>
@@ -92,6 +92,7 @@
       </div>
       <button class="filter-button" type="button" (click)="showUpload.set(false)">Close</button>
     </div>
+    <input id="letter-template-upload" class="sr-only" type="file" accept=".docx" (change)="onLetterTemplatePicked($event)" />
     <app-upload-template [inDialog]="true" (uploaded)="onUploaded()" (cancel)="showUpload.set(false)"></app-upload-template>
   </section>
 
