@@ -20,6 +20,8 @@ import { CompanyDocumentStorageSettings, DOCUMENT_STORAGE_PROVIDER_LABELS, Docum
 import { DocumentStorageService } from '../../services/document-storage.service';
 import { NotificationService } from '../../services/notification.service';
 import { CreateClientComponent } from '../../components/create-client/create-client.component';
+import { EmailComposeDialogComponent } from '../../components/email-compose-dialog/email-compose-dialog.component';
+import { EmailService, EmailDocumentType } from '../../services/email.service';
 
 @Component({
   selector: 'app-client-detail',
@@ -38,6 +40,7 @@ export class ClientDetailComponent {
   private documentStorageService = inject(DocumentStorageService);
   private expensesService = inject(ExpensesService);
   private notifications = inject(NotificationService);
+  private emailService = inject(EmailService);
   private fb = inject(FormBuilder);
   
   companyId = signal<string | null>(null);
@@ -434,6 +437,28 @@ copyLastInvoice() {
   const invoiceToCopy = this.lastInvoice();
   if (!invoiceToCopy) return;
   this.addInvoice(invoiceToCopy);
+}
+
+sendDocumentEmail(documentType: EmailDocumentType, document: any): void {
+  const companyId = this.companyId();
+  const clientId = this.clientId();
+  if (!companyId || !clientId || !document?.id) return;
+  const request = this.emailService.defaultRequest(documentType, document, companyId, clientId, this.client()?.email || '');
+  const ref = this.dialog.open(EmailComposeDialogComponent, {
+    backdropClass: 'dlg-backdrop',
+    panelClass: 'dlg-panel',
+    disableClose: true,
+    data: {
+      request,
+      attachmentName: request.attachment?.fileName || document.filename || document.title || document.invoiceNumber
+    }
+  });
+
+  ref.closed.subscribe(sent => {
+    if (sent) {
+      this.notifications.success(`${documentType === 'invoice' ? 'Invoice' : 'Letter'} email sent to ${request.recipient}.`);
+    }
+  });
 }
 
 }

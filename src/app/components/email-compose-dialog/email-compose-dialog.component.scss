@@ -1,0 +1,10 @@
+.email-compose { display: grid; gap: 1rem; width: min(640px, 92vw); padding: 1.5rem; background: #fff; border-radius: 24px; }
+.email-compose header h2 { margin: 0; }
+.email-compose header p { margin: .25rem 0 0; color: #64748b; }
+.email-compose label { display: grid; gap: .35rem; font-weight: 700; color: #334155; }
+.email-compose input, .email-compose textarea { border: 1px solid #cbd5e1; border-radius: 12px; padding: .75rem .9rem; font: inherit; }
+.copy-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.attachment-preview { display: flex; justify-content: space-between; gap: 1rem; padding: .85rem 1rem; border: 1px dashed #94a3b8; border-radius: 14px; background: #f8fafc; }
+.error { color: #b91c1c; margin: 0; }
+footer { display: flex; justify-content: flex-end; gap: .75rem; }
+@media (max-width: 640px) { .copy-row { grid-template-columns: 1fr; } }
