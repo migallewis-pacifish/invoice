@@ -1,0 +1,25 @@
+<form class="email-compose" [formGroup]="form" (ngSubmit)="send()">
+  <header>
+    <h2>Send email</h2>
+    <p>Review recipients and message before sending the attached document.</p>
+  </header>
+
+  <label>To<input type="email" formControlName="recipient" placeholder="recipient@example.com"></label>
+  <div class="copy-row">
+    <label>CC<input formControlName="cc" placeholder="cc@example.com, optional"></label>
+    <label>BCC<input formControlName="bcc" placeholder="bcc@example.com, optional"></label>
+  </div>
+  <label>Subject<input formControlName="subject"></label>
+  <label>Message<textarea rows="7" formControlName="messageBody"></textarea></label>
+
+  <section class="attachment-preview" aria-label="Attachment preview">
+    <strong>Attachment</strong>
+    <span>{{ attachmentLabel }}</span>
+  </section>
+
+  <p class="error" *ngIf="error()">{{ error() }}</p>
+  <footer>
+    <button class="secondary" type="button" (click)="cancel()" [disabled]="sending()">Cancel</button>
+    <button class="primary" type="submit" [disabled]="sending()">{{ sending() ? 'Sending…' : 'Send email' }}</button>
+  </footer>
+</form>
