@@ -1,13 +1,30 @@
 export type DocumentStorageProvider =
+  | 'browser_download'
   | 'google_drive'
   | 'onedrive'
-  | 'nexus_storage'
-  | 'local'
+  | 'local_folder'
   | 'external_link';
+
+export type LegacyDocumentStorageProvider = 'nexus_storage' | 'local';
+
+export interface FolderMetadata {
+  folderId?: string;
+  folderName?: string;
+  folderUrl?: string;
+  displayName?: string;
+  path?: string;
+}
 
 export interface CompanyDocumentStorageSettings {
   companyId: string;
   defaultProvider: DocumentStorageProvider;
+  selectedProvider?: DocumentStorageProvider;
+  selectedFolder?: FolderMetadata;
+
+  browserDownload?: {
+    enabled: boolean;
+    suggestedSubfolder?: string;
+  };
 
   googleDrive?: {
     connected: boolean;
@@ -25,17 +42,12 @@ export interface CompanyDocumentStorageSettings {
     connectedAt?: any;
   };
 
-  nexusStorage?: {
+  localFolder?: {
     enabled: boolean;
-    plan: 'none' | '1gb' | '5gb' | '10gb';
-    usedBytes?: number;
-    rootPath?: string;
-  };
-
-  local?: {
-    enabled: boolean;
+    supported: boolean;
     rootPath?: string;
     displayName?: string;
+    fallbackProvider: 'browser_download';
   };
 
   updatedAt?: any;
@@ -43,27 +55,31 @@ export interface CompanyDocumentStorageSettings {
 
 export interface ClientDocumentStorageSettings {
   provider?: DocumentStorageProvider;
+  selectedProvider?: DocumentStorageProvider;
   inheritCompanyDefault?: boolean;
   folderId?: string;
   folderName?: string;
   folderUrl?: string;
   localPath?: string;
   externalUrl?: string;
+  folderMetadata?: FolderMetadata;
+  fallbackProvider?: 'browser_download';
   updatedAt?: any;
 }
 
 export const DOCUMENT_STORAGE_PROVIDER_LABELS: Record<DocumentStorageProvider, string> = {
+  browser_download: 'Browser Download',
   google_drive: 'Google Drive',
   onedrive: 'OneDrive',
-  nexus_storage: 'Nexus Storage',
-  local: 'Local Folder',
+  local_folder: 'Local Folder (future)',
   external_link: 'External Link',
 };
 
 export const DEFAULT_DOCUMENT_STORAGE_SETTINGS: Omit<CompanyDocumentStorageSettings, 'companyId'> = {
-  defaultProvider: 'nexus_storage',
+  defaultProvider: 'browser_download',
+  selectedProvider: 'browser_download',
+  browserDownload: { enabled: true },
   googleDrive: { connected: false },
   oneDrive: { connected: false },
-  nexusStorage: { enabled: true, plan: 'none', usedBytes: 0, rootPath: 'documents' },
-  local: { enabled: false },
+  localFolder: { enabled: false, supported: false, fallbackProvider: 'browser_download' },
 };

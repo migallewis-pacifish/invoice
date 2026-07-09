@@ -369,7 +369,7 @@ setTab(tab: ClientTab) {
 }
 
 get companyDefaultProviderLabel(): string {
-  return DOCUMENT_STORAGE_PROVIDER_LABELS[this.companyStorage()?.defaultProvider || 'nexus_storage'];
+  return DOCUMENT_STORAGE_PROVIDER_LABELS[this.companyStorage()?.defaultProvider || 'browser_download'];
 }
 
 get effectiveStorageProviderLabel(): string {
@@ -377,7 +377,7 @@ get effectiveStorageProviderLabel(): string {
   const provider = clientStorage?.inheritCompanyDefault === false && clientStorage.provider
     ? clientStorage.provider
     : this.companyStorage()?.defaultProvider;
-  return DOCUMENT_STORAGE_PROVIDER_LABELS[provider || 'nexus_storage'];
+  return DOCUMENT_STORAGE_PROVIDER_LABELS[provider || 'browser_download'];
 }
 
 get effectiveStorageLocation(): string {
@@ -390,8 +390,8 @@ get effectiveStorageLocation(): string {
   switch (company.defaultProvider) {
     case 'google_drive': return company.googleDrive?.rootFolderName || company.googleDrive?.rootFolderUrl || 'Default Drive folder not configured';
     case 'onedrive': return company.oneDrive?.rootFolderName || company.oneDrive?.rootFolderUrl || 'Default OneDrive folder not configured';
-    case 'local': return company.local?.displayName || company.local?.rootPath || 'Local folder metadata not configured';
-    case 'nexus_storage': return company.nexusStorage?.rootPath || 'Nexus Storage root not configured';
+    case 'browser_download': return company.browserDownload?.suggestedSubfolder || 'Browser download folder selected by the user';
+    case 'local_folder': return company.localFolder?.displayName || company.localFolder?.rootPath || 'Local folder metadata not configured';
     case 'external_link': return 'External link configured per client';
     default: return 'Storage location not configured';
   }
@@ -417,8 +417,10 @@ async saveClientStorage() {
       provider: provider === 'company_default' ? undefined : provider,
       folderName: location || undefined,
       folderUrl: location.startsWith('http') ? location : undefined,
-      localPath: provider === 'local' ? location || undefined : undefined,
+      localPath: provider === 'local_folder' ? location || undefined : undefined,
       externalUrl: provider === 'external_link' ? location || undefined : undefined,
+      folderMetadata: location ? { folderName: location, folderUrl: location.startsWith('http') ? location : undefined } : undefined,
+      fallbackProvider: provider === 'local_folder' && !this.documentStorageService.supportsLocalFolderAccess() ? 'browser_download' : undefined,
     });
     this.clientStorageMessage.set('Client document storage saved.');
     this.notifications.success('Client document storage saved.');

@@ -63,7 +63,7 @@ export class LetterDocxService {
   }): Observable<string> {
     return this.generateLetterDocx(companyId, input).pipe(
       map(({ blob, fileName }) => {
-        saveAs(blob, `${input.client?.displayName || 'client'}/${fileName}`);
+        this.downloadInBrowser(blob, input.client?.displayName || 'client', fileName);
         return fileName;
       }),
       catchError(err => {
@@ -138,6 +138,12 @@ export class LetterDocxService {
       signed_by: input.signedBy || input.signature?.name || '',
       signature_url: input.signature?.url || ''
     };
+  }
+
+  private downloadInBrowser(file: Blob, clientName: string, fileName: string): void {
+    // Browser downloads cannot write directly to arbitrary local folders. The slash keeps
+    // the client name in the suggested filename for users to organize after download.
+    saveAs(file, `${clientName}/${fileName}`);
   }
 
   private assertDocx(file: File) {
