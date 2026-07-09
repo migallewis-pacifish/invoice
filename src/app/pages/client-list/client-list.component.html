@@ -43,15 +43,15 @@
     </div>
   </section>
 
-  <ng-container *ngIf="(filtered$ | async) as clients">
-    <section class="empty-state" *ngIf="clients.length === 0" aria-live="polite">
+  <ng-container *ngIf="(filtered$ | async) as items">
+    <section class="empty-state" *ngIf="items.length === 0" aria-live="polite">
       <span class="empty-state-icon" aria-hidden="true">◌</span>
       <h2 class="section-title">No clients yet</h2>
       <p class="muted">Create your first client to start tracking relationships and invoices.</p>
       <button class="primary" type="button" (click)="openAddClient()">Add Your First Client</button>
     </section>
 
-    <section class="table-card" *ngIf="clients.length > 0" aria-label="Client data table">
+    <section class="table-card" *ngIf="items.length > 0" aria-label="Client data table">
       <div class="data-table-scroll">
         <table class="data-table">
           <thead>
@@ -64,35 +64,36 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let c of clients; let i = index" (click)="goClient(c)" tabindex="0">
+            <tr *ngFor="let item of items; let i = index" (click)="goClient(item.client)" tabindex="0">
               <td>
                 <div class="client-identity">
-                  <span class="avatar-initial" [style.background]="avatarTone(i)" [style.color]="avatarInk(i)">{{ initials(c.displayName) }}</span>
+                  <span class="avatar-initial" [style.background]="avatarTone(i)" [style.color]="avatarInk(i)">{{ initials(item.client.displayName) }}</span>
                   <div>
-                    <strong>{{ c.displayName }}</strong>
-                    <span class="text-small muted">{{ clientDescription(c) }}</span>
+                    <strong>{{ item.client.displayName }}</strong>
+                    <span class="text-small muted">{{ clientDescription(item.client) }}</span>
                   </div>
                 </div>
               </td>
               <td>
-                <span class="status-chip" [class.inactive]="!isActiveClient(c, i)">{{ isActiveClient(c, i) ? 'Active' : 'Inactive' }}</span>
+                <span class="status-chip" [class.inactive]="!isActiveClient(item.client)">{{ isActiveClient(item.client) ? 'Active' : 'Inactive' }}</span>
               </td>
               <td>
                 <div class="balance-cell">
-                  <strong>{{ currencySymbol() }}{{ balanceAmount(i) | number:'1.2-2' }}</strong>
-                  <span class="text-label" [class.settled]="balanceTone(i) === 'settled'" [class.overdue]="balanceTone(i) === 'overdue'">{{ balanceStatus(i) }}</span>
+                  <strong *ngIf="item.invoiceSummary; else balanceLoading">{{ currencySymbol() }}{{ item.invoiceSummary.outstandingBalance | number:'1.2-2' }}</strong>
+                  <ng-template #balanceLoading><strong class="muted">—</strong></ng-template>
+                  <span class="text-label" [class.settled]="balanceTone(item.invoiceSummary) === 'settled'" [class.overdue]="balanceTone(item.invoiceSummary) === 'overdue'">{{ balanceStatus(item.invoiceSummary) }}</span>
                 </div>
               </td>
               <td>
                 <div class="contact-cell muted">
-                  <span>{{ c.email || 'email unavailable' }}</span>
-                  <span>{{ c.phone || 'phone unavailable' }}</span>
+                  <span>{{ item.client.email || 'email unavailable' }}</span>
+                  <span>{{ item.client.phone || 'phone unavailable' }}</span>
                 </div>
               </td>
               <td>
                 <div class="row-actions" (click)="$event.stopPropagation()">
-                  <button class="icon-button" type="button" aria-label="View client" (click)="goClient(c)">⌕</button>
-                  <button class="icon-button" type="button" aria-label="Edit client" (click)="goClient(c)">✎</button>
+                  <button class="icon-button" type="button" aria-label="View client" (click)="goClient(item.client)">⌕</button>
+                  <button class="icon-button" type="button" aria-label="Edit client" (click)="goClient(item.client)">✎</button>
                   <button class="icon-button" type="button" aria-label="More actions">⋯</button>
                 </div>
               </td>
@@ -102,7 +103,7 @@
       </div>
 
       <footer class="table-footer">
-        <span>Showing <strong>{{ clients.length }}</strong> of <strong>{{ clients.length }}</strong> clients</span>
+        <span>Showing <strong>{{ items.length }}</strong> of <strong>{{ items.length }}</strong> clients</span>
         <nav class="pagination" aria-label="Client pagination">
           <button type="button" aria-label="Previous page">‹</button>
           <button class="active" type="button" aria-current="page">1</button>
