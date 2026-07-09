@@ -18,6 +18,7 @@ import { ExpensesComponent } from '../../components/expenses/expenses.component'
 import { Client } from '../../models/client.model';
 import { CompanyDocumentStorageSettings, DOCUMENT_STORAGE_PROVIDER_LABELS, DocumentStorageProvider } from '../../models/document-storage.model';
 import { DocumentStorageService } from '../../services/document-storage.service';
+import { NotificationService } from '../../services/notification.service';
 import { CreateClientComponent } from '../../components/create-client/create-client.component';
 
 @Component({
@@ -36,6 +37,7 @@ export class ClientDetailComponent {
   private currencyService = inject(CurrencyService);
   private documentStorageService = inject(DocumentStorageService);
   private expensesService = inject(ExpensesService);
+  private notifications = inject(NotificationService);
   private fb = inject(FormBuilder);
   
   companyId = signal<string | null>(null);
@@ -251,7 +253,7 @@ addInvoice(previousInvoice: any | null = null, viewOnly = false, trackingOnly = 
 
   ref.closed.subscribe(filename => {
     if (filename) {
-      console.log('Invoice created:', filename);
+      this.notifications.success(`Invoice created: ${filename}`);
     }
   });
 }
@@ -337,7 +339,7 @@ addLetter() {
 
   ref.closed.subscribe(filename => {
     if (filename) {
-      console.log('Letter created:', filename);
+      this.notifications.success(`Letter created: ${filename}`);
     }
   });
 }
@@ -419,6 +421,7 @@ async saveClientStorage() {
       externalUrl: provider === 'external_link' ? location || undefined : undefined,
     });
     this.clientStorageMessage.set('Client document storage saved.');
+    this.notifications.success('Client document storage saved.');
     this.onClientSaved();
   } finally {
     this.savingClientStorage.set(false);

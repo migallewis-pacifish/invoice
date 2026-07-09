@@ -9,6 +9,7 @@ import { catchError, finalize, from, map, of, switchMap, take, tap } from 'rxjs'
 import { Auth } from '@angular/fire/auth';
 import { doc, docData, Firestore, serverTimestamp } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
+import { NotificationService } from '../../services/notification.service';
 
 
 type InvoiceDownloadFormat = 'docx';
@@ -71,6 +72,7 @@ export class AddInvoiceDialogComponent {
   private auth = inject(Auth);
   private db = inject(Firestore);
   private currencyService = inject(CurrencyService);
+  private notifications = inject(NotificationService);
 
   saving = signal(false);
   error = signal<string | null>(null);
@@ -280,11 +282,13 @@ export class AddInvoiceDialogComponent {
         ).pipe(map(() => filename));
       }),
       tap(filename => {
+        this.notifications.success(`Invoice created: ${filename}`);
         this.dialog.close(filename);
       }),
       catchError((err) => {
-        console.error(err);
-        this.error.set('Failed to generate or save invoice.');
+        const message = 'Failed to generate or save invoice.';
+        this.error.set(message);
+        this.notifications.error(message, err);
         return of(null);
       }),
       finalize(() => this.saving.set(false))
@@ -390,10 +394,14 @@ export class AddInvoiceDialogComponent {
       paymentHistory,
       paidAt: ['paid', 'overpaid', 'credited', 'refunded'].includes(status) ? serverTimestamp() : null,
     }).pipe(
-      tap(() => this.dialog.close('Invoice payment tracking updated.')),
+      tap(() => {
+        this.notifications.success('Invoice payment tracking updated.');
+        this.dialog.close('Invoice payment tracking updated.');
+      }),
       catchError((err) => {
-        console.error(err);
-        this.error.set('Failed to update invoice payment tracking.');
+        const message = 'Failed to update invoice payment tracking.';
+        this.error.set(message);
+        this.notifications.error(message, err);
         return of(undefined);
       }),
       finalize(() => this.saving.set(false))
