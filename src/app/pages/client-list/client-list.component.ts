@@ -11,10 +11,70 @@ import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { Auth, authState } from '@angular/fire/auth';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
+import { downloadClientsCsv } from '../../utils/client-csv';
 
-interface ClientListItem {
+export interface ClientListItem {
   client: Client;
   invoiceSummary?: ClientInvoiceSummary;
+}
+
+type SortField = 'displayName' | 'status' | 'balance' | 'contact';
+type SortDirection = 'asc' | 'desc';
+type ViewMode = 'table' | 'cards';
+
+export interface ClientListFilters {
+  searchTerm: string;
+  status: string;
+  relationshipType: string;
+  sortField: SortField;
+  sortDirection: SortDirection;
+}
+
+export function filterAndSortClients(
+  clients: Client[],
+  summaries: Record<string, ClientInvoiceSummary> | null,
+  filters: ClientListFilters
+): ClientListItem[] {
+  const term = (filters.searchTerm || '').trim().toLowerCase();
+  const status = (filters.status || 'all').toLowerCase();
+  const relationship = (filters.relationshipType || 'all').toLowerCase();
+
+  return clients
+    .filter(client => {
+      const searchHaystack = [
+        client.displayName,
+        client.email,
+        client.phone,
+        client.notes,
+        client.vatNo,
+        client.address?.city,
+      ].join(' ').toLowerCase();
+      const clientStatus = (client.status || 'active').toLowerCase();
+      const relationshipValues = [client.relationshipType, client.clientType]
+        .filter(Boolean)
+        .map(value => String(value).toLowerCase());
+
+      return (!term || searchHaystack.includes(term))
+        && (status === 'all' || clientStatus === status)
+        && (relationship === 'all' || relationshipValues.includes(relationship));
+    })
+    .map(client => ({ client, invoiceSummary: summaries?.[client.id] }))
+    .sort((a, b) => compareClientListItems(a, b, filters.sortField, filters.sortDirection));
+}
+
+function compareClientListItems(a: ClientListItem, b: ClientListItem, field: SortField, direction: SortDirection): number {
+  const multiplier = direction === 'asc' ? 1 : -1;
+  const values: Record<SortField, [string | number, string | number]> = {
+    displayName: [a.client.displayName || '', b.client.displayName || ''],
+    status: [a.client.status || 'active', b.client.status || 'active'],
+    balance: [a.invoiceSummary?.outstandingBalance ?? 0, b.invoiceSummary?.outstandingBalance ?? 0],
+    contact: [a.client.email || a.client.phone || '', b.client.email || b.client.phone || ''],
+  };
+  const [left, right] = values[field];
+  const result = typeof left === 'number' && typeof right === 'number'
+    ? left - right
+    : String(left).localeCompare(String(right), undefined, { sensitivity: 'base' });
+  return result * multiplier;
 }
 
 @Component({
@@ -36,6 +96,13 @@ export class ClientListComponent {
 
   // search/filter
   search = new FormControl('', { nonNullable: true });
+  statusFilter = new FormControl('all', { nonNullable: true });
+  relationshipFilter = new FormControl('all', { nonNullable: true });
+  sortField = new FormControl<SortField>('displayName', { nonNullable: true });
+  sortDirection = new FormControl<SortDirection>('asc', { nonNullable: true });
+  selectedClientIds = signal<Set<string>>(new Set());
+  viewMode = signal<ViewMode>('table');
+  private latestItems: ClientListItem[] = [];
   clients$: Observable<Client[]>;
   currencySymbol = signal(this.currencyService.symbolFor(this.currencyService.defaultCurrency));
 
@@ -65,20 +132,17 @@ export class ClientListComponent {
     this.filtered$ = combineLatest([
       this.clients$,
       this.clientSvc.getClientInvoiceSummaries().pipe(startWith(null)),
-      this.search.valueChanges.pipe(startWith(''))
+      this.search.valueChanges.pipe(startWith(this.search.value)),
+      this.statusFilter.valueChanges.pipe(startWith(this.statusFilter.value)),
+      this.relationshipFilter.valueChanges.pipe(startWith(this.relationshipFilter.value)),
+      this.sortField.valueChanges.pipe(startWith(this.sortField.value)),
+      this.sortDirection.valueChanges.pipe(startWith(this.sortDirection.value))
     ]).pipe(
-      map(([clients, summaries, term]) => {
-        const t = (term || '').trim().toLowerCase();
-        const filtered = t ? clients.filter(c =>
-          (c.displayName || '').toLowerCase().includes(t) ||
-          (c.email || '').toLowerCase().includes(t) ||
-          (c.phone || '').toLowerCase().includes(t)
-        ) : clients;
-
-        return filtered.map(client => ({
-          client,
-          invoiceSummary: summaries?.[client.id]
-        }));
+      map(([clients, summaries, searchTerm, status, relationshipType, sortField, sortDirection]) => {
+        const items = filterAndSortClients(clients, summaries, { searchTerm, status, relationshipType, sortField, sortDirection });
+        this.latestItems = items;
+        this.selectedClientIds.update(selected => new Set([...selected].filter(id => items.some(item => item.client.id === id))));
+        return items;
       })
     );
   }
@@ -89,7 +153,56 @@ export class ClientListComponent {
     await this.openClientDetail(c, { openInvoiceDialog: true });
   }
 
-  // TODO: Sorting
+  setSort(field: SortField): void {
+    if (this.sortField.value === field) {
+      this.sortDirection.setValue(this.sortDirection.value === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+    this.sortField.setValue(field);
+    this.sortDirection.setValue(field === 'balance' ? 'desc' : 'asc');
+  }
+
+  sortLabel(field: SortField): string {
+    return this.sortField.value === field ? (this.sortDirection.value === 'asc' ? '↑' : '↓') : '↕';
+  }
+
+  setViewMode(mode: ViewMode): void { this.viewMode.set(mode); }
+
+  isSelected(client: Client): boolean { return this.selectedClientIds().has(client.id); }
+
+  toggleClientSelection(client: Client, checked: boolean): void {
+    this.selectedClientIds.update(current => {
+      const next = new Set(current);
+      checked ? next.add(client.id) : next.delete(client.id);
+      return next;
+    });
+  }
+
+  toggleAllVisible(items: ClientListItem[], checked: boolean): void {
+    this.selectedClientIds.update(current => {
+      const next = new Set(current);
+      items.forEach(item => checked ? next.add(item.client.id) : next.delete(item.client.id));
+      return next;
+    });
+  }
+
+  allVisibleSelected(items: ClientListItem[]): boolean {
+    return items.length > 0 && items.every(item => this.selectedClientIds().has(item.client.id));
+  }
+
+  selectedItems(): ClientListItem[] {
+    const selected = this.selectedClientIds();
+    return this.latestItems.filter(item => selected.has(item.client.id));
+  }
+
+  bulkArchive(): void { this.bulkUpdateStatus('archived'); }
+
+  bulkMarkInactive(): void { this.bulkUpdateStatus('inactive'); }
+
+  exportVisibleClients(): void { downloadClientsCsv(this.latestItems, 'clients.csv'); }
+
+  exportSelectedClients(): void { downloadClientsCsv(this.selectedItems(), 'selected-clients.csv'); }
+
   initials(name = ''): string {
     const parts = name.trim().split(/\s+/).filter(Boolean);
     return (parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : name.slice(0, 2)).toUpperCase() || 'CL';
@@ -127,6 +240,11 @@ export class ClientListComponent {
     return ['#ffffff', '#c2502e', '#092c7d', '#092c7d'][index % 4];
   }
 
+
+  private bulkUpdateStatus(status: 'inactive' | 'archived'): void {
+    this.selectedItems().forEach(item => this.clientSvc.updateClient(item.client.id, { status }).subscribe());
+    this.selectedClientIds.set(new Set());
+  }
 
   private async openClientDetail(c: Client, state?: { openInvoiceDialog: boolean }): Promise<boolean> {
     const companyId = this.companyId() || await this.currentUserCompanyId();

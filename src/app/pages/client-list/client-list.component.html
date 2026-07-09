@@ -31,13 +31,36 @@
       </div>
 
       <div class="table-toolbar" aria-label="Client directory toolbar">
-        <!-- TODO: Filtering -->
-        <!-- TODO: Bulk Actions -->
-        <!-- TODO: Export -->
-        <!-- TODO: Card View -->
+        <label class="toolbar-field">
+          <span>Status</span>
+          <select [formControl]="statusFilter">
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="prospect">Prospect</option>
+            <option value="archived">Archived</option>
+          </select>
+        </label>
+        <label class="toolbar-field">
+          <span>Type</span>
+          <select [formControl]="relationshipFilter">
+            <option value="all">All relationships</option>
+            <option value="enterprise">Enterprise</option>
+            <option value="partner">Partner</option>
+            <option value="prospect">Prospect</option>
+            <option value="individual">Individual</option>
+          </select>
+        </label>
+        <button class="secondary" type="button" (click)="exportVisibleClients()">Export CSV</button>
+        <div class="bulk-actions" *ngIf="selectedClientIds().size > 0" aria-label="Bulk actions">
+          <span>{{ selectedClientIds().size }} selected</span>
+          <button type="button" (click)="bulkMarkInactive()">Mark inactive</button>
+          <button type="button" (click)="bulkArchive()">Archive</button>
+          <button type="button" (click)="exportSelectedClients()">Export selected</button>
+        </div>
         <div class="display-switch" aria-label="Display mode switch">
-          <button class="active" type="button" aria-pressed="true"><span aria-hidden="true">▤</span> Table</button>
-          <button type="button" aria-pressed="false"><span aria-hidden="true">▦</span> Cards</button>
+          <button [class.active]="viewMode() === 'table'" type="button" [attr.aria-pressed]="viewMode() === 'table'" (click)="setViewMode('table')"><span aria-hidden="true">▤</span> Table</button>
+          <button [class.active]="viewMode() === 'cards'" type="button" [attr.aria-pressed]="viewMode() === 'cards'" (click)="setViewMode('cards')"><span aria-hidden="true">▦</span> Cards</button>
         </div>
       </div>
     </div>
@@ -51,20 +74,24 @@
       <button class="primary" type="button" (click)="openAddClient()">Add Your First Client</button>
     </section>
 
-    <section class="table-card" *ngIf="items.length > 0" aria-label="Client data table">
+    <section class="table-card" *ngIf="items.length > 0 && viewMode() === 'table'" aria-label="Client data table">
       <div class="data-table-scroll">
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">Client Name</th>
-              <th scope="col">Status</th>
-              <th scope="col">Balance</th>
-              <th scope="col">Contact Info</th>
+              <th scope="col"><input type="checkbox" [checked]="allVisibleSelected(items)" (change)="toggleAllVisible(items, $any($event.target).checked)" aria-label="Select all visible clients" /></th>
+              <th scope="col"><button class="sort-button" type="button" (click)="setSort('displayName')">Client Name {{ sortLabel('displayName') }}</button></th>
+              <th scope="col"><button class="sort-button" type="button" (click)="setSort('status')">Status {{ sortLabel('status') }}</button></th>
+              <th scope="col"><button class="sort-button" type="button" (click)="setSort('balance')">Balance {{ sortLabel('balance') }}</button></th>
+              <th scope="col"><button class="sort-button" type="button" (click)="setSort('contact')">Contact Info {{ sortLabel('contact') }}</button></th>
               <th scope="col" class="actions-heading">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let item of items; let i = index" (click)="goClient(item.client)" tabindex="0">
+              <td (click)="$event.stopPropagation()">
+                <input type="checkbox" [checked]="isSelected(item.client)" (change)="toggleClientSelection(item.client, $any($event.target).checked)" [attr.aria-label]="'Select ' + item.client.displayName" />
+              </td>
               <td>
                 <div class="client-identity">
                   <span class="avatar-initial" [style.background]="avatarTone(i)" [style.color]="avatarInk(i)">{{ initials(item.client.displayName) }}</span>
@@ -112,6 +139,25 @@
           <button type="button" aria-label="Next page">›</button>
         </nav>
       </footer>
+    </section>
+    <section class="client-card-grid" *ngIf="items.length > 0 && viewMode() === 'cards'" aria-label="Client cards">
+      <article class="client-summary-card" *ngFor="let item of items; let i = index">
+        <label class="card-select">
+          <input type="checkbox" [checked]="isSelected(item.client)" (change)="toggleClientSelection(item.client, $any($event.target).checked)" />
+          Select
+        </label>
+        <div class="client-identity">
+          <span class="avatar-initial" [style.background]="avatarTone(i)" [style.color]="avatarInk(i)">{{ initials(item.client.displayName) }}</span>
+          <div>
+            <strong>{{ item.client.displayName }}</strong>
+            <span class="text-small muted">{{ clientDescription(item.client) }}</span>
+          </div>
+        </div>
+        <span class="status-chip" [class.inactive]="!isActiveClient(item.client)">{{ isActiveClient(item.client) ? 'Active' : 'Inactive' }}</span>
+        <p class="muted">{{ item.client.email || 'email unavailable' }} · {{ item.client.phone || 'phone unavailable' }}</p>
+        <strong>{{ currencySymbol() }}{{ (item.invoiceSummary?.outstandingBalance || 0) | number:'1.2-2' }}</strong>
+        <button class="secondary" type="button" (click)="goClient(item.client)">Open client</button>
+      </article>
     </section>
   </ng-container>
 </main>
