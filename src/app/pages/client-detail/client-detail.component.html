@@ -1,6 +1,7 @@
 <app-nav-bar></app-nav-bar>
 
 <main class="workspace-shell" *ngIf="!loading(); else loadingTpl">
+  <app-workspace-topbar></app-workspace-topbar>
   <section class="workspace-container">
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/clients">Clients</a>

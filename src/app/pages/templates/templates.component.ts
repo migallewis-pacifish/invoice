@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { collection, collectionData, Firestore } from '@angular/fire/firestore';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
+import { WorkspaceTopbarComponent } from '../../components/workspace-topbar/workspace-topbar.component';
 import { CompanyTemplate } from '../../models/invoice.model';
 import { TemplateService } from '../../services/template.service';
 import { LetterDocxService } from '../../services/letter-docx.service';
@@ -46,7 +47,7 @@ export function filterTemplates(templates: TemplateCard[], filter: TemplateFilte
 @Component({
   selector: 'app-templates',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule, NavBarComponent, UploadTemplateComponent],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, NavBarComponent, WorkspaceTopbarComponent, UploadTemplateComponent],
   templateUrl: './templates.component.html',
   styleUrl: './templates.component.scss'
 })

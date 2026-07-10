@@ -1,0 +1,25 @@
+<section class="dashboard-topbar" aria-label="Workspace controls">
+  <label class="search-box" aria-label="Search workspace">
+    <span aria-hidden="true">⌕</span>
+    <input
+      *ngIf="searchControl; else uncontrolledSearch"
+      type="search"
+      [formControl]="searchControl"
+      [placeholder]="searchPlaceholder" />
+    <ng-template #uncontrolledSearch>
+      <input type="search" [placeholder]="searchPlaceholder" />
+    </ng-template>
+  </label>
+
+  <div class="topbar-actions">
+    <button class="icon-button" type="button" aria-label="Notifications">⌁</button>
+    <button class="icon-button" type="button" aria-label="Help and updates">○</button>
+    <div class="user-chip">
+      <span>
+        <strong>{{ signedInUserName() }}</strong>
+        <small>{{ signedInUserRole() }}</small>
+      </span>
+      <div class="avatar" aria-hidden="true">{{ signedInUserInitials() }}</div>
+    </div>
+  </div>
+</section>

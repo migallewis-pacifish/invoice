@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { combineLatest, forkJoin, of, switchMap, take } from 'rxjs';
 import { ExpensesComponent } from '../../components/expenses/expenses.component';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
+import { WorkspaceTopbarComponent } from '../../components/workspace-topbar/workspace-topbar.component';
 import { Expense } from '../../models/expense.model';
 import { InvoiceRecord } from '../../models/invoice.model';
 import { ClientService } from '../../services/client.service';
@@ -16,7 +17,7 @@ import { buildAccountantCsv, calculateMonthlyProfit, calculateVatReport } from '
 @Component({
   selector: 'app-finance',
   standalone: true,
-  imports: [CommonModule, FormsModule, NavBarComponent, ExpensesComponent],
+  imports: [CommonModule, FormsModule, NavBarComponent, WorkspaceTopbarComponent, ExpensesComponent],
   templateUrl: './finance.component.html',
   styleUrl: './finance.component.scss'
 })

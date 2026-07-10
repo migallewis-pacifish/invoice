@@ -9,6 +9,7 @@ import { AddInvoiceDialogComponent } from '../../components/add-invoice-dialog/a
 import { AddLetterDialogComponent } from '../../components/add-letter-dialog/add-letter-dialog.component';
 import { OrderByDateDescPipe } from './order-by-date-desc.pipe';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
+import { WorkspaceTopbarComponent } from '../../components/workspace-topbar/workspace-topbar.component';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 import { InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
@@ -26,7 +27,7 @@ import { EmailService, EmailDocumentType, InvoiceReminderType } from '../../serv
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, NavBarComponent, OrderByDateDescPipe, CreateClientComponent, ExpensesComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, NavBarComponent, WorkspaceTopbarComponent, OrderByDateDescPipe, CreateClientComponent, ExpensesComponent],
   templateUrl: './client-detail.component.html',
   styleUrl: './client-detail.component.scss'
 })

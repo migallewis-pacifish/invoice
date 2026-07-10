@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
+import { WorkspaceTopbarComponent } from '../../components/workspace-topbar/workspace-topbar.component';
 import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
 import { Router, RouterLink } from '@angular/router';
 import { combineLatest } from 'rxjs';
@@ -19,7 +20,7 @@ import { AppUser, InvoiceRecord, InvoiceStatus } from '../../models/invoice.mode
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [NavBarComponent, CommonModule, RouterLink],
+  imports: [NavBarComponent, WorkspaceTopbarComponent, CommonModule, RouterLink],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
 })
