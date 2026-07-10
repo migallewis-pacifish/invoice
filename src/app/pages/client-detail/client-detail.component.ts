@@ -21,7 +21,7 @@ import { DocumentStorageService } from '../../services/document-storage.service'
 import { NotificationService } from '../../services/notification.service';
 import { CreateClientComponent } from '../../components/create-client/create-client.component';
 import { EmailComposeDialogComponent } from '../../components/email-compose-dialog/email-compose-dialog.component';
-import { EmailService, EmailDocumentType } from '../../services/email.service';
+import { EmailService, EmailDocumentType, InvoiceReminderType } from '../../services/email.service';
 
 @Component({
   selector: 'app-client-detail',
@@ -439,11 +439,42 @@ copyLastInvoice() {
   this.addInvoice(invoiceToCopy);
 }
 
-async sendDocumentEmail(documentType: EmailDocumentType, document: any): Promise<void> {
+async sendInvoiceReminder(invoice: InvoiceRecord): Promise<void> {
+  await this.sendDocumentEmail('invoice', invoice, this.reminderTypeForInvoice(invoice));
+}
+
+reminderTypeForInvoice(invoice: InvoiceRecord): InvoiceReminderType {
+  if (this.isPastDue(invoice.dueDate)) return 'overdue';
+  if (this.isDueToday(invoice.dueDate)) return 'dueToday';
+  return 'beforeDue';
+}
+
+reminderLabel(invoice: InvoiceRecord): string {
+  const type = this.reminderTypeForInvoice(invoice);
+  if (type === 'overdue') return 'Send overdue reminder';
+  if (type === 'dueToday') return 'Send due-today reminder';
+  return 'Send reminder';
+}
+
+private isDueToday(value: any): boolean {
+  if (!value) return false;
+  const dueDate = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
+  if (Number.isNaN(dueDate.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  dueDate.setHours(0, 0, 0, 0);
+  return dueDate.getTime() === today.getTime();
+}
+
+canSendReminder(invoice: InvoiceRecord): boolean {
+  return this.normalizedInvoiceStatus(invoice) !== 'paid' && this.normalizedInvoiceStatus(invoice) !== 'draft' && this.invoiceOutstanding(invoice) > 0;
+}
+
+async sendDocumentEmail(documentType: EmailDocumentType, document: any, reminderType?: InvoiceReminderType): Promise<void> {
   const companyId = this.companyId();
   const clientId = this.clientId();
   if (!companyId || !clientId || !document?.id) return;
-  const request = await this.emailService.buildDefaultRequest(documentType, document, companyId, clientId, this.client()?.email || '', this.client());
+  const request = await this.emailService.buildDefaultRequest(documentType, document, companyId, clientId, this.client()?.email || '', this.client(), reminderType);
   const ref = this.dialog.open(EmailComposeDialogComponent, {
     backdropClass: 'dlg-backdrop',
     panelClass: 'dlg-panel',
@@ -456,7 +487,10 @@ async sendDocumentEmail(documentType: EmailDocumentType, document: any): Promise
 
   ref.closed.subscribe(sent => {
     if (sent) {
-      this.notifications.success(`${documentType === 'invoice' ? 'Invoice' : 'Letter'} email sent to ${request.recipient}.`);
+      this.notifications.success(reminderType
+        ? `Invoice reminder sent to ${request.recipient}.`
+        : `${documentType === 'invoice' ? 'Invoice' : 'Letter'} email sent to ${request.recipient}.`
+      );
     }
   });
 }

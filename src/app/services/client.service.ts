@@ -100,6 +100,9 @@ export function buildInvoiceSummaryRecord(
     updatedAt: invoice.updatedAt,
     createdAt: invoice.createdAt,
     createdBy: invoice.createdBy,
+    lastReminderSentAt: invoice.lastReminderSentAt,
+    reminderCount: invoice.reminderCount,
+    lastReminderType: invoice.lastReminderType,
   });
 }
 
@@ -269,6 +272,7 @@ export class ClientService {
       })
     );
   }
+
 
   getLettersForClient(id: string): Observable<any[]> {
     return this.getCompanyId$().pipe(

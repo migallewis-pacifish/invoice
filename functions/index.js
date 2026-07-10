@@ -1,5 +1,6 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
@@ -92,4 +93,57 @@ exports.sendDocumentEmail = onCall({ secrets: [sendGridApiKey, sendGridFromEmail
   await assertCompanyMember(request.auth.uid, data.companyId);
   const messageId = await sendWithSendGrid(data);
   return { provider: 'sendgrid', messageId, accepted: true, sentAt: new Date().toISOString() };
+});
+
+
+function toDate(value) {
+  if (!value) return null;
+  if (typeof value.toDate === 'function') return value.toDate();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function startOfToday() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+exports.queueOverdueInvoiceReminders = onSchedule('every day 08:00', async () => {
+  const db = admin.firestore();
+  const today = startOfToday();
+  const companies = await db.collection('companies').get();
+  let queued = 0;
+
+  for (const companyDoc of companies.docs) {
+    const companyId = companyDoc.id;
+    const summaries = await db.collection(`companies/${companyId}/invoiceSummaries`)
+      .where('status', 'in', ['sent', 'partial', 'overdue'])
+      .get();
+
+    for (const invoiceDoc of summaries.docs) {
+      const invoice = invoiceDoc.data();
+      const dueDate = toDate(invoice.dueDate);
+      const outstanding = Math.max(0, Number(invoice.total || 0) - Number(invoice.amountPaid || 0));
+      if (!invoice.clientId || !dueDate || dueDate >= today || outstanding <= 0) continue;
+
+      const clientRef = db.doc(`companies/${companyId}/clients/${invoice.clientId}`);
+      const clientSnap = await clientRef.get();
+      const recipient = clientSnap.get('email');
+      if (!EMAIL_PATTERN.test(recipient || '')) continue;
+
+      await db.collection(`companies/${companyId}/emailReminderQueue`).add({
+        companyId,
+        clientId: invoice.clientId,
+        invoiceId: invoiceDoc.id,
+        reminderType: 'overdue',
+        recipient,
+        status: 'queued',
+        queuedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      queued += 1;
+    }
+  }
+
+  console.log(`Queued ${queued} overdue invoice reminder(s).`);
 });
