@@ -8,6 +8,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Dialog } from '@angular/cdk/dialog';
 import { AddClientDialogueComponent } from '../../components/add-client-dialogue/add-client-dialogue.component';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
+import { WorkspaceTopbarComponent } from '../../components/workspace-topbar/workspace-topbar.component';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 import { CompanyContextService } from '../../services/company-context.service';
@@ -80,7 +81,7 @@ function compareClientListItems(a: ClientListItem, b: ClientListItem, field: Sor
 @Component({
   selector: 'app-client-list',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, NavBarComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, NavBarComponent, WorkspaceTopbarComponent],
   templateUrl: './client-list.component.html',
   styleUrl: './client-list.component.scss'
 })

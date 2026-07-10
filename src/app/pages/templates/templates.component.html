@@ -1,18 +1,7 @@
 <app-nav-bar></app-nav-bar>
 
 <main class="templates-shell">
-  <section class="templates-topbar" aria-label="Template gallery controls">
-    <label class="search-box" aria-label="Search templates">
-      <span aria-hidden="true">⌕</span>
-      <input type="search" placeholder="Search templates..." />
-    </label>
-
-    <div class="topbar-actions">
-      <button class="icon-button" type="button" aria-label="Notifications">⌁</button>
-      <div class="avatar" aria-hidden="true">AS</div>
-      <button class="top-upload" type="button" (click)="openUploadFlow()">Upload</button>
-    </div>
-  </section>
+  <app-workspace-topbar class="templates-topbar"></app-workspace-topbar>
 
   <section class="gallery-header">
     <div>

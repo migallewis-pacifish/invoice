@@ -1,21 +1,7 @@
 <app-nav-bar *ngIf="showNav"></app-nav-bar>
 
 <main class="clients-page" aria-labelledby="client-directory-title">
-  <header class="dashboard-topbar clients-topbar" aria-label="Workspace header">
-    <label class="search-box clients-search" aria-label="Global search">
-      <span aria-hidden="true">⌕</span>
-      <input [formControl]="search" placeholder="Search clients, projects, or invoices..." />
-    </label>
-
-    <div class="topbar-actions" aria-label="Header actions">
-      <button class="icon-button" type="button" aria-label="Notifications">⌁</button>
-      <button class="icon-button" type="button" aria-label="Activity">○</button>
-      <div class="user-chip" aria-label="Signed in user">
-        <span><strong>Alex Sterling</strong><small>System Administrator</small></span>
-        <span class="avatar" aria-hidden="true">AS</span>
-      </div>
-    </div>
-  </header>
+  <app-workspace-topbar class="clients-topbar" [searchControl]="search" searchPlaceholder="Search clients, projects, or invoices..."></app-workspace-topbar>
 
   <section class="page-header clients-header">
     <nav class="breadcrumb" aria-label="Breadcrumb">

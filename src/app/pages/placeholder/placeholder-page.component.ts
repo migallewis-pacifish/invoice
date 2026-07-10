@@ -5,6 +5,7 @@ import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { take } from 'rxjs';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
+import { WorkspaceTopbarComponent } from '../../components/workspace-topbar/workspace-topbar.component';
 import { CurrencyService } from '../../services/currency.service';
 import { DocumentStorageService } from '../../services/document-storage.service';
 import { ActivityService } from '../../services/activity.service';
@@ -16,10 +17,11 @@ import { CompanyEmailSettings, EmailProvider } from '../../models/email-integrat
 @Component({
   selector: 'app-placeholder-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, NavBarComponent, ReactiveFormsModule],
+  imports: [CommonModule, RouterLink, NavBarComponent, WorkspaceTopbarComponent, ReactiveFormsModule],
   template: `
     <app-nav-bar></app-nav-bar>
     <main class="placeholder-wrap">
+      <app-workspace-topbar></app-workspace-topbar>
       <nav class="crumbs"><a routerLink="/">Company</a> / {{ sectionName }}</nav>
       <section class="card" *ngIf="isSettings; else placeholder">
         <h1>Settings</h1>
