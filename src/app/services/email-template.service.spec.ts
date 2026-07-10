@@ -8,7 +8,9 @@ describe('email template utilities', () => {
     dueDate: '2026-07-31',
     total: 'R 500.00',
     companyName: 'Nexus Co',
-    paymentReference: 'INV-100'
+    paymentReference: 'INV-100',
+    outstandingBalance: 'R 250.00',
+    daysOverdue: '3'
   };
 
   it('renders supported template variables', () => {

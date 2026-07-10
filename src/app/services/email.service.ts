@@ -1,13 +1,14 @@
 import { inject, Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { Functions, httpsCallable } from '@angular/fire/functions';
-import { Firestore, doc, getDoc, serverTimestamp, setDoc, updateDoc } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, increment, serverTimestamp, setDoc, updateDoc } from '@angular/fire/firestore';
 import { from, Observable, switchMap } from 'rxjs';
 import { ActivityService } from './activity.service';
 import { CompanyEmailTemplateType, EmailTemplateVariables } from '../models/company-email-template.model';
 import { EmailTemplateService, validateRenderedEmail } from './email-template.service';
 
 export type EmailDocumentType = 'invoice' | 'letter';
+export type InvoiceReminderType = 'beforeDue' | 'dueToday' | 'overdue';
 
 export interface EmailAttachmentReference {
   storagePath?: string;
@@ -21,6 +22,7 @@ export interface SendEmailRequest {
   clientId: string;
   documentType: EmailDocumentType;
   documentId: string;
+  reminderType?: InvoiceReminderType;
   recipient: string;
   cc?: string[];
   bcc?: string[];
@@ -98,6 +100,11 @@ export class EmailService {
     };
     const update: any = { ...metadata, lastEmail: metadata, updatedAt: sentAt };
     if (request.documentType === 'invoice' && current.status === 'draft') update.status = 'sent';
+    if (request.documentType === 'invoice' && request.reminderType) {
+      update.lastReminderSentAt = sentAt;
+      update.reminderCount = increment(1);
+      update.lastReminderType = request.reminderType;
+    }
     await updateDoc(ref, update);
 
     if (request.documentType === 'invoice') {
@@ -109,14 +116,16 @@ export class EmailService {
       request.companyId,
       'update',
       path,
-      `Sent ${request.documentType} ${request.documentId} email to ${request.recipient}.`
+      request.reminderType
+        ? `Sent ${request.reminderType} reminder for invoice ${request.documentId} to ${request.recipient}.`
+        : `Sent ${request.documentType} ${request.documentId} email to ${request.recipient}.`
     );
     return response;
   }
 
-  async buildDefaultRequest(documentType: EmailDocumentType, document: any, companyId: string, clientId: string, recipient = '', client?: any): Promise<SendEmailRequest> {
-    const request = this.defaultRequest(documentType, document, companyId, clientId, recipient);
-    const templateType = this.templateTypeFor(documentType, document);
+  async buildDefaultRequest(documentType: EmailDocumentType, document: any, companyId: string, clientId: string, recipient = '', client?: any, reminderType?: InvoiceReminderType): Promise<SendEmailRequest> {
+    const request = { ...this.defaultRequest(documentType, document, companyId, clientId, recipient), reminderType };
+    const templateType = reminderType ? this.templateTypeForReminder(reminderType) : this.templateTypeFor(documentType, document);
     const template = await this.emailTemplateService.getTemplate(companyId, templateType);
     const variables = await this.buildTemplateVariables(companyId, document, client);
     const rendered = this.emailTemplateService.render(template, variables);
@@ -146,6 +155,12 @@ export class EmailService {
     return validateRenderedEmail(request.subject, request.messageBody);
   }
 
+  private templateTypeForReminder(reminderType: InvoiceReminderType): CompanyEmailTemplateType {
+    if (reminderType === 'beforeDue') return 'beforeDueReminder';
+    if (reminderType === 'dueToday') return 'dueTodayReminder';
+    return 'overdueReminder';
+  }
+
   private templateTypeFor(documentType: EmailDocumentType, document: any): CompanyEmailTemplateType {
     if (documentType === 'letter') return 'letter';
     if (document?.status === 'overdue') return 'overdueNotice';
@@ -163,8 +178,27 @@ export class EmailService {
       dueDate: this.formatTemplateDate(document?.dueDate || document?.due_date),
       total: this.formatTemplateTotal(document?.total),
       companyName: company?.name || company?.companyName || 'our team',
-      paymentReference: document?.reference || document?.paymentReference || invoiceNumber
+      paymentReference: document?.reference || document?.paymentReference || invoiceNumber,
+      outstandingBalance: this.formatTemplateTotal(this.invoiceOutstanding(document)),
+      daysOverdue: String(this.daysOverdue(document?.dueDate || document?.due_date))
     };
+  }
+
+  private invoiceOutstanding(document: any): number | undefined {
+    if (!document) return undefined;
+    const total = Number(document.total ?? 0) || 0;
+    const amountPaid = Number(document.amountPaid ?? 0) || 0;
+    return Math.max(0, +(total - amountPaid).toFixed(2));
+  }
+
+  private daysOverdue(value: any): number {
+    const date = value?.toDate ? value.toDate() : value ? new Date(value) : null;
+    if (!date || Number.isNaN(date.getTime())) return 0;
+    const due = new Date(date);
+    const today = new Date();
+    due.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    return Math.max(0, Math.floor((today.getTime() - due.getTime()) / 86400000));
   }
 
   private formatTemplateDate(value: any): string {
