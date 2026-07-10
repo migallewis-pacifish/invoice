@@ -3,7 +3,6 @@ import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
 import { Router, RouterLink } from '@angular/router';
 import { combineLatest } from 'rxjs';
-import { ClientListComponent } from '../client-list/client-list.component';
 import { CommonModule } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
 import { UploadTemplateDialogueComponent } from '../../components/upload-template-dialogue/upload-template-dialogue.component';
@@ -20,7 +19,7 @@ import { AppUser, InvoiceRecord, InvoiceStatus } from '../../models/invoice.mode
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [NavBarComponent, CommonModule, ClientListComponent, RouterLink],
+  imports: [NavBarComponent, CommonModule, RouterLink],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
 })

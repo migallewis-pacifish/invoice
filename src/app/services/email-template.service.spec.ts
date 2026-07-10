@@ -7,7 +7,7 @@ describe('email template utilities', () => {
     invoiceNumber: 'INV-100',
     dueDate: '2026-07-31',
     total: 'R 500.00',
-    companyName: 'Nexus Co',
+    companyName: 'Nexus',
     paymentReference: 'INV-100',
     outstandingBalance: 'R 250.00',
     daysOverdue: '3'
