@@ -53,8 +53,8 @@ export class DocumentStorageService {
 
   providerLabel(provider?: DocumentStorageProvider): string {
     switch (provider) {
-      case 'google_drive': return 'Google Drive';
-      case 'onedrive': return 'OneDrive';
+      case 'google_drive': return 'Google Workspace Drive';
+      case 'onedrive': return 'Microsoft 365 OneDrive';
       case 'browser_download': return 'Browser Download';
       case 'local_folder': return 'Local Folder (future)';
       case 'external_link': return 'External Link';
