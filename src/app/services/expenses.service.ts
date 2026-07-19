@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { collectionData, Firestore } from '@angular/fire/firestore';
 import { addDoc, collection, deleteDoc, doc, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
-import { combineLatest, map, Observable } from 'rxjs';
+import { combineLatest, map, Observable, of } from 'rxjs';
 import { CreateExpense, Expense } from '../models/expense.model';
 import { ActivityService } from './activity.service';
 
@@ -26,6 +26,18 @@ export class ExpensesService {
 
     return (collectionData(q, { idField: 'id' }) as Observable<Expense[]>).pipe(
       map(expenses => filterCompanyLevelExpenses(expenses))
+    );
+  }
+
+  listAllIncludingClients(companyId: string, clientIds: string[]): Observable<Expense[]> {
+    const clientExpenses$ = clientIds.length
+      ? combineLatest(clientIds.map(clientId => this.listByClient(companyId, clientId))).pipe(
+          map(expenseGroups => expenseGroups.flat())
+        )
+      : of([] as Expense[]);
+
+    return combineLatest([this.listAll(companyId), clientExpenses$]).pipe(
+      map(([companyExpenses, clientExpenses]) => [...companyExpenses, ...clientExpenses])
     );
   }
 

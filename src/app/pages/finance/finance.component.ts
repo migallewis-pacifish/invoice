@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { combineLatest, forkJoin, of, switchMap, take } from 'rxjs';
+import { combineLatest, switchMap, take } from 'rxjs';
 import { ExpensesComponent } from '../../components/expenses/expenses.component';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { WorkspaceTopbarComponent } from '../../components/workspace-topbar/workspace-topbar.component';
@@ -75,21 +75,18 @@ export class FinanceComponent {
     return this.currencyService.format(value, this.currency());
   }
 
-  private loadMonth(month: string) {
+  private loadMonth(_month: string) {
     const companyId = this.companyId();
     if (!companyId) return;
     this.loading.set(true);
     combineLatest([
-      this.expensesService.listByMonth(companyId, month),
+      this.clientsService.getInvoicesForCompany(),
       this.clientsService.clients$().pipe(
-        switchMap(clients => clients.length
-          ? forkJoin(clients.map(client => this.clientsService.getInvoicesForClient(client.id).pipe(take(1))))
-          : of([])
-        )
+        switchMap(clients => this.expensesService.listAllIncludingClients(companyId, clients.map(client => client.id)))
       )
-    ]).pipe(take(1)).subscribe(([expenses, invoiceGroups]) => {
+    ]).pipe(take(1)).subscribe(([invoices, expenses]) => {
       this.expenses.set(expenses);
-      this.invoices.set((invoiceGroups as InvoiceRecord[][]).flat());
+      this.invoices.set(invoices);
       this.loading.set(false);
     });
   }

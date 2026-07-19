@@ -3,7 +3,7 @@ import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { WorkspaceTopbarComponent } from '../../components/workspace-topbar/workspace-topbar.component';
 import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
 import { Router, RouterLink } from '@angular/router';
-import { combineLatest, map, Observable, of, switchMap } from 'rxjs';
+import { combineLatest, Observable, switchMap } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
 import { UploadTemplateDialogueComponent } from '../../components/upload-template-dialogue/upload-template-dialogue.component';
@@ -155,17 +155,8 @@ export class LandingComponent {
   }
 
   private allExpensesForCompany(companyId: string): Observable<Expense[]> {
-    return combineLatest([
-      this.expensesService.listAll(companyId),
-      this.clientService.clients$().pipe(
-        switchMap(clients => clients.length
-          ? combineLatest(clients.map(client => this.expensesService.listByClient(companyId, client.id)))
-          : of([] as Expense[][])
-        ),
-        map(expenseGroups => expenseGroups.flat())
-      )
-    ]).pipe(
-      map(([companyExpenses, clientExpenses]) => [...companyExpenses, ...clientExpenses])
+    return this.clientService.clients$().pipe(
+      switchMap(clients => this.expensesService.listAllIncludingClients(companyId, clients.map(client => client.id)))
     );
   }
 

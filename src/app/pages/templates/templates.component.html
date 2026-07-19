@@ -29,7 +29,7 @@
     <app-empty-state *ngIf="!loading() && !error() && activeTemplates().length === 0" message="No templates uploaded yet."></app-empty-state>
   </section>
 
-  <section class="template-grid" aria-label="Company templates">
+  <section class="template-grid mb-24" aria-label="Company templates">
     <article class="template-card" *ngFor="let template of activeTemplates()">
       <div class="template-preview" [class.preview-letter]="template.type === 'letter'">
         <div class="preview-paper" [class.invoice-paper]="template.type === 'invoice'">

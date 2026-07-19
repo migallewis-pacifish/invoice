@@ -1,10 +1,11 @@
 :host { display: block; }
 .email-template-settings {
-  margin: 2rem 0;
   padding: 1.25rem;
   border: 1px solid rgba(15, 23, 42, 0.12);
   border-radius: 1rem;
   background: #fff;
+  max-width:1180px;
+  margin-inline:auto
 }
 .email-template-layout { display: grid; grid-template-columns: minmax(180px, 280px) 1fr; gap: 1rem; }
 .email-template-list { display: grid; gap: .75rem; align-content: start; }
