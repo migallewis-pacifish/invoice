@@ -1,7 +1,7 @@
 <div class="wrap expenses">
 
     <!-- Header -->
-    <div class="card">
+    <div class="card mb-24">
         <app-card-header [title]="title()" [subtitle]="subtitle()">
             <div class="month-picker">
                 <label class="label">Month</label>
@@ -12,7 +12,7 @@
     </div>
 
     <!-- Add Expense -->
-    <div class="card mt-4">
+    <div class="card mb-24">
         <h3 class="card-title">Add Expense</h3>
 
         <form [formGroup]="form" (ngSubmit)="addExpense()">
@@ -73,7 +73,7 @@
     </div>
 
     <!-- List -->
-    <div class="card mt-4">
+    <div class="card">
         <div class="list-header">
             <h3>Expenses for {{ selectedMonth() }}</h3>
             <div class="total">
