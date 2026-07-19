@@ -54,3 +54,13 @@
   .template-tabs { gap: 18px; overflow-x: auto; }
   .template-tabs button { white-space: nowrap; }
 }
+.email-gallery-heading { margin-bottom: 24px; }
+.email-template-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+.email-template-card { display: flex; min-height: 390px; flex-direction: column; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: #fff; box-shadow: 0 10px 24px rgba(7,31,77,.045); }
+.email-card-preview { position: relative; min-height: 190px; display: grid; place-items: center; overflow: hidden; border-radius: 8px; background: linear-gradient(135deg, #e0eaff, #f8fbff 55%, #dce8ff); }
+.email-card-icon { color: var(--primary); font-size: 64px; filter: drop-shadow(0 10px 12px rgba(9,44,125,.16)); }
+.email-template-card .template-content small { display: block; margin-top: 10px; color: var(--muted); }
+.email-template-card .template-actions { grid-template-columns: 1fr; }
+.email-template-grid .upload-card { min-height: 390px; }
+@media (max-width: 1024px) { .email-template-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .email-template-grid { grid-template-columns: 1fr; } }

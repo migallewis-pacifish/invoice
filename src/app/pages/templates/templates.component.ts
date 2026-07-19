@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { collection, collectionData, Firestore } from '@angular/fire/firestore';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
@@ -14,6 +14,8 @@ import { CompanyEmailTemplate, EMAIL_TEMPLATE_VARIABLE_LABELS, EMAIL_TEMPLATE_VA
 import { EmailTemplateService, validateEmailTemplate } from '../../services/email-template.service';
 import { WorkspaceShellComponent } from '../../components/workspace-shell/workspace-shell.component';
 import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
+import { EmailTemplateDefinition } from '../../models/email-template-designer.model';
+import { EmailTemplateDefinitionService } from '../../features/email-template-designer/services/email-template-definition.service';
 
 type TemplateType = 'invoice' | 'letter';
 type TemplateTab = 'overview' | 'gallery' | 'emails';
@@ -57,10 +59,12 @@ export function filterTemplates(templates: TemplateCard[], filter: TemplateFilte
 export class TemplatesComponent {
   private db = inject(Firestore);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private templateService = inject(TemplateService);
   private letterDocx = inject(LetterDocxService);
   private companyContext = inject(CompanyContextService);
   private emailTemplateService = inject(EmailTemplateService);
+  private emailTemplateDefinitions = inject(EmailTemplateDefinitionService);
   private fb = inject(FormBuilder);
 
   protected readonly showUpload = signal(false);
@@ -70,6 +74,7 @@ export class TemplatesComponent {
   protected readonly templates = signal<TemplateCard[]>([]);
   protected readonly filter = signal<'active' | 'archived' | TemplateType>('active');
   protected readonly emailTemplates = signal<CompanyEmailTemplate[]>([]);
+  protected readonly designedEmailTemplates = signal<EmailTemplateDefinition[]>([]);
   protected readonly selectedEmailTemplate = signal<CompanyEmailTemplate | null>(null);
   protected readonly emailTemplateMessage = signal('');
   protected readonly variables = EMAIL_TEMPLATE_VARIABLES;
@@ -81,6 +86,7 @@ export class TemplatesComponent {
   });
 
   constructor() {
+    if (this.route.snapshot.queryParamMap.get('tab') === 'emails') this.activeTab.set('emails');
     this.loadCompanyTemplates();
   }
 
@@ -211,10 +217,19 @@ export class TemplatesComponent {
     }
   }
 
+  protected newEmailTemplate(): void {
+    this.router.navigate(['/email-templates/designer']);
+  }
+
+  protected editDesignedEmailTemplate(template: EmailTemplateDefinition): void {
+    if (template.id) this.router.navigate(['/email-templates/designer', template.id]);
+  }
+
   private async loadCompanyTemplates(): Promise<void> {
     try {
       const companyId = await this.companyContext.requireCompanyIdOnce();
       await this.emailTemplateService.ensureDefaults(companyId);
+      this.emailTemplateDefinitions.list(companyId).subscribe(templates => this.designedEmailTemplates.set(templates));
       this.emailTemplateService.list(companyId).subscribe(templates => {
         this.emailTemplates.set(templates);
         if (!this.selectedEmailTemplate() && templates.length) this.selectEmailTemplate(templates[0]);

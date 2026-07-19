@@ -25,6 +25,7 @@ export const routes: Routes = [
   { path: 'clients/new', component: CreateClientComponent, canActivate: companyRoutes },
   { path: 'clients', component: ClientListComponent, canActivate: companyRoutes },
   { path: 'templates', component: TemplatesComponent, canActivate: companyRoutes },
+  { path: 'email-templates/designer/:templateId', component: EmailTemplateDesignerComponent, canActivate: companyRoutes },
   { path: 'email-templates/designer', component: EmailTemplateDesignerComponent, canActivate: companyRoutes },
   { path: 'template', redirectTo: 'templates' },
   { path: 'company-expenses', component: FinanceComponent, canActivate: companyRoutes },

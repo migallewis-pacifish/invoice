@@ -45,7 +45,8 @@
               'padding': columnStyles(column).paddingTop + 'px ' + columnStyles(column).paddingRight + 'px ' + columnStyles(column).paddingBottom + 'px ' + columnStyles(column).paddingLeft + 'px',
               'border-color': columnStyles(column).borderColor,
               'border-width.px': columnStyles(column).borderWidth,
-              'border-radius.px': columnStyles(column).borderRadius
+              'border-radius.px': columnStyles(column).borderRadius,
+              'justify-content': columnStyles(column).verticalAlign === 'middle' ? 'center' : columnStyles(column).verticalAlign === 'bottom' ? 'flex-end' : 'flex-start'
             }"
             cdkDropList
             [id]="column.id"
@@ -77,8 +78,8 @@
                   [style.padding]="$any(element).styles.paddingTop + 'px ' + $any(element).styles.paddingRight + 'px ' + $any(element).styles.paddingBottom + 'px ' + $any(element).styles.paddingLeft + 'px'">
                   {{ $any(element).content }}
                 </div>
-                <div *ngSwitchCase="'image'" class="image-el">
-                  <img *ngIf="$any(element).url" [src]="$any(element).url" [alt]="$any(element).alt">
+                <div *ngSwitchCase="'image'" class="image-el" [style.text-align]="$any(element).alignment">
+                  <img *ngIf="$any(element).url" [src]="$any(element).url" [alt]="$any(element).alt" [style.width.%]="$any(element).widthPercent" [style.border-radius.px]="$any(element).borderRadius">
                   <span *ngIf="!$any(element).url">Image placeholder</span>
                 </div>
                 <div *ngSwitchCase="'spacer'" class="spacer-el" [style.height.px]="$any(element).height"></div>

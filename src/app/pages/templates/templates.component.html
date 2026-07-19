@@ -123,47 +123,40 @@
   </section>
   </ng-container>
 
-  <section *ngSwitchCase="'emails'" class="email-template-settings" aria-label="Email template settings">
-    <div class="upload-heading">
+  <section *ngSwitchCase="'emails'" class="email-template-settings" aria-label="Email templates">
+    <div class="upload-heading email-gallery-heading">
       <div>
-        <p class="eyebrow">Email settings</p>
+        <p class="eyebrow">Emails</p>
         <h2>Email Templates</h2>
-        <p class="muted">Edit reusable subjects and bodies stored under <code>companies/{{ "{" }}companyId{{ "}" }}/emailTemplates</code>.</p>
+        <p class="muted">Create and manage reusable email designs for your company.</p>
       </div>
+      <button class="primary-action" type="button" (click)="newEmailTemplate()">
+        <span class="app-icon" aria-hidden="true">＋</span>
+        New Template
+      </button>
     </div>
 
-    <div class="email-template-layout">
-      <aside class="email-template-list" aria-label="Email template types">
-        <button
-          type="button"
-          *ngFor="let template of emailTemplates()"
-          [class.active]="selectedEmailTemplate()?.id === template.id"
-          (click)="selectEmailTemplate(template)">
-          <strong>{{ template.name }}</strong>
-          <small>{{ template.description }}</small>
-        </button>
-      </aside>
-
-      <form class="email-template-editor" [formGroup]="emailTemplateForm" (ngSubmit)="saveEmailTemplate()" *ngIf="selectedEmailTemplate() as template">
-        <label>Subject
-          <input formControlName="subject" placeholder="Invoice variable from company">
-        </label>
-
-        <label>Body
-          <textarea rows="10" formControlName="body" placeholder="Hi client name..."></textarea>
-        </label>
-
-        <div class="variable-pills" aria-label="Available template variables">
-          <span>Variables:</span>
-          <button type="button" *ngFor="let variable of variables" (click)="insertVariable(variable)">
-            {{ variableLabels[variable] }} <code>{{ '{{' + variable + '}}' }}</code>
-          </button>
+    <div class="email-template-grid" aria-label="Company email templates">
+      <article class="email-template-card" *ngFor="let template of designedEmailTemplates()">
+        <div class="email-card-preview">
+          <span class="email-card-icon" aria-hidden="true">✉</span>
+          <span class="template-badge type-badge">{{ template.type }}</span>
         </div>
+        <div class="template-content">
+          <h2>{{ template.name }}</h2>
+          <p>{{ template.subject }}</p>
+          <small>{{ template.sections.length }} section{{ template.sections.length === 1 ? '' : 's' }}</small>
+        </div>
+        <div class="template-actions">
+          <button class="edit-button" type="button" (click)="editDesignedEmailTemplate(template)">Edit</button>
+        </div>
+      </article>
 
-        <p class="muted">Templates are validated for required subject/body text and supported variables before saving and again after rendering before sending.</p>
-        <p class="error" *ngIf="emailTemplateMessage()">{{ emailTemplateMessage() }}</p>
-        <button class="primary-action" type="submit">Save Email Template</button>
-      </form>
+      <button class="upload-card" type="button" (click)="newEmailTemplate()">
+        <span class="plus-icon app-icon" aria-hidden="true">＋</span>
+        <strong>New Template</strong>
+        <small>Start from a blank email canvas.</small>
+      </button>
     </div>
   </section>
   </ng-container>

@@ -84,6 +84,25 @@ service cloud.firestore {
           && request.resource.data.storagePath is string;
         allow delete: if isCompanyMember(companyId);
       }
+
+      match /emailDesignTemplates/{templateId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, update: if isCompanyMember(companyId)
+          && request.resource.data.companyId == companyId
+          && request.resource.data.name is string
+          && request.resource.data.subject is string
+          && request.resource.data.sections is list;
+        allow delete: if isCompanyMember(companyId);
+      }
+
+      match /emailTemplates/{templateId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, update: if isCompanyMember(companyId)
+          && request.resource.data.companyId == companyId
+          && request.resource.data.subject is string
+          && request.resource.data.body is string;
+        allow delete: if isCompanyMember(companyId);
+      }
     }
 
     match /{document=**} {
