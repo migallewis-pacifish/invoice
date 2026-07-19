@@ -1,4 +1,4 @@
-import { buildInvoiceSummaryRecord, calculateClientInvoiceSummary, mergeInvoiceTrackingUpdate } from './client.service';
+import { buildInvoiceSummaryRecord, calculateClientInvoiceSummary, mergeCompanyInvoices, mergeInvoiceTrackingUpdate } from './client.service';
 import { InvoiceRecord } from '../models/invoice.model';
 
 describe('calculateClientInvoiceSummary', () => {
@@ -44,6 +44,23 @@ describe('calculateClientInvoiceSummary', () => {
 });
 
 describe('company invoice summary records', () => {
+  it('uses client invoice data to fill and refresh company summaries', () => {
+    const summaries = [{ id: 'invoice-1', clientId: 'client-1', total: 100, amountPaid: 0, status: 'sent' }] as any;
+    const clientInvoices = [{ id: 'invoice-1', clientId: 'client-1', total: 100, amountPaid: 100, status: 'paid' }] as any;
+
+    expect(mergeCompanyInvoices(summaries, clientInvoices)).toEqual([jasmine.objectContaining({
+      id: 'invoice-1',
+      amountPaid: 100,
+      status: 'paid'
+    })]);
+  });
+
+  it('keeps legacy client invoices when no company summary exists', () => {
+    const clientInvoice = { id: 'legacy-1', clientId: 'client-2', total: 250, amountPaid: 0, status: 'sent' } as any;
+
+    expect(mergeCompanyInvoices([], [clientInvoice])).toEqual([clientInvoice]);
+  });
+
   it('copies invoice creation metadata into a company-level summary', () => {
     const summary = buildInvoiceSummaryRecord('invoice-1', 'client-1', {
       invoiceNumber: 'INV-001',

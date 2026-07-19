@@ -3,7 +3,7 @@ import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { WorkspaceTopbarComponent } from '../../components/workspace-topbar/workspace-topbar.component';
 import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
 import { Router, RouterLink } from '@angular/router';
-import { combineLatest } from 'rxjs';
+import { combineLatest, map, Observable, of, switchMap } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
 import { UploadTemplateDialogueComponent } from '../../components/upload-template-dialogue/upload-template-dialogue.component';
@@ -141,7 +141,7 @@ export class LandingComponent {
 
         combineLatest([
           this.clientService.getInvoicesForCompany(),
-          this.expensesService.listAll(companyId)
+          this.allExpensesForCompany(companyId)
         ]).subscribe(([invoices, expenses]) => {
           this.invoices.set(invoices);
           this.expenses.set(expenses);
@@ -152,6 +152,21 @@ export class LandingComponent {
         this.router.navigate([err?.message === 'Not authenticated' ? '/login' : '/register']);
       }
     });
+  }
+
+  private allExpensesForCompany(companyId: string): Observable<Expense[]> {
+    return combineLatest([
+      this.expensesService.listAll(companyId),
+      this.clientService.clients$().pipe(
+        switchMap(clients => clients.length
+          ? combineLatest(clients.map(client => this.expensesService.listByClient(companyId, client.id)))
+          : of([] as Expense[][])
+        ),
+        map(expenseGroups => expenseGroups.flat())
+      )
+    ]).pipe(
+      map(([companyExpenses, clientExpenses]) => [...companyExpenses, ...clientExpenses])
+    );
   }
 
   goToUpload() {
