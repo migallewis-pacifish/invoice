@@ -25,15 +25,17 @@
 }
 .template-tabs button.active { color: var(--primary); border-bottom-color: var(--primary); }
 .template-overview { display: grid; gap: 22px; }
+.template-overview .stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.active-types-card > strong,
+.storage-card > strong,
+.email-stats-card > strong { display: block; margin-top: 22px; color: var(--primary); font-size: 38px; letter-spacing: -.06em; }
+.storage-card { text-align: left; }
 .overview-heading h2,
 .gallery-tab-header h2 { margin: 0; color: var(--primary); }
 .overview-heading p:last-child { margin-bottom: 0; }
 .gallery-tab-header { margin-bottom: 24px; }
 .email-template-settings {
   padding: 1.25rem;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 1rem;
-  background: #fff;
   max-width:1180px;
   margin-inline:auto
 }
@@ -50,7 +52,9 @@
 .muted { color: #64748b; }
 .error { color: #b91c1c; }
 @media (max-width: 760px) { .email-template-layout { grid-template-columns: 1fr; } }
+@media (max-width: 1024px) { .template-overview .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) {
+  .template-overview .stats-grid { grid-template-columns: 1fr; }
   .template-tabs { gap: 18px; overflow-x: auto; }
   .template-tabs button { white-space: nowrap; }
 }

@@ -16,6 +16,8 @@ import { WorkspaceShellComponent } from '../../components/workspace-shell/worksp
 import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
 import { EmailTemplateDefinition } from '../../models/email-template-designer.model';
 import { EmailTemplateDefinitionService } from '../../features/email-template-designer/services/email-template-definition.service';
+import { Dialog } from '@angular/cdk/dialog';
+import { EmailTemplateDesignerComponent } from '../../features/email-template-designer/email-template-designer.component';
 
 type TemplateType = 'invoice' | 'letter';
 type TemplateTab = 'overview' | 'gallery' | 'emails';
@@ -66,6 +68,7 @@ export class TemplatesComponent {
   private emailTemplateService = inject(EmailTemplateService);
   private emailTemplateDefinitions = inject(EmailTemplateDefinitionService);
   private fb = inject(FormBuilder);
+  private dialog = inject(Dialog);
 
   protected readonly showUpload = signal(false);
   protected readonly activeTab = signal<TemplateTab>('overview');
@@ -93,6 +96,8 @@ export class TemplatesComponent {
   protected readonly activeTemplates = computed(() => filterTemplates(this.templates(), this.filter()));
   protected readonly invoiceTemplateCount = computed(() => this.templates().filter(template => template.type === 'invoice' && !template.archived).length);
   protected readonly letterTemplateCount = computed(() => this.templates().filter(template => template.type === 'letter' && !template.archived).length);
+  protected readonly emailTemplateCount = computed(() => this.designedEmailTemplates().length);
+  protected readonly totalTemplateCount = computed(() => this.templates().filter(template => template.active && !template.archived).length + this.emailTemplateCount());
 
   protected setTab(tab: TemplateTab): void {
     this.activeTab.set(tab);
@@ -218,7 +223,14 @@ export class TemplatesComponent {
   }
 
   protected newEmailTemplate(): void {
-    this.router.navigate(['/email-templates/designer']);
+    this.dialog.open(EmailTemplateDesignerComponent, {
+      data: { dialogMode: true },
+      width: 'min(96vw, 1720px)',
+      maxWidth: '1720px',
+      maxHeight: '96vh',
+      backdropClass: 'dlg-backdrop',
+      panelClass: 'email-designer-dialog-panel'
+    });
   }
 
   protected editDesignedEmailTemplate(template: EmailTemplateDefinition): void {

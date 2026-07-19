@@ -1,7 +1,8 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { NgFor, NgIf } from '@angular/common';
+import { NgFor, NgIf, NgTemplateOutlet } from '@angular/common';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { WorkspaceShellComponent } from '../../components/workspace-shell/workspace-shell.component';
 import { CompanyContextService } from '../../services/company-context.service';
 import { EmailColumn, EmailElement, EmailSection, EmailSelection, EmailTemplateDefinition, EmailTemplateType } from '../../models/email-template-designer.model';
@@ -17,9 +18,12 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 type WizardStep = 'choose' | 'design' | 'preview';
 type StarterEmailTemplate = Omit<EmailTemplateDefinition, 'companyId'> & { description: string; accent: string; audience: string };
 
-@Component({ selector: 'app-email-template-designer', standalone: true, imports: [FormsModule, NgFor, NgIf, WorkspaceShellComponent, EmailTemplatePaletteComponent, EmailTemplateCanvasComponent, EmailTemplateInspectorComponent], templateUrl: './email-template-designer.component.html', styleUrl: './email-template-designer.component.scss' })
+@Component({ selector: 'app-email-template-designer', standalone: true, imports: [FormsModule, NgFor, NgIf, NgTemplateOutlet, WorkspaceShellComponent, EmailTemplatePaletteComponent, EmailTemplateCanvasComponent, EmailTemplateInspectorComponent], templateUrl: './email-template-designer.component.html', styleUrl: './email-template-designer.component.scss' })
 export class EmailTemplateDesignerComponent implements OnInit {
   private ctx = inject(CompanyContextService); private builder = inject(EmailTemplateBuilderService); private previewData = inject(EmailTemplatePreviewDataService); private router = inject(Router); private route = inject(ActivatedRoute); private definitions = inject(EmailTemplateDefinitionService); private sanitizer = inject(DomSanitizer);
+  private readonly dialogRef = inject<DialogRef<string>>(DialogRef, { optional: true });
+  private readonly dialogData = inject(DIALOG_DATA, { optional: true }) as { dialogMode?: boolean } | null;
+  readonly dialogMode = this.dialogData?.dialogMode === true;
   template: EmailTemplateDefinition = { schemaVersion: 1, companyId: '', name: 'New email template', subject: 'Invoice {{invoice.number}} from {{company.name}}', type: 'invoice', sections: [] };
   types: { label: string; value: EmailTemplateType }[] = [{label:'Invoice',value:'invoice'},{label:'Payment reminder',value:'payment-reminder'},{label:'General',value:'general'}];
   steps: { label: string; value: WizardStep }[] = [{ label: 'Select template', value: 'choose' }, { label: 'Design', value: 'design' }, { label: 'Review', value: 'preview' }];
@@ -50,8 +54,13 @@ export class EmailTemplateDesignerComponent implements OnInit {
     this.template.id = id;
     this.savedJson = JSON.stringify(this.template,null,2);
     this.regenerate();
-    if (!this.route.snapshot.paramMap.get('templateId')) await this.router.navigate(['/email-templates/designer', id], { replaceUrl: true });
+    if (this.dialogMode) {
+      this.dialogRef?.close(id);
+    } else if (!this.route.snapshot.paramMap.get('templateId')) {
+      await this.router.navigate(['/email-templates/designer', id], { replaceUrl: true });
+    }
   }
+  closeDialog(){ this.dialogRef?.close(); }
   goTo(step: WizardStep){ this.currentStep = step; if(step === 'preview') this.regenerate(true); }
   createNew(){ this.template = { schemaVersion: 1, companyId: this.template.companyId, name: 'New email template', subject: 'Invoice {{invoice.number}} from {{company.name}}', type: 'invoice', sections: [] }; this.selectedStarterId=''; this.selection=null; this.savedJson=''; this.currentStep='design'; this.regenerate(); }
   useStarter(starter: StarterEmailTemplate){ this.template = { ...structuredClone(starter), companyId: this.template.companyId, id: undefined, createdAt: undefined, updatedAt: undefined }; this.selectedStarterId = starter.id ?? ''; this.selection=null; this.savedJson=''; this.currentStep='design'; this.regenerate(); }

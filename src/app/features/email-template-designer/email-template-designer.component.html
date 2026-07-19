@@ -1,4 +1,4 @@
-<app-workspace-shell searchPlaceholder="Search email templates...">
+<ng-template #designerContent>
   <main class="designer-page">
     <header class="designer-header">
       <div class="wizard-steps" aria-label="Email template workflow">
@@ -53,4 +53,15 @@
 
     <section class="output panel" *ngIf="savedJson"><div class="panel-heading with-border"><div><h2>Serializable template definition</h2><p>First-version save output for backend persistence.</p></div></div><pre>{{ savedJson }}</pre></section>
   </main>
-</app-workspace-shell>
+</ng-template>
+
+<div class="designer-dialog" *ngIf="dialogMode; else routedDesigner">
+  <button type="button" class="dialog-close" aria-label="Close email template designer" (click)="closeDialog()">×</button>
+  <ng-container *ngTemplateOutlet="designerContent"></ng-container>
+</div>
+
+<ng-template #routedDesigner>
+  <app-workspace-shell searchPlaceholder="Search email templates...">
+    <ng-container *ngTemplateOutlet="designerContent"></ng-container>
+  </app-workspace-shell>
+</ng-template>

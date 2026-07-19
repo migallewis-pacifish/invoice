@@ -21,15 +21,14 @@
   <ng-container [ngSwitch]="activeTab()">
   <section *ngSwitchCase="'overview'" class="template-overview" aria-labelledby="template-overview-title">
     <div class="overview-heading">
-      <p class="eyebrow">Overview</p>
       <h2 id="template-overview-title">Template statistics</h2>
       <p class="muted">A live summary of the active document templates available to your company.</p>
     </div>
     <section class="stats-grid" aria-label="Template statistics">
       <article class="stats-card usage-card">
         <div class="stats-label">Active Templates <span class="app-icon" aria-hidden="true">📁</span></div>
-        <strong>{{ activeTemplates().length }}</strong>
-        <p>Templates currently ready to use</p>
+        <strong>{{ totalTemplateCount() }}</strong>
+        <p>Document and email templates ready to use</p>
       </article>
       <article class="stats-card active-types-card">
         <div class="stats-label">Invoice Templates <span class="app-icon" aria-hidden="true">🧾</span></div>
@@ -41,13 +40,17 @@
         <strong>{{ letterTemplateCount() }}</strong>
         <p>Active letter document layouts</p>
       </article>
+      <article class="stats-card email-stats-card">
+        <div class="stats-label">Email Templates <span class="app-icon" aria-hidden="true">📧</span></div>
+        <strong>{{ emailTemplateCount() }}</strong>
+        <p>Reusable email designs</p>
+      </article>
     </section>
   </section>
 
   <ng-container *ngSwitchCase="'gallery'">
   <section class="gallery-header gallery-tab-header">
     <div>
-      <p class="eyebrow">Documents</p>
       <h2>Template Gallery</h2>
       <p>Manage and deploy high-fidelity document structures across your workspace.</p>
     </div>
@@ -55,10 +58,6 @@
       <button class="filter-button" type="button" (click)="onFilter()">
         <span class="app-icon" aria-hidden="true">🔎</span>
         Filter: {{ filter() }}
-      </button>
-      <button class="primary-action" type="button" (click)="openUploadFlow()">
-        <span class="app-icon" aria-hidden="true">⬆️</span>
-        Upload New Template
       </button>
     </div>
   </section>
@@ -126,14 +125,9 @@
   <section *ngSwitchCase="'emails'" class="email-template-settings" aria-label="Email templates">
     <div class="upload-heading email-gallery-heading">
       <div>
-        <p class="eyebrow">Emails</p>
         <h2>Email Templates</h2>
         <p class="muted">Create and manage reusable email designs for your company.</p>
       </div>
-      <button class="primary-action" type="button" (click)="newEmailTemplate()">
-        <span class="app-icon" aria-hidden="true">＋</span>
-        New Template
-      </button>
     </div>
 
     <div class="email-template-grid" aria-label="Company email templates">
