@@ -1,7 +1,4 @@
-<app-nav-bar></app-nav-bar>
-
-<main class="workspace-shell" *ngIf="!loading(); else loadingTpl">
-  <app-workspace-topbar></app-workspace-topbar>
+<app-workspace-shell shellClass="workspace-shell" *ngIf="!loading(); else loadingTpl">
   <section class="workspace-container">
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/clients">Clients</a>
@@ -56,7 +53,7 @@
             <div><dt>Relationship Type</dt><dd>{{ relationshipType }}</dd></div>
             <div>
               <dt>Status</dt>
-              <dd><span class="status-chip" [ngClass]="clientStatusClass">{{ clientStatus }}</span></dd>
+              <dd><app-status-badge [status]="clientStatus" [label]="clientStatus"></app-status-badge></dd>
             </div>
           </dl>
         </article>
@@ -80,17 +77,8 @@
               <button class="secondary pill-button" type="button" (click)="addInvoice()">＋ New Invoice</button>
             </div>
           </div>
-          <div class="data-table compact-table">
-            <div class="table-row table-head"><span>Invoice ID</span><span>Due Date</span><span>Amount</span><span>Status</span><span>Actions</span></div>
-            <div class="table-row" *ngFor="let inv of (invoices() | orderByDateDesc).slice(0, 4); let i = index">
-              <strong>{{ inv.invoiceNumber || '#INV-' + (8821 - i) }}</strong>
-              <span>{{ (inv.dueDate || inv.date) | date:'mediumDate' }}</span>
-              <span>{{ inv.total | currency:currency():'symbol' }}</span>
-              <span><span class="status-chip" [ngClass]="'status-' + normalizedInvoiceStatus(inv)">{{ invoiceStatusLabel(inv) }}</span></span>
-              <span class="row-actions"><button class="secondary small" type="button" (click)="sendDocumentEmail('invoice', inv)">Send email</button><button class="secondary small" type="button" (click)="sendInvoiceReminder(inv)" [disabled]="!canSendReminder(inv)">Reminder</button><button class="ellipsis" type="button" (click)="viewInvoice(inv)">•••</button></span>
-            </div>
-          </div>
-          <p class="muted empty-state" *ngIf="invoices().length === 0">No invoices yet for this client.</p>
+          <app-invoice-table [invoices]="invoices()" [currency]="currency()" [limit]="4" [compact]="true" [showPaid]="false" [statusFor]="invoiceStatusFor" [canRemind]="invoiceCanRemind" [reminderText]="invoiceReminderText" (viewed)="viewInvoice($event)" (emailed)="sendDocumentEmail('invoice', $event)" (reminded)="sendInvoiceReminder($event)"></app-invoice-table>
+          <app-empty-state *ngIf="invoices().length === 0" message="No invoices yet for this client."></app-empty-state>
         </article>
 
         <article class="card timeline-card">
@@ -176,8 +164,8 @@
       <section *ngSwitchCase="'invoices'" class="card table-card full-table-card">
         <div class="table-toolbar"><div><h2 class="section-title">Invoices</h2><p>Search, filter, and manage invoice records for this client.</p></div><div class="card-actions"><button class="secondary pill-button" type="button" (click)="copyLastInvoice()" [disabled]="!lastInvoice()">Copy Last Invoice</button><button class="primary" type="button" (click)="addInvoice()">New Invoice</button></div></div>
         <div class="workspace-controls"><input type="search" placeholder="Search invoices..."><button class="secondary" type="button">Filters</button><button class="secondary" type="button">Sort</button></div>
-        <div class="data-table"><div class="table-row table-head six"><span>Invoice ID</span><span>Due Date</span><span>Total</span><span>Paid</span><span>Status</span><span>Actions</span></div><div class="table-row six" *ngFor="let inv of invoices() | orderByDateDesc"><strong>{{ inv.invoiceNumber || '(unnumbered)' }}</strong><span>{{ (inv.dueDate || inv.date) | date:'mediumDate' }}</span><span>{{ inv.total | currency:currency():'symbol' }}</span><span>{{ inv.amountPaid || 0 | currency:currency():'symbol' }}</span><span><span class="status-chip" [ngClass]="'status-' + normalizedInvoiceStatus(inv)">{{ invoiceStatusLabel(inv) }}</span></span><span class="row-actions"><button class="secondary small" type="button" (click)="viewInvoice(inv)">View</button><button class="secondary small" type="button" (click)="updateInvoiceTracking(inv)">Update</button><button class="secondary small" type="button" (click)="sendDocumentEmail('invoice', inv)">Send email</button><button class="secondary small" type="button" (click)="sendInvoiceReminder(inv)" [disabled]="!canSendReminder(inv)">{{ reminderLabel(inv) }}</button></span></div></div>
-        <p class="muted empty-state" *ngIf="invoices().length === 0">No invoices yet for this client.</p><div class="pagination">Page 1 of 1</div>
+        <app-invoice-table [invoices]="invoices()" [currency]="currency()" [statusFor]="invoiceStatusFor" [canRemind]="invoiceCanRemind" [reminderText]="invoiceReminderText" (viewed)="viewInvoice($event)" (updated)="updateInvoiceTracking($event)" (emailed)="sendDocumentEmail('invoice', $event)" (reminded)="sendInvoiceReminder($event)"></app-invoice-table>
+        <app-empty-state *ngIf="invoices().length === 0" message="No invoices yet for this client."></app-empty-state><div class="pagination">Page 1 of 1</div>
       </section>
 
       <section *ngSwitchCase="'expenses'" class="full-table-card">
@@ -194,12 +182,12 @@
       <section *ngSwitchCase="'letters'" class="card table-card full-table-card">
         <div class="table-toolbar"><div><h2 class="section-title">Letters</h2><p>Create letters and view saved Firestore letter records for this client.</p></div><button class="primary" type="button" (click)="addLetter()">New Letter</button></div>
         <div class="data-table"><div class="table-row table-head"><span>Letter</span><span>Signed By</span><span>Created</span><span>File</span><span>Actions</span></div><div class="table-row" *ngFor="let letter of letters()"><strong>{{ letter.title }}</strong><span>{{ letter.signedBy || '—' }}</span><span>{{ (letter.date || letter.createdAt) | date:'mediumDate' }}</span><span>{{ letter.filename || '—' }}</span><span class="row-actions"><button class="secondary small" type="button" (click)="sendDocumentEmail('letter', letter)">Send email</button></span></div></div>
-        <p class="muted empty-state" *ngIf="letters().length === 0">No letters saved for this client yet.</p>
+        <app-empty-state *ngIf="letters().length === 0" message="No letters saved for this client yet."></app-empty-state>
       </section>
     </ng-container>
   </section>
-</main>
+</app-workspace-shell>
 
 <ng-template #loadingTpl>
-  <div class="loading"><div class="spinner"></div><p>Loading client workspace...</p></div>
+  <app-loading-state message="Loading client workspace..."></app-loading-state>
 </ng-template>

@@ -13,6 +13,10 @@ import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 import { CompanyContextService } from '../../services/company-context.service';
 import { downloadClientsCsv } from '../../utils/client-csv';
+import { WorkspaceShellComponent } from '../../components/workspace-shell/workspace-shell.component';
+import { ClientIdentityComponent } from '../../components/client-identity/client-identity.component';
+import { StatusBadgeComponent } from '../../components/status-badge/status-badge.component';
+import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
 
 export interface ClientListItem {
   client: Client;
@@ -81,7 +85,7 @@ function compareClientListItems(a: ClientListItem, b: ClientListItem, field: Sor
 @Component({
   selector: 'app-client-list',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, NavBarComponent, WorkspaceTopbarComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, NavBarComponent, WorkspaceTopbarComponent, WorkspaceShellComponent, ClientIdentityComponent, StatusBadgeComponent, EmptyStateComponent],
   templateUrl: './client-list.component.html',
   styleUrl: './client-list.component.scss'
 })

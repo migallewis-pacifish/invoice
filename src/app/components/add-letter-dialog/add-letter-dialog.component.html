@@ -1,9 +1,4 @@
-<div class="dialog-shell">
-  <div class="dialog-header">
-    <h3>Add Letter</h3>
-    <button class="icon-btn" type="button" (click)="close()">✕</button>
-  </div>
-
+<app-dialog-shell title="Add Letter" (closed)="close()">
   <form [formGroup]="form" (ngSubmit)="generateLetter()" class="dialog-body">
     <p class="copy-note">Generate a client letter from your company Word template.</p>
 
@@ -51,4 +46,4 @@
     <div class="msg error" *ngIf="error()">{{ error() }}</div>
     <div class="msg info" *ngIf="info()">{{ info() }}</div>
   </form>
-</div>
+</app-dialog-shell>

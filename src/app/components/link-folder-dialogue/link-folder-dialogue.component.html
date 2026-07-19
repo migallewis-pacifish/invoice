@@ -1,10 +1,7 @@
-<div class="dialog-shell">
+<app-dialog-shell [title]="step() === 1 ? 'Link Folder' : 'Select Local Folder'" (closed)="close()">
+  <div class="link-content">
   <!-- Step 1 -->
   <ng-container *ngIf="step() === 1">
-    <div class="dialog-header">
-        <h3>Link Folder</h3>
-        <button class="icon-btn" (click)="close()">✕</button>
-    </div>
     <p class="muted">Local DOCX download only. Cloud save providers are coming soon.</p>
 
     <div class="options">
@@ -16,10 +13,6 @@
 
   <!-- Step 2: Local folder -->
   <ng-container *ngIf="step() === 2">
-    <div class="dialog-header">
-        <h3>Select Local Folder</h3>
-        <button class="icon-btn" (click)="close()">✕</button>
-    </div>
     <p>Choose a local folder label for downloaded DOCX invoices.</p>
 
     <div class="input-section">
@@ -33,4 +26,5 @@
     </div>
   </ng-container>
 
-</div>
+  </div>
+</app-dialog-shell>

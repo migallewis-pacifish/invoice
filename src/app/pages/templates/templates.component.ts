@@ -12,6 +12,8 @@ import { CompanyContextService } from '../../services/company-context.service';
 import { UploadTemplateComponent } from '../upload-template/upload-template.component';
 import { CompanyEmailTemplate, EMAIL_TEMPLATE_VARIABLE_LABELS, EMAIL_TEMPLATE_VARIABLES } from '../../models/company-email-template.model';
 import { EmailTemplateService, validateEmailTemplate } from '../../services/email-template.service';
+import { WorkspaceShellComponent } from '../../components/workspace-shell/workspace-shell.component';
+import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
 
 type TemplateType = 'invoice' | 'letter';
 
@@ -47,7 +49,7 @@ export function filterTemplates(templates: TemplateCard[], filter: TemplateFilte
 @Component({
   selector: 'app-templates',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule, NavBarComponent, WorkspaceTopbarComponent, UploadTemplateComponent],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, NavBarComponent, WorkspaceTopbarComponent, UploadTemplateComponent, WorkspaceShellComponent, EmptyStateComponent],
   templateUrl: './templates.component.html',
   styleUrl: './templates.component.scss'
 })

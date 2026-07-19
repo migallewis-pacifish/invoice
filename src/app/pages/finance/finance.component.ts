@@ -13,11 +13,13 @@ import { CurrencyService } from '../../services/currency.service';
 import { ExpensesService } from '../../services/expenses.service';
 import { CompanyContextService } from '../../services/company-context.service';
 import { buildAccountantCsv, calculateMonthlyProfit, calculateVatReport } from '../../utils/finance-calculations';
+import { WorkspaceShellComponent } from '../../components/workspace-shell/workspace-shell.component';
+import { MetricCardComponent } from '../../components/metric-card/metric-card.component';
 
 @Component({
   selector: 'app-finance',
   standalone: true,
-  imports: [CommonModule, FormsModule, NavBarComponent, WorkspaceTopbarComponent, ExpensesComponent],
+  imports: [CommonModule, FormsModule, NavBarComponent, WorkspaceTopbarComponent, ExpensesComponent, WorkspaceShellComponent, MetricCardComponent],
   templateUrl: './finance.component.html',
   styleUrl: './finance.component.scss'
 })

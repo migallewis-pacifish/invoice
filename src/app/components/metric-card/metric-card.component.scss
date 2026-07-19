@@ -1,0 +1,4 @@
+.metric-card { height: 100%; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--primary); border-radius: var(--radius-md); padding: 18px 20px; box-shadow: 0 8px 22px rgba(7,31,77,.04); }
+.revenue, .success { border-left-color: var(--accent); }.expenses, .warning { border-left-color: #b85b08; }.profit { border-left-color: #6d7be8; }
+.label { display: flex; justify-content: space-between; color: var(--ink); text-transform: uppercase; font-size: 10px; font-weight: 900; letter-spacing: .08em; margin-bottom: 14px; }
+strong { display: block; font-size: 21px; letter-spacing: -.03em; } small { display: block; margin-top: 12px; color: var(--muted); font-size: 11px; }

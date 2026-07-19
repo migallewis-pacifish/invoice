@@ -1,7 +1,4 @@
-<app-nav-bar *ngIf="showNav"></app-nav-bar>
-
-<main class="clients-page" aria-labelledby="client-directory-title">
-  <app-workspace-topbar class="clients-topbar" [searchControl]="search" searchPlaceholder="Search clients, projects, or invoices..."></app-workspace-topbar>
+<app-workspace-shell shellClass="clients-page" topbarClass="clients-topbar" [showNav]="showNav" [searchControl]="search" searchPlaceholder="Search clients, projects, or invoices...">
 
   <section class="page-header clients-header">
     <nav class="breadcrumb" aria-label="Breadcrumb">
@@ -53,12 +50,9 @@
   </section>
 
   <ng-container *ngIf="(filtered$ | async) as items">
-    <section class="empty-state" *ngIf="items.length === 0" aria-live="polite">
-      <span class="empty-state-icon" aria-hidden="true">◌</span>
-      <h2 class="section-title">No clients yet</h2>
-      <p class="muted">Create your first client to start tracking relationships and invoices.</p>
+    <app-empty-state *ngIf="items.length === 0" icon="◌" title="No clients yet" message="Create your first client to start tracking relationships and invoices.">
       <button class="primary" type="button" (click)="openAddClient()">Add Your First Client</button>
-    </section>
+    </app-empty-state>
 
     <section class="table-card" *ngIf="items.length > 0 && viewMode() === 'table'" aria-label="Client data table">
       <div class="data-table-scroll">
@@ -79,16 +73,10 @@
                 <input type="checkbox" [checked]="isSelected(item.client)" (change)="toggleClientSelection(item.client, $any($event.target).checked)" [attr.aria-label]="'Select ' + item.client.displayName" />
               </td>
               <td>
-                <div class="client-identity">
-                  <span class="avatar-initial" [style.background]="avatarTone(i)" [style.color]="avatarInk(i)">{{ initials(item.client.displayName) }}</span>
-                  <div>
-                    <strong>{{ item.client.displayName }}</strong>
-                    <span class="text-small muted">{{ clientDescription(item.client) }}</span>
-                  </div>
-                </div>
+                <app-client-identity [name]="item.client.displayName" [description]="clientDescription(item.client)" [avatarBackground]="avatarTone(i)" [avatarColor]="avatarInk(i)"></app-client-identity>
               </td>
               <td>
-                <span class="status-chip" [class.inactive]="!isActiveClient(item.client)">{{ isActiveClient(item.client) ? 'Active' : 'Inactive' }}</span>
+                <app-status-badge [status]="isActiveClient(item.client) ? 'active' : 'inactive'"></app-status-badge>
               </td>
               <td>
                 <div class="balance-cell">
@@ -132,18 +120,12 @@
           <input type="checkbox" [checked]="isSelected(item.client)" (change)="toggleClientSelection(item.client, $any($event.target).checked)" />
           Select
         </label>
-        <div class="client-identity">
-          <span class="avatar-initial" [style.background]="avatarTone(i)" [style.color]="avatarInk(i)">{{ initials(item.client.displayName) }}</span>
-          <div>
-            <strong>{{ item.client.displayName }}</strong>
-            <span class="text-small muted">{{ clientDescription(item.client) }}</span>
-          </div>
-        </div>
-        <span class="status-chip" [class.inactive]="!isActiveClient(item.client)">{{ isActiveClient(item.client) ? 'Active' : 'Inactive' }}</span>
+        <app-client-identity [name]="item.client.displayName" [description]="clientDescription(item.client)" [avatarBackground]="avatarTone(i)" [avatarColor]="avatarInk(i)"></app-client-identity>
+        <app-status-badge [status]="isActiveClient(item.client) ? 'active' : 'inactive'"></app-status-badge>
         <p class="muted">{{ item.client.email || 'email unavailable' }} · {{ item.client.phone || 'phone unavailable' }}</p>
         <strong>{{ currencySymbol() }}{{ (item.invoiceSummary?.outstandingBalance || 0) | number:'1.2-2' }}</strong>
         <button class="secondary" type="button" (click)="goClient(item.client)">Open client</button>
       </article>
     </section>
   </ng-container>
-</main>
+</app-workspace-shell>

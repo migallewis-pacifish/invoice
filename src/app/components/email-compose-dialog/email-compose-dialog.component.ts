@@ -3,11 +3,12 @@ import { Component, Inject, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { EmailService, SendEmailRequest, normalizeEmailList, validateSendEmailRequest } from '../../services/email.service';
+import { FormFieldComponent } from '../form-field/form-field.component';
 
 @Component({
   selector: 'app-email-compose-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormFieldComponent],
   templateUrl: './email-compose-dialog.component.html',
   styleUrl: './email-compose-dialog.component.scss'
 })

@@ -8,11 +8,13 @@ import { BehaviorSubject, switchMap, take } from 'rxjs';
 import { CreateExpense, Expense } from '../../models/expense.model';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
+import { CardHeaderComponent } from '../card-header/card-header.component';
+import { EmptyStateComponent } from '../empty-state/empty-state.component';
 
 @Component({
   selector: 'app-expenses',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, CardHeaderComponent, EmptyStateComponent],
   templateUrl: './expenses.component.html',
   styleUrl: './expenses.component.scss'
 })
@@ -150,4 +152,3 @@ export class ExpensesComponent {
     return `${d.getFullYear()}-${this.pad2(d.getMonth() + 1)}-${this.pad2(d.getDate())}`;
   }
 }
-

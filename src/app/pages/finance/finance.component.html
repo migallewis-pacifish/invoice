@@ -1,6 +1,4 @@
-<app-nav-bar />
-<main class="finance-page">
-  <app-workspace-topbar></app-workspace-topbar>
+<app-workspace-shell shellClass="finance-page">
   <section class="hero card">
     <div>
       <p class="eyebrow">Finance</p>
@@ -14,9 +12,9 @@
   </section>
 
   <section class="metrics">
-    <article class="card"><span>Paid invoice totals</span><strong>{{ format(profitSummary().invoiceTotal) }}</strong></article>
-    <article class="card"><span>Total expenses</span><strong>{{ format(profitSummary().expenseTotal) }}</strong></article>
-    <article class="card"><span>Monthly profit</span><strong>{{ format(profitSummary().profit) }}</strong></article>
+    <app-metric-card label="Paid invoice totals" [value]="format(profitSummary().invoiceTotal)"></app-metric-card>
+    <app-metric-card label="Total expenses" tone="expenses" [value]="format(profitSummary().expenseTotal)"></app-metric-card>
+    <app-metric-card label="Monthly profit" tone="profit" [value]="format(profitSummary().profit)"></app-metric-card>
   </section>
 
   <section class="card vat-card">
@@ -36,4 +34,4 @@
     title="Company-level Expenses"
     subtitle="Capture expenses saved directly to the company, separate from client expenses."
   />
-</main>
+</app-workspace-shell>

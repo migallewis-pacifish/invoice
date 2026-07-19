@@ -16,11 +16,14 @@ import { ActivityRecord } from '../../models/activity.model';
 import { ActivityService } from '../../services/activity.service';
 import { CompanyContextService } from '../../services/company-context.service';
 import { AppUser, InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
+import { WorkspaceShellComponent } from '../../components/workspace-shell/workspace-shell.component';
+import { MetricCardComponent } from '../../components/metric-card/metric-card.component';
+import { LoadingStateComponent } from '../../components/loading-state/loading-state.component';
 
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [NavBarComponent, WorkspaceTopbarComponent, CommonModule, RouterLink],
+  imports: [NavBarComponent, WorkspaceTopbarComponent, CommonModule, RouterLink, WorkspaceShellComponent, MetricCardComponent, LoadingStateComponent],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
 })

@@ -1,7 +1,4 @@
-<app-nav-bar></app-nav-bar>
-
-<main class="templates-shell">
-  <app-workspace-topbar class="templates-topbar"></app-workspace-topbar>
+<app-workspace-shell shellClass="templates-shell" topbarClass="templates-topbar">
 
   <section class="gallery-header">
     <div>
@@ -29,7 +26,7 @@
   <section class="template-grid mb-24" aria-label="no templates">
     <p class="muted" *ngIf="loading()">Loading templates…</p>
     <p class="error" *ngIf="error()">{{ error() }}</p>
-    <p class="muted" *ngIf="!loading() && !error() && activeTemplates().length === 0">No templates uploaded yet.</p>
+    <app-empty-state *ngIf="!loading() && !error() && activeTemplates().length === 0" message="No templates uploaded yet."></app-empty-state>
   </section>
 
   <section class="template-grid" aria-label="Company templates">
@@ -150,4 +147,4 @@
       <p>2.4 GB of 10 GB used</p>
     </article>
   </section>
-</main>
+</app-workspace-shell>

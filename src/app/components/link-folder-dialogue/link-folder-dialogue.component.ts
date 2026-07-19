@@ -1,11 +1,12 @@
 import { DialogRef } from '@angular/cdk/dialog';
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
+import { DialogShellComponent } from '../dialog-shell/dialog-shell.component';
 
 @Component({
   selector: 'app-link-folder-dialogue',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DialogShellComponent],
   templateUrl: './link-folder-dialogue.component.html',
   styleUrl: './link-folder-dialogue.component.scss'
 })

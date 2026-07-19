@@ -23,11 +23,16 @@ import { NotificationService } from '../../services/notification.service';
 import { CreateClientComponent } from '../../components/create-client/create-client.component';
 import { EmailComposeDialogComponent } from '../../components/email-compose-dialog/email-compose-dialog.component';
 import { EmailService, EmailDocumentType, InvoiceReminderType } from '../../services/email.service';
+import { InvoiceTableComponent } from '../../components/invoice-table/invoice-table.component';
+import { StatusBadgeComponent } from '../../components/status-badge/status-badge.component';
+import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
+import { LoadingStateComponent } from '../../components/loading-state/loading-state.component';
+import { WorkspaceShellComponent } from '../../components/workspace-shell/workspace-shell.component';
 
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, NavBarComponent, WorkspaceTopbarComponent, OrderByDateDescPipe, CreateClientComponent, ExpensesComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, NavBarComponent, WorkspaceTopbarComponent, OrderByDateDescPipe, CreateClientComponent, ExpensesComponent, InvoiceTableComponent, StatusBadgeComponent, EmptyStateComponent, LoadingStateComponent, WorkspaceShellComponent],
   templateUrl: './client-detail.component.html',
   styleUrl: './client-detail.component.scss'
 })
@@ -224,6 +229,10 @@ export class ClientDetailComponent {
     const status = this.normalizedInvoiceStatus(invoice);
     return status.charAt(0).toUpperCase() + status.slice(1);
   }
+
+  readonly invoiceStatusFor = (invoice: InvoiceRecord) => this.normalizedInvoiceStatus(invoice);
+  readonly invoiceCanRemind = (invoice: InvoiceRecord) => this.canSendReminder(invoice);
+  readonly invoiceReminderText = (invoice: InvoiceRecord) => this.reminderLabel(invoice);
 
   private isPastDue(value: any): boolean {
     if (!value) return false;

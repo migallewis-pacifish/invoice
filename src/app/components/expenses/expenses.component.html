@@ -2,18 +2,13 @@
 
     <!-- Header -->
     <div class="card">
-        <div class="header-row">
-            <div>
-                <h2 class="section-title">{{ title() }}</h2>
-                <p class="muted">{{ subtitle() }}</p>
-            </div>
-
+        <app-card-header [title]="title()" [subtitle]="subtitle()">
             <div class="month-picker">
                 <label class="label">Month</label>
                 <input #monthInput type="month" class="form-control" [value]="selectedMonth()"
                     (change)="onMonthChange(monthInput.value)" />
             </div>
-        </div>
+        </app-card-header>
     </div>
 
     <!-- Add Expense -->
@@ -86,9 +81,7 @@
             </div>
         </div>
 
-        <div *ngIf="expenses().length === 0" class="muted empty">
-            No expenses recorded for this month.
-        </div>
+        <app-empty-state *ngIf="expenses().length === 0" message="No expenses recorded for this month."></app-empty-state>
 
         <div class="table-wrap" *ngIf="expenses().length > 0">
             <table class="table">

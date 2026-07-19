@@ -9,11 +9,12 @@ import { catchError, finalize, from, map, of, switchMap, take, tap } from 'rxjs'
 import { ClientService } from '../../services/client.service';
 import { LetterDocxService } from '../../services/letter-docx.service';
 import { LetterSignature } from '../../models/letter.model';
+import { DialogShellComponent } from '../dialog-shell/dialog-shell.component';
 
 @Component({
   selector: 'app-add-letter-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DialogModule],
+  imports: [CommonModule, ReactiveFormsModule, DialogModule, DialogShellComponent],
   templateUrl: './add-letter-dialog.component.html',
   styleUrl: './add-letter-dialog.component.scss'
 })
