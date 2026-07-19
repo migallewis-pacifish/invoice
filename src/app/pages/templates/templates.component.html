@@ -27,17 +27,17 @@
     </div>
     <section class="stats-grid" aria-label="Template statistics">
       <article class="stats-card usage-card">
-        <div class="stats-label">Active Templates <span aria-hidden="true">▥</span></div>
+        <div class="stats-label">Active Templates <span class="app-icon" aria-hidden="true">📁</span></div>
         <strong>{{ activeTemplates().length }}</strong>
         <p>Templates currently ready to use</p>
       </article>
       <article class="stats-card active-types-card">
-        <div class="stats-label">Invoice Templates <span aria-hidden="true">▣</span></div>
+        <div class="stats-label">Invoice Templates <span class="app-icon" aria-hidden="true">🧾</span></div>
         <strong>{{ invoiceTemplateCount() }}</strong>
         <p>Active invoice document layouts</p>
       </article>
       <article class="stats-card storage-card">
-        <div class="stats-label">Letter Templates <span aria-hidden="true">✉</span></div>
+        <div class="stats-label">Letter Templates <span class="app-icon" aria-hidden="true">✉️</span></div>
         <strong>{{ letterTemplateCount() }}</strong>
         <p>Active letter document layouts</p>
       </article>
@@ -53,11 +53,11 @@
     </div>
     <div class="header-actions">
       <button class="filter-button" type="button" (click)="onFilter()">
-        <span aria-hidden="true">⌄</span>
+        <span class="app-icon" aria-hidden="true">🔎</span>
         Filter: {{ filter() }}
       </button>
       <button class="primary-action" type="button" (click)="openUploadFlow()">
-        <span aria-hidden="true">⊕</span>
+        <span class="app-icon" aria-hidden="true">⬆️</span>
         Upload New Template
       </button>
     </div>
@@ -91,20 +91,20 @@
       <div class="template-content">
         <div class="title-line">
           <h2>{{ template.name }}</h2>
-          <button class="more-button" type="button" aria-label="More template actions" (click)="openMoreMenu(template)">⋮</button>
+          <button class="more-button" type="button" aria-label="More template actions" (click)="openMoreMenu(template)"><span class="app-icon" aria-hidden="true">⋮</span></button>
         </div>
         <p>{{ template.description }}</p>
       </div>
 
       <div class="template-actions">
         <button class="edit-button" type="button" (click)="editTemplate(template)">Edit</button>
-        <button class="square-button" type="button" aria-label="Duplicate template" (click)="duplicateTemplate(template)">⧉</button>
-        <button class="square-button" type="button" aria-label="View or download template" (click)="viewTemplate(template)">▤</button>
+        <button class="square-button" type="button" aria-label="Duplicate template" (click)="duplicateTemplate(template)"><span class="app-icon" aria-hidden="true">⧉</span></button>
+        <button class="square-button" type="button" aria-label="View or download template" (click)="viewTemplate(template)"><span class="app-icon" aria-hidden="true">⬇️</span></button>
       </div>
     </article>
 
     <button class="upload-card" type="button" (click)="openUploadFlow()">
-      <span class="plus-icon" aria-hidden="true">＋</span>
+      <span class="plus-icon app-icon" aria-hidden="true">＋</span>
       <strong>New Template</strong>
       <small>Start from a blank canvas or import a custom design.</small>
     </button>

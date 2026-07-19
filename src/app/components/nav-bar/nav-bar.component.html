@@ -5,15 +5,15 @@
   </a>
 
   <div class="nav-links" aria-label="Primary navigation">
-    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span>⌘</span>Workspace</a>
-    <a routerLink="/clients" routerLinkActive="active"><span>♣</span>Clients</a>
-    <a routerLink="/company-expenses" routerLinkActive="active"><span>▣</span>Finance</a>
-    <a routerLink="/templates" routerLinkActive="active"><span>✉</span>Templates</a>
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="app-icon" aria-hidden="true">▦</span>Workspace</a>
+    <a routerLink="/clients" routerLinkActive="active"><span class="app-icon" aria-hidden="true">👥</span>Clients</a>
+    <a routerLink="/company-expenses" routerLinkActive="active"><span class="app-icon" aria-hidden="true">💼</span>Finance</a>
+    <a routerLink="/templates" routerLinkActive="active"><span class="app-icon" aria-hidden="true">📝</span>Templates</a>
   </div>
 
   <div class="nav-footer">
-    <a routerLink="/company-details" routerLinkActive="active"><span>☻</span>User Profile</a>
-    <a routerLink="/settings" routerLinkActive="active"><span>☷</span>Settings</a>
+    <a routerLink="/company-details" routerLinkActive="active"><span class="app-icon" aria-hidden="true">👤</span>User Profile</a>
+    <a routerLink="/settings" routerLinkActive="active"><span class="app-icon" aria-hidden="true">⚙️</span>Settings</a>
     <button class="logout" type="button" (click)="logout()">Sign Out</button>
   </div>
 </nav>
