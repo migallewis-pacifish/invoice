@@ -14,6 +14,7 @@
       </div>
 
       <div class="table-toolbar" aria-label="Client directory toolbar">
+        <button class="primary create-client-button" type="button" (click)="openAddClient()">+ Create New Client</button>
         <label class="toolbar-field">
           <span>Status</span>
           <select [formControl]="statusFilter">
