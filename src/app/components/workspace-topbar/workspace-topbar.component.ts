@@ -1,6 +1,8 @@
-import { Component, Input, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, Input, computed, inject, signal } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { User } from '@angular/fire/auth';
 import { AppUser } from '../../models/invoice.model';
 import { CompanyContextService } from '../../services/company-context.service';
 
@@ -16,25 +18,24 @@ export class WorkspaceTopbarComponent {
   @Input() searchPlaceholder = 'Search workspace, clients, invoices...';
 
   private readonly companyContext = inject(CompanyContextService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly signedInUserName = signal('Workspace User');
   protected readonly signedInUserRole = signal('Team Member');
   protected readonly signedInUserInitials = computed(() => this.initialsFor(this.signedInUserName()));
 
   constructor() {
-    this.companyContext.currentContext$().subscribe({
-      next: ({ user, profile }) => this.setSignedInUser(user, profile),
-      error: () => {
-        this.signedInUserName.set('Workspace User');
-        this.signedInUserRole.set('Team Member');
-      }
-    });
+    this.companyContext.currentUser$()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(user => this.setSignedInUser(user));
+
+    this.companyContext.currentProfile$()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(profile => this.signedInUserRole.set(this.roleLabel(profile?.role)));
   }
 
-  private setSignedInUser(user: { displayName: string | null; email: string | null; }, profile?: AppUser): void {
-    const displayName = user.displayName || profile?.email || user.email || 'Workspace User';
-    this.signedInUserName.set(displayName);
-    this.signedInUserRole.set(this.roleLabel(profile?.role));
+  private setSignedInUser(user: User | null): void {
+    this.signedInUserName.set(user?.displayName || user?.email || 'Workspace User');
   }
 
   private roleLabel(role?: AppUser['role']): string {
