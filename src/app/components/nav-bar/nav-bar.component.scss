@@ -14,16 +14,13 @@
 }
 
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: block;
   color: var(--primary);
   text-decoration: none;
   padding: 0 8px;
 }
-.brand-mark { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; background: #dbe8ff; }
-.brand strong { display: block; font-size: 19px; line-height: 1; letter-spacing: -0.03em; }
-.brand small { display: block; color: var(--muted); font-size: 10px; margin-top: 3px; }
+.brand-lockup { display: block; width: 100%; max-width: 190px; height: auto; }
+.brand-icon { display: none; width: 42px; height: 42px; object-fit: contain; }
 
 .nav-links,
 .nav-footer {
@@ -77,7 +74,9 @@
     align-items: center;
     overflow-x: auto;
   }
-  .brand { min-width: max-content; }
+  .brand { min-width: max-content; padding: 0; }
+  .brand-lockup { display: none; }
+  .brand-icon { display: block; }
   .nav-links { display: flex; min-width: max-content; }
   .nav-footer { display: none; }
 }
