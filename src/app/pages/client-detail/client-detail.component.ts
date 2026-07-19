@@ -71,7 +71,6 @@ export class ClientDetailComponent {
 
   readonly tabs: { id: ClientTab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
-    { id: 'details', label: 'Details' },
     { id: 'documents', label: 'Documents' },
     { id: 'invoices', label: 'Invoices' },
     { id: 'expenses', label: 'Expenses' },
@@ -357,11 +356,6 @@ addLetter() {
   });
 }
 
-startEditClient() {
-  this.activeTab.set('details');
-  this.editingClient.set(true);
-}
-
 cancelEditClient() {
   this.editingClient.set(false);
 }
@@ -507,4 +501,4 @@ async sendDocumentEmail(documentType: EmailDocumentType, document: any, reminder
 
 }
 
-type ClientTab = 'overview' | 'details' | 'documents' | 'invoices' | 'expenses' | 'letters';
+type ClientTab = 'overview' | 'documents' | 'invoices' | 'expenses' | 'letters';
