@@ -16,6 +16,7 @@ import { WorkspaceShellComponent } from '../../components/workspace-shell/worksp
 import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
 
 type TemplateType = 'invoice' | 'letter';
+type TemplateTab = 'overview' | 'gallery' | 'emails';
 
 export interface TemplateDocument extends CompanyTemplate {
   category?: string;
@@ -63,6 +64,7 @@ export class TemplatesComponent {
   private fb = inject(FormBuilder);
 
   protected readonly showUpload = signal(false);
+  protected readonly activeTab = signal<TemplateTab>('overview');
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly templates = signal<TemplateCard[]>([]);
@@ -83,8 +85,16 @@ export class TemplatesComponent {
   }
 
   protected readonly activeTemplates = computed(() => filterTemplates(this.templates(), this.filter()));
+  protected readonly invoiceTemplateCount = computed(() => this.templates().filter(template => template.type === 'invoice' && !template.archived).length);
+  protected readonly letterTemplateCount = computed(() => this.templates().filter(template => template.type === 'letter' && !template.archived).length);
+
+  protected setTab(tab: TemplateTab): void {
+    this.activeTab.set(tab);
+    if (tab !== 'gallery') this.showUpload.set(false);
+  }
 
   protected openUploadFlow(): void {
+    this.activeTab.set('gallery');
     this.showUpload.set(true);
     queueMicrotask(() => document.getElementById('template-upload')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }

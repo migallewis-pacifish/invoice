@@ -1,16 +1,56 @@
 <app-workspace-shell shellClass="templates-shell" topbarClass="templates-topbar">
 
-  <section class="gallery-header">
+  <section class="templates-header">
     <div>
       <nav class="breadcrumb" aria-label="Breadcrumb">
         <a routerLink="/settings">Admin</a>
         <span>›</span>
         <span>Templates</span>
       </nav>
-      <h1>Template Gallery</h1>
+      <h1>Templates</h1>
+      <p>Manage document layouts, reusable emails, and template activity across your workspace.</p>
+    </div>
+  </section>
+
+  <div class="template-tabs" role="tablist" aria-label="Template workspace sections">
+    <button type="button" role="tab" [class.active]="activeTab() === 'overview'" [attr.aria-selected]="activeTab() === 'overview'" (click)="setTab('overview')">Overview</button>
+    <button type="button" role="tab" [class.active]="activeTab() === 'gallery'" [attr.aria-selected]="activeTab() === 'gallery'" (click)="setTab('gallery')">Template Gallery</button>
+    <button type="button" role="tab" [class.active]="activeTab() === 'emails'" [attr.aria-selected]="activeTab() === 'emails'" (click)="setTab('emails')">Emails</button>
+  </div>
+
+  <ng-container [ngSwitch]="activeTab()">
+  <section *ngSwitchCase="'overview'" class="template-overview" aria-labelledby="template-overview-title">
+    <div class="overview-heading">
+      <p class="eyebrow">Overview</p>
+      <h2 id="template-overview-title">Template statistics</h2>
+      <p class="muted">A live summary of the active document templates available to your company.</p>
+    </div>
+    <section class="stats-grid" aria-label="Template statistics">
+      <article class="stats-card usage-card">
+        <div class="stats-label">Active Templates <span aria-hidden="true">▥</span></div>
+        <strong>{{ activeTemplates().length }}</strong>
+        <p>Templates currently ready to use</p>
+      </article>
+      <article class="stats-card active-types-card">
+        <div class="stats-label">Invoice Templates <span aria-hidden="true">▣</span></div>
+        <strong>{{ invoiceTemplateCount() }}</strong>
+        <p>Active invoice document layouts</p>
+      </article>
+      <article class="stats-card storage-card">
+        <div class="stats-label">Letter Templates <span aria-hidden="true">✉</span></div>
+        <strong>{{ letterTemplateCount() }}</strong>
+        <p>Active letter document layouts</p>
+      </article>
+    </section>
+  </section>
+
+  <ng-container *ngSwitchCase="'gallery'">
+  <section class="gallery-header gallery-tab-header">
+    <div>
+      <p class="eyebrow">Documents</p>
+      <h2>Template Gallery</h2>
       <p>Manage and deploy high-fidelity document structures across your workspace.</p>
     </div>
-
     <div class="header-actions">
       <button class="filter-button" type="button" (click)="onFilter()">
         <span aria-hidden="true">⌄</span>
@@ -81,9 +121,9 @@
     <input id="letter-template-upload" class="sr-only" type="file" accept=".docx" (change)="onLetterTemplatePicked($event)" />
     <app-upload-template [inDialog]="true" (uploaded)="onUploaded()" (cancel)="showUpload.set(false)"></app-upload-template>
   </section>
+  </ng-container>
 
-
-  <section class="email-template-settings" aria-label="Email template settings">
+  <section *ngSwitchCase="'emails'" class="email-template-settings" aria-label="Email template settings">
     <div class="upload-heading">
       <div>
         <p class="eyebrow">Email settings</p>
@@ -126,25 +166,5 @@
       </form>
     </div>
   </section>
-
-  <section class="stats-grid" aria-label="Template statistics">
-    <article class="stats-card usage-card">
-      <div class="stats-label">Usage Stats <span aria-hidden="true">▥</span></div>
-      <strong>1.2k</strong>
-      <p>Templates deployed this month <span class="trend">+12%</span></p>
-      <div class="mini-bar"><span></span></div>
-    </article>
-
-    <article class="stats-card active-types-card">
-      <div class="stats-label">Active Types <span aria-hidden="true">♧</span></div>
-      <div class="type-row"><span><i class="dot invoice-dot"></i>Invoices</span><strong>64%</strong></div>
-      <div class="type-row"><span><i class="dot letter-dot"></i>Letters</span><strong>36%</strong></div>
-    </article>
-
-    <article class="stats-card storage-card">
-      <div class="stats-label">Storage <span aria-hidden="true">☁</span></div>
-      <div class="progress-ring-placeholder" aria-label="Storage usage placeholder"></div>
-      <p>2.4 GB of 10 GB used</p>
-    </article>
-  </section>
+  </ng-container>
 </app-workspace-shell>
