@@ -1,4 +1,4 @@
 .empty-state { text-align: center; color: var(--muted); padding: 24px; }
-.icon { display: block; font-size: 32px; margin-bottom: 10px; }
+.icon { display: inline-flex; width: 58px; height: 58px; border-radius: 18px; margin-bottom: 10px; align-items: center; justify-content: center; background: #eef4ff; color: var(--primary); font-size: 34px; }
 h2 { margin: 0 0 8px; color: var(--ink); }
 p { margin: 0 0 16px; }

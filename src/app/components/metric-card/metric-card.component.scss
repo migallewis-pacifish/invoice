@@ -2,3 +2,8 @@
 .revenue, .success { border-left-color: var(--accent); }.expenses, .warning { border-left-color: #b85b08; }.profit { border-left-color: #6d7be8; }
 .label { display: flex; justify-content: space-between; color: var(--ink); text-transform: uppercase; font-size: 10px; font-weight: 900; letter-spacing: .08em; margin-bottom: 14px; }
 strong { display: block; font-size: 21px; letter-spacing: -.03em; } small { display: block; margin-top: 12px; color: var(--muted); font-size: 11px; }
+
+.metric-icon { width: 34px; height: 34px; border-radius: 12px; background: #eef4ff; color: var(--primary); font-size: 21px; }
+.revenue .metric-icon { background: #e7f8f0; color: var(--accent); }
+.expenses .metric-icon { background: #fff4d6; color: #9a4b00; }
+.profit .metric-icon { background: #eef0ff; color: #4652c8; }
