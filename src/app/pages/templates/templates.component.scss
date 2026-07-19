@@ -1,1 +1,56 @@
 :host { display: block; }
+.templates-header,
+.template-tabs,
+.template-overview {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+.templates-header { margin-bottom: 22px; }
+.templates-header h1 { margin-top: 14px; }
+.templates-header p { color: var(--muted); }
+.template-tabs {
+  display: flex;
+  gap: 28px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+}
+.template-tabs button {
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  padding: 14px 0 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.template-tabs button.active { color: var(--primary); border-bottom-color: var(--primary); }
+.template-overview { display: grid; gap: 22px; }
+.overview-heading h2,
+.gallery-tab-header h2 { margin: 0; color: var(--primary); }
+.overview-heading p:last-child { margin-bottom: 0; }
+.gallery-tab-header { margin-bottom: 24px; }
+.email-template-settings {
+  padding: 1.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 1rem;
+  background: #fff;
+  max-width:1180px;
+  margin-inline:auto
+}
+.email-template-layout { display: grid; grid-template-columns: minmax(180px, 280px) 1fr; gap: 1rem; }
+.email-template-list { display: grid; gap: .75rem; align-content: start; }
+.email-template-list button { text-align: left; padding: .85rem; border: 1px solid #dbe3ef; border-radius: .75rem; background: #f8fafc; cursor: pointer; }
+.email-template-list button.active { border-color: #2563eb; background: #eff6ff; }
+.email-template-list small { display: block; color: #64748b; margin-top: .25rem; }
+.email-template-editor { display: grid; gap: .9rem; }
+.email-template-editor label { display: grid; gap: .35rem; font-weight: 700; }
+.email-template-editor input, .email-template-editor textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: .6rem; padding: .75rem; font: inherit; }
+.variable-pills { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.variable-pills button { border: 1px solid #cbd5e1; border-radius: 999px; background: #f8fafc; padding: .4rem .65rem; cursor: pointer; }
+.muted { color: #64748b; }
+.error { color: #b91c1c; }
+@media (max-width: 760px) { .email-template-layout { grid-template-columns: 1fr; } }
+@media (max-width: 760px) {
+  .template-tabs { gap: 18px; overflow-x: auto; }
+  .template-tabs button { white-space: nowrap; }
+}

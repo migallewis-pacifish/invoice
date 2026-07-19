@@ -9,6 +9,7 @@ import { AddInvoiceDialogComponent } from '../../components/add-invoice-dialog/a
 import { AddLetterDialogComponent } from '../../components/add-letter-dialog/add-letter-dialog.component';
 import { OrderByDateDescPipe } from './order-by-date-desc.pipe';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
+import { WorkspaceTopbarComponent } from '../../components/workspace-topbar/workspace-topbar.component';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 import { InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
@@ -20,11 +21,18 @@ import { CompanyDocumentStorageSettings, DOCUMENT_STORAGE_PROVIDER_LABELS, Docum
 import { DocumentStorageService } from '../../services/document-storage.service';
 import { NotificationService } from '../../services/notification.service';
 import { CreateClientComponent } from '../../components/create-client/create-client.component';
+import { EmailComposeDialogComponent } from '../../components/email-compose-dialog/email-compose-dialog.component';
+import { EmailService, EmailDocumentType, InvoiceReminderType } from '../../services/email.service';
+import { InvoiceTableComponent } from '../../components/invoice-table/invoice-table.component';
+import { StatusBadgeComponent } from '../../components/status-badge/status-badge.component';
+import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
+import { LoadingStateComponent } from '../../components/loading-state/loading-state.component';
+import { WorkspaceShellComponent } from '../../components/workspace-shell/workspace-shell.component';
 
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, NavBarComponent, OrderByDateDescPipe, CreateClientComponent, ExpensesComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, NavBarComponent, WorkspaceTopbarComponent, OrderByDateDescPipe, CreateClientComponent, ExpensesComponent, InvoiceTableComponent, StatusBadgeComponent, EmptyStateComponent, LoadingStateComponent, WorkspaceShellComponent],
   templateUrl: './client-detail.component.html',
   styleUrl: './client-detail.component.scss'
 })
@@ -38,6 +46,7 @@ export class ClientDetailComponent {
   private documentStorageService = inject(DocumentStorageService);
   private expensesService = inject(ExpensesService);
   private notifications = inject(NotificationService);
+  private emailService = inject(EmailService);
   private fb = inject(FormBuilder);
   
   companyId = signal<string | null>(null);
@@ -62,7 +71,6 @@ export class ClientDetailComponent {
 
   readonly tabs: { id: ClientTab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
-    { id: 'details', label: 'Details' },
     { id: 'documents', label: 'Documents' },
     { id: 'invoices', label: 'Invoices' },
     { id: 'expenses', label: 'Expenses' },
@@ -154,7 +162,12 @@ export class ClientDetailComponent {
   }
 
   get primaryContact(): string {
-    return this.client()?.phone || 'Not provided';
+    return this.client()?.displayName || this.client()?.phone || 'Not provided';
+  }
+
+  startEditClient(): void {
+    this.editingClient.set(true);
+    this.activeTab.set('details');
   }
 
   get clientEmail(): string {
@@ -220,6 +233,10 @@ export class ClientDetailComponent {
     const status = this.normalizedInvoiceStatus(invoice);
     return status.charAt(0).toUpperCase() + status.slice(1);
   }
+
+  readonly invoiceStatusFor = (invoice: InvoiceRecord) => this.normalizedInvoiceStatus(invoice);
+  readonly invoiceCanRemind = (invoice: InvoiceRecord) => this.canSendReminder(invoice);
+  readonly invoiceReminderText = (invoice: InvoiceRecord) => this.reminderLabel(invoice);
 
   private isPastDue(value: any): boolean {
     if (!value) return false;
@@ -344,11 +361,6 @@ addLetter() {
   });
 }
 
-startEditClient() {
-  this.activeTab.set('details');
-  this.editingClient.set(true);
-}
-
 cancelEditClient() {
   this.editingClient.set(false);
 }
@@ -434,6 +446,62 @@ copyLastInvoice() {
   const invoiceToCopy = this.lastInvoice();
   if (!invoiceToCopy) return;
   this.addInvoice(invoiceToCopy);
+}
+
+async sendInvoiceReminder(invoice: InvoiceRecord): Promise<void> {
+  await this.sendDocumentEmail('invoice', invoice, this.reminderTypeForInvoice(invoice));
+}
+
+reminderTypeForInvoice(invoice: InvoiceRecord): InvoiceReminderType {
+  if (this.isPastDue(invoice.dueDate)) return 'overdue';
+  if (this.isDueToday(invoice.dueDate)) return 'dueToday';
+  return 'beforeDue';
+}
+
+reminderLabel(invoice: InvoiceRecord): string {
+  const type = this.reminderTypeForInvoice(invoice);
+  if (type === 'overdue') return 'Send overdue reminder';
+  if (type === 'dueToday') return 'Send due-today reminder';
+  return 'Send reminder';
+}
+
+private isDueToday(value: any): boolean {
+  if (!value) return false;
+  const dueDate = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
+  if (Number.isNaN(dueDate.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  dueDate.setHours(0, 0, 0, 0);
+  return dueDate.getTime() === today.getTime();
+}
+
+canSendReminder(invoice: InvoiceRecord): boolean {
+  return this.normalizedInvoiceStatus(invoice) !== 'paid' && this.normalizedInvoiceStatus(invoice) !== 'draft' && this.invoiceOutstanding(invoice) > 0;
+}
+
+async sendDocumentEmail(documentType: EmailDocumentType, document: any, reminderType?: InvoiceReminderType): Promise<void> {
+  const companyId = this.companyId();
+  const clientId = this.clientId();
+  if (!companyId || !clientId || !document?.id) return;
+  const request = await this.emailService.buildDefaultRequest(documentType, document, companyId, clientId, this.client()?.email || '', this.client(), reminderType);
+  const ref = this.dialog.open(EmailComposeDialogComponent, {
+    backdropClass: 'dlg-backdrop',
+    panelClass: 'dlg-panel',
+    disableClose: true,
+    data: {
+      request,
+      attachmentName: request.attachment?.fileName || document.filename || document.title || document.invoiceNumber
+    }
+  });
+
+  ref.closed.subscribe(sent => {
+    if (sent) {
+      this.notifications.success(reminderType
+        ? `Invoice reminder sent to ${request.recipient}.`
+        : `${documentType === 'invoice' ? 'Invoice' : 'Letter'} email sent to ${request.recipient}.`
+      );
+    }
+  });
 }
 
 }

@@ -1,0 +1,18 @@
+<div class="invoice-table" [class.compact]="compact">
+  <div class="table-row table-head" [class.six]="showPaid">
+    <span>Invoice ID</span><span>Due Date</span><span>Total</span><span *ngIf="showPaid">Paid</span><span>Status</span><span>Actions</span>
+  </div>
+  <div class="table-row" [class.six]="showPaid" *ngFor="let invoice of visibleInvoices; let index = index">
+    <strong>{{ invoice.invoiceNumber || '#INV-' + (8821 - index) }}</strong>
+    <span>{{ (invoice.dueDate || invoice.date) | date:'mediumDate' }}</span>
+    <span>{{ invoice.total | currency:currency:'symbol' }}</span>
+    <span *ngIf="showPaid">{{ invoice.amountPaid || 0 | currency:currency:'symbol' }}</span>
+    <app-status-badge [status]="statusFor(invoice)"></app-status-badge>
+    <span class="row-actions">
+      <button class="secondary small" type="button" (click)="viewed.emit(invoice)">{{ compact ? '•••' : 'View' }}</button>
+      <button class="secondary small" type="button" *ngIf="!compact" (click)="updated.emit(invoice)">Update</button>
+      <button class="secondary small" type="button" (click)="emailed.emit(invoice)">Send email</button>
+      <button class="secondary small" type="button" [disabled]="!canRemind(invoice)" (click)="reminded.emit(invoice)">{{ reminderText(invoice) }}</button>
+    </span>
+  </div>
+</div>

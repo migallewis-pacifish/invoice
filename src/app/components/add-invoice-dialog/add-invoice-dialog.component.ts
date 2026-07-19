@@ -10,6 +10,7 @@ import { Auth } from '@angular/fire/auth';
 import { doc, docData, Firestore, serverTimestamp } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 import { NotificationService } from '../../services/notification.service';
+import { DialogShellComponent } from '../dialog-shell/dialog-shell.component';
 
 
 type InvoiceDownloadFormat = 'docx';
@@ -59,7 +60,7 @@ export function resolveTrackedInvoiceStatus(status: string, total: number, amoun
 @Component({
   selector: 'app-add-invoice-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DialogModule],
+  imports: [CommonModule, ReactiveFormsModule, DialogModule, DialogShellComponent],
   templateUrl: './add-invoice-dialog.component.html',
   styleUrl: './add-invoice-dialog.component.scss'
 })

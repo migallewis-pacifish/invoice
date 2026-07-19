@@ -1,0 +1,38 @@
+<section class="directory-card" [attr.aria-label]="ariaLabel">
+  <div class="table-scroll">
+    <table class="directory-table">
+      <colgroup>
+        <col *ngIf="selectable" class="selection-column">
+        <col *ngFor="let column of columns" [style.width]="column.width || null">
+      </colgroup>
+      <thead>
+        <tr>
+          <th *ngIf="selectable" scope="col" class="selection-cell">
+            <input type="checkbox" [checked]="allSelected" (change)="selectAllChanged.emit($any($event.target).checked)" [attr.aria-label]="'Select all ' + itemLabel">
+          </th>
+          <th *ngFor="let column of columns" scope="col" [class.align-center]="column.align === 'center'" [class.align-right]="column.align === 'right'">
+            <button *ngIf="column.sortable; else plainHeading" class="directory-sort" type="button" (click)="sortChanged.emit(column.key)">
+              {{ column.label }} <span aria-hidden="true">{{ sortLabel(column) }}</span>
+            </button>
+            <ng-template #plainHeading>{{ column.label }}</ng-template>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of items; let index = index" tabindex="0" (click)="rowActivated.emit(item)" (keydown)="activateFromKeyboard($event, item)">
+          <ng-container *ngIf="selectable">
+            <td class="selection-cell" (click)="$event.stopPropagation()">
+              <input type="checkbox" [checked]="isSelected(item)" (change)="selectionChanged.emit({item: item, checked: $any($event.target).checked})" aria-label="Select row">
+            </td>
+          </ng-container>
+          <td *ngFor="let column of columns" [class.align-center]="column.align === 'center'" [class.align-right]="column.align === 'right'">
+            <ng-container *ngTemplateOutlet="cellTemplate; context: {$implicit: item, item: item, index: index, column: column}"></ng-container>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <footer class="directory-footer">
+    <span>Showing <strong>{{ items.length }}</strong> {{ itemLabel }}</span>
+  </footer>
+</section>

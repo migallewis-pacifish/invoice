@@ -100,6 +100,9 @@ export function buildInvoiceSummaryRecord(
     updatedAt: invoice.updatedAt,
     createdAt: invoice.createdAt,
     createdBy: invoice.createdBy,
+    lastReminderSentAt: invoice.lastReminderSentAt,
+    reminderCount: invoice.reminderCount,
+    lastReminderType: invoice.lastReminderType,
   });
 }
 
@@ -158,13 +161,27 @@ export class ClientService {
 
 
   getInvoicesForCompany(): Observable<InvoiceRecord[]> {
-    return this.getCompanyId$().pipe(
+    const summaries$ = this.getCompanyId$().pipe(
       switchMap(companyId => {
         const ref = collection(this.db, `companies/${companyId}/invoiceSummaries`);
         return collectionData(ref, { idField: 'id' }).pipe(
           map((arr: any[] | undefined) => (arr ?? []) as InvoiceRecord[])
         );
       })
+    );
+
+    const clientInvoices$ = this.clients$().pipe(
+      switchMap(clients => clients.length
+        ? combineLatest(clients.map(client => this.getInvoicesForClient(client.id).pipe(
+            map(invoices => invoices.map(invoice => ({ ...invoice, clientId: invoice.clientId || client.id } as InvoiceRecord)))
+          )))
+        : of([] as InvoiceRecord[][])
+      ),
+      map(invoiceGroups => invoiceGroups.flat())
+    );
+
+    return combineLatest([summaries$, clientInvoices$]).pipe(
+      map(([summaries, clientInvoices]) => mergeCompanyInvoices(summaries, clientInvoices))
     );
   }
 
@@ -270,6 +287,7 @@ export class ClientService {
     );
   }
 
+
   getLettersForClient(id: string): Observable<any[]> {
     return this.getCompanyId$().pipe(
       switchMap(companyId => {
@@ -355,4 +373,14 @@ export class ClientService {
     } as Client;
   }
 
+}
+
+export function mergeCompanyInvoices(summaries: InvoiceRecord[], clientInvoices: InvoiceRecord[]): InvoiceRecord[] {
+  const invoices = new Map<string, InvoiceRecord>();
+  for (const invoice of [...summaries, ...clientInvoices]) {
+    const clientId = (invoice as InvoiceSummaryRecord).clientId || '';
+    const key = `${clientId}/${invoice.id || invoice.invoiceNumber || invoice.filename || ''}`;
+    invoices.set(key, { ...invoices.get(key), ...invoice });
+  }
+  return [...invoices.values()];
 }

@@ -8,10 +8,16 @@ import { Router, RouterLink } from '@angular/router';
 import { Dialog } from '@angular/cdk/dialog';
 import { AddClientDialogueComponent } from '../../components/add-client-dialogue/add-client-dialogue.component';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
+import { WorkspaceTopbarComponent } from '../../components/workspace-topbar/workspace-topbar.component';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 import { CompanyContextService } from '../../services/company-context.service';
 import { downloadClientsCsv } from '../../utils/client-csv';
+import { WorkspaceShellComponent } from '../../components/workspace-shell/workspace-shell.component';
+import { ClientIdentityComponent } from '../../components/client-identity/client-identity.component';
+import { StatusBadgeComponent } from '../../components/status-badge/status-badge.component';
+import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
+import { DirectoryTableColumn, DirectoryTableComponent } from '../../components/directory-table/directory-table.component';
 
 export interface ClientListItem {
   client: Client;
@@ -80,11 +86,18 @@ function compareClientListItems(a: ClientListItem, b: ClientListItem, field: Sor
 @Component({
   selector: 'app-client-list',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, NavBarComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, NavBarComponent, WorkspaceTopbarComponent, WorkspaceShellComponent, ClientIdentityComponent, StatusBadgeComponent, EmptyStateComponent, DirectoryTableComponent],
   templateUrl: './client-list.component.html',
   styleUrl: './client-list.component.scss'
 })
 export class ClientListComponent {
+  readonly directoryColumns: DirectoryTableColumn[] = [
+    { key: 'displayName', label: 'Client Name', width: '28%', sortable: true },
+    { key: 'status', label: 'Status', width: '14%', sortable: true },
+    { key: 'balance', label: 'Balance', width: '18%', sortable: true },
+    { key: 'contact', label: 'Contact Info', sortable: true },
+    { key: 'actions', label: 'Actions', width: '150px', align: 'right' }
+  ];
   @Input() companyId = signal<string | null>(null);
   @Input() showNav = true;
   private router = inject(Router);
@@ -160,6 +173,10 @@ export class ClientListComponent {
     this.sortDirection.setValue(field === 'balance' ? 'desc' : 'asc');
   }
 
+  setDirectorySort(field: string): void {
+    if (field !== 'actions') this.setSort(field as SortField);
+  }
+
   sortLabel(field: SortField): string {
     return this.sortField.value === field ? (this.sortDirection.value === 'asc' ? '↑' : '↓') : '↕';
   }
@@ -168,12 +185,18 @@ export class ClientListComponent {
 
   isSelected(client: Client): boolean { return this.selectedClientIds().has(client.id); }
 
+  readonly isClientItemSelected = (item: ClientListItem): boolean => this.isSelected(item.client);
+
   toggleClientSelection(client: Client, checked: boolean): void {
     this.selectedClientIds.update(current => {
       const next = new Set(current);
       checked ? next.add(client.id) : next.delete(client.id);
       return next;
     });
+  }
+
+  toggleDirectorySelection(change: { item: ClientListItem; checked: boolean }): void {
+    this.toggleClientSelection(change.item.client, change.checked);
   }
 
   toggleAllVisible(items: ClientListItem[], checked: boolean): void {

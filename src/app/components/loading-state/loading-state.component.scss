@@ -1,0 +1,6 @@
+.loading { min-height: 100svh; display: grid; place-items: center; align-content: center; gap: 10px; color: var(--muted); }
+.loading.inline { min-height: auto; display: inline-flex; grid-auto-flow: column; }
+.spinner { width: 34px; height: 34px; border: 3px solid #d9e2ef; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+.inline .spinner { width: 18px; height: 18px; border-width: 2px; }
+p { margin: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }

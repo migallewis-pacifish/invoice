@@ -62,6 +62,9 @@ export interface InvoiceRecord {
   updatedAt?: any;
   createdAt?: any;
   createdBy?: string;
+  lastReminderSentAt?: any;
+  reminderCount?: number;
+  lastReminderType?: 'beforeDue' | 'dueToday' | 'overdue';
 }
 
 export interface InvoiceSummaryRecord extends InvoiceRecord {

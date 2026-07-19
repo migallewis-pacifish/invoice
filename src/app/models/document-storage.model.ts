@@ -69,8 +69,8 @@ export interface ClientDocumentStorageSettings {
 
 export const DOCUMENT_STORAGE_PROVIDER_LABELS: Record<DocumentStorageProvider, string> = {
   browser_download: 'Browser Download',
-  google_drive: 'Google Drive',
-  onedrive: 'OneDrive',
+  google_drive: 'Google Workspace Drive',
+  onedrive: 'Microsoft 365 OneDrive',
   local_folder: 'Local Folder (future)',
   external_link: 'External Link',
 };

@@ -1,23 +1,18 @@
 <div class="wrap expenses">
 
     <!-- Header -->
-    <div class="card">
-        <div class="header-row">
-            <div>
-                <h2 class="section-title">{{ title() }}</h2>
-                <p class="muted">{{ subtitle() }}</p>
-            </div>
-
+    <div class="card mb-24">
+        <app-card-header [title]="title()" [subtitle]="subtitle()">
             <div class="month-picker">
                 <label class="label">Month</label>
                 <input #monthInput type="month" class="form-control" [value]="selectedMonth()"
                     (change)="onMonthChange(monthInput.value)" />
             </div>
-        </div>
+        </app-card-header>
     </div>
 
     <!-- Add Expense -->
-    <div class="card mt-4">
+    <div class="card mb-24">
         <h3 class="card-title">Add Expense</h3>
 
         <form [formGroup]="form" (ngSubmit)="addExpense()">
@@ -78,7 +73,7 @@
     </div>
 
     <!-- List -->
-    <div class="card mt-4">
+    <div class="card">
         <div class="list-header">
             <h3>Expenses for {{ selectedMonth() }}</h3>
             <div class="total">
@@ -86,9 +81,7 @@
             </div>
         </div>
 
-        <div *ngIf="expenses().length === 0" class="muted empty">
-            No expenses recorded for this month.
-        </div>
+        <app-empty-state *ngIf="expenses().length === 0" message="No expenses recorded for this month."></app-empty-state>
 
         <div class="table-wrap" *ngIf="expenses().length > 0">
             <table class="table">

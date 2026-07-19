@@ -1,24 +1,4 @@
-<app-nav-bar></app-nav-bar>
-
-<main class="dashboard-shell" *ngIf="!loading(); else loadingTpl">
-  <section class="dashboard-topbar" aria-label="Workspace controls">
-    <label class="search-box" aria-label="Search workspace">
-      <span aria-hidden="true">⌕</span>
-      <input type="search" placeholder="Search workspace, clients, invoices..." />
-    </label>
-
-    <div class="topbar-actions">
-      <button class="icon-button" type="button" aria-label="Notifications">⌁</button>
-      <button class="icon-button" type="button" aria-label="Help and updates">○</button>
-      <div class="user-chip">
-        <span>
-          <strong>{{ signedInUserName() }}</strong>
-          <small>{{ signedInUserRole() }}</small>
-        </span>
-        <div class="avatar" aria-hidden="true">{{ signedInUserInitials() }}</div>
-      </div>
-    </div>
-  </section>
+<app-workspace-shell shellClass="dashboard-shell" *ngIf="!loading(); else loadingTpl">
 
   <section class="hero-row">
     <div>
@@ -29,26 +9,10 @@
   </section>
 
   <section class="metrics-grid" aria-label="Business summary">
-    <article class="metric-card outstanding">
-      <div class="metric-label">Outstanding <span>▣</span></div>
-      <strong>{{ currencySymbol() }}{{ outstanding() | number:'1.2-2' }}</strong>
-      <small>{{ invoices().length }} invoices tracked</small>
-    </article>
-    <article class="metric-card revenue">
-      <div class="metric-label">Revenue <span>⌁</span></div>
-      <strong>{{ currencySymbol() }}{{ revenue() | number:'1.2-2' }}</strong>
-      <small class="up">Collected from paid and partial invoices</small>
-    </article>
-    <article class="metric-card expenses">
-      <div class="metric-label">Expenses <span>▤</span></div>
-      <strong>{{ currencySymbol() }}{{ expenseTotal() | number:'1.2-2' }}</strong>
-      <small>{{ expenses().length }} expenses recorded</small>
-    </article>
-    <article class="metric-card profit">
-      <div class="metric-label">Net Profit <span>▣</span></div>
-      <strong>{{ currencySymbol() }}{{ netProfit() | number:'1.2-2' }}</strong>
-      <small [class.up]="netProfit() >= 0" [class.down]="netProfit() < 0">Revenue minus expenses</small>
-    </article>
+    <app-metric-card label="Outstanding" icon="▣" [value]="currencySymbol() + (outstanding() | number:'1.2-2')" [supportingText]="invoices().length + ' invoices tracked'"></app-metric-card>
+    <app-metric-card label="Revenue" icon="⌁" tone="revenue" [value]="currencySymbol() + (revenue() | number:'1.2-2')" supportingText="Collected from paid and partial invoices"></app-metric-card>
+    <app-metric-card label="Expenses" icon="▤" tone="expenses" [value]="currencySymbol() + (expenseTotal() | number:'1.2-2')" [supportingText]="expenses().length + ' expenses recorded'"></app-metric-card>
+    <app-metric-card label="Net Profit" icon="▣" tone="profit" [value]="currencySymbol() + (netProfit() | number:'1.2-2')" supportingText="Revenue minus expenses"></app-metric-card>
   </section>
 
   <section class="dashboard-grid">
@@ -110,11 +74,8 @@
       <span>✉</span><strong>New Letter</strong><small>Send a customized formal letter or contract to a stakeholder.</small><b>Write Letter →</b>
     </a>
   </section>
-</main>
+</app-workspace-shell>
 
 <ng-template #loadingTpl>
-  <div class="loading">
-    <div class="spinner"></div>
-    <p>Loading dashboard...</p>
-  </div>
+  <app-loading-state message="Loading dashboard..."></app-loading-state>
 </ng-template>

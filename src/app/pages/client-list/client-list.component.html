@@ -1,21 +1,4 @@
-<app-nav-bar *ngIf="showNav"></app-nav-bar>
-
-<main class="clients-page" aria-labelledby="client-directory-title">
-  <header class="dashboard-topbar clients-topbar" aria-label="Workspace header">
-    <label class="search-box clients-search" aria-label="Global search">
-      <span aria-hidden="true">⌕</span>
-      <input [formControl]="search" placeholder="Search clients, projects, or invoices..." />
-    </label>
-
-    <div class="topbar-actions" aria-label="Header actions">
-      <button class="icon-button" type="button" aria-label="Notifications">⌁</button>
-      <button class="icon-button" type="button" aria-label="Activity">○</button>
-      <div class="user-chip" aria-label="Signed in user">
-        <span><strong>Alex Sterling</strong><small>System Administrator</small></span>
-        <span class="avatar" aria-hidden="true">AS</span>
-      </div>
-    </div>
-  </header>
+<app-workspace-shell shellClass="clients-page" topbarClass="clients-topbar" [showNav]="showNav" [searchControl]="search" searchPlaceholder="Search clients, projects, or invoices...">
 
   <section class="page-header clients-header">
     <nav class="breadcrumb" aria-label="Breadcrumb">
@@ -31,6 +14,7 @@
       </div>
 
       <div class="table-toolbar" aria-label="Client directory toolbar">
+        <button class="primary create-client-button" type="button" (click)="openAddClient()">+ Create New Client</button>
         <label class="toolbar-field">
           <span>Status</span>
           <select [formControl]="statusFilter">
@@ -67,97 +51,57 @@
   </section>
 
   <ng-container *ngIf="(filtered$ | async) as items">
-    <section class="empty-state" *ngIf="items.length === 0" aria-live="polite">
-      <span class="empty-state-icon" aria-hidden="true">◌</span>
-      <h2 class="section-title">No clients yet</h2>
-      <p class="muted">Create your first client to start tracking relationships and invoices.</p>
+    <app-empty-state *ngIf="items.length === 0" icon="◌" title="No clients yet" message="Create your first client to start tracking relationships and invoices.">
       <button class="primary" type="button" (click)="openAddClient()">Add Your First Client</button>
-    </section>
+    </app-empty-state>
 
-    <section class="table-card" *ngIf="items.length > 0 && viewMode() === 'table'" aria-label="Client data table">
-      <div class="data-table-scroll">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th scope="col"><input type="checkbox" [checked]="allVisibleSelected(items)" (change)="toggleAllVisible(items, $any($event.target).checked)" aria-label="Select all visible clients" /></th>
-              <th scope="col"><button class="sort-button" type="button" (click)="setSort('displayName')">Client Name {{ sortLabel('displayName') }}</button></th>
-              <th scope="col"><button class="sort-button" type="button" (click)="setSort('status')">Status {{ sortLabel('status') }}</button></th>
-              <th scope="col"><button class="sort-button" type="button" (click)="setSort('balance')">Balance {{ sortLabel('balance') }}</button></th>
-              <th scope="col"><button class="sort-button" type="button" (click)="setSort('contact')">Contact Info {{ sortLabel('contact') }}</button></th>
-              <th scope="col" class="actions-heading">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let item of items; let i = index" (click)="goClient(item.client)" tabindex="0">
-              <td (click)="$event.stopPropagation()">
-                <input type="checkbox" [checked]="isSelected(item.client)" (change)="toggleClientSelection(item.client, $any($event.target).checked)" [attr.aria-label]="'Select ' + item.client.displayName" />
-              </td>
-              <td>
-                <div class="client-identity">
-                  <span class="avatar-initial" [style.background]="avatarTone(i)" [style.color]="avatarInk(i)">{{ initials(item.client.displayName) }}</span>
-                  <div>
-                    <strong>{{ item.client.displayName }}</strong>
-                    <span class="text-small muted">{{ clientDescription(item.client) }}</span>
-                  </div>
-                </div>
-              </td>
-              <td>
-                <span class="status-chip" [class.inactive]="!isActiveClient(item.client)">{{ isActiveClient(item.client) ? 'Active' : 'Inactive' }}</span>
-              </td>
-              <td>
-                <div class="balance-cell">
-                  <strong *ngIf="item.invoiceSummary; else balanceLoading">{{ currencySymbol() }}{{ item.invoiceSummary.outstandingBalance | number:'1.2-2' }}</strong>
-                  <ng-template #balanceLoading><strong class="muted">—</strong></ng-template>
-                  <span class="text-label" [class.settled]="balanceTone(item.invoiceSummary) === 'settled'" [class.overdue]="balanceTone(item.invoiceSummary) === 'overdue'">{{ balanceStatus(item.invoiceSummary) }}</span>
-                </div>
-              </td>
-              <td>
-                <div class="contact-cell muted">
-                  <span>{{ item.client.email || 'email unavailable' }}</span>
-                  <span>{{ item.client.phone || 'phone unavailable' }}</span>
-                </div>
-              </td>
-              <td>
-                <div class="row-actions" (click)="$event.stopPropagation()">
-                  <button class="icon-button" type="button" aria-label="View client" (click)="goClient(item.client)">⌕</button>
-                  <button class="icon-button" type="button" aria-label="Edit client" (click)="goClient(item.client)">✎</button>
-                  <button class="icon-button" type="button" aria-label="More actions">⋯</button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <app-directory-table
+      *ngIf="items.length > 0 && viewMode() === 'table'"
+      [items]="items"
+      [columns]="directoryColumns"
+      [cellTemplate]="clientCell"
+      [selectable]="true"
+      [allSelected]="allVisibleSelected(items)"
+      [isSelected]="isClientItemSelected"
+      [sortKey]="sortField.value"
+      [sortDirection]="sortDirection.value"
+      itemLabel="clients"
+      ariaLabel="Client data table"
+      (sortChanged)="setDirectorySort($event)"
+      (selectAllChanged)="toggleAllVisible(items, $event)"
+      (selectionChanged)="toggleDirectorySelection($event)"
+      (rowActivated)="goClient($event.client)">
+    </app-directory-table>
 
-      <footer class="table-footer">
-        <span>Showing <strong>{{ items.length }}</strong> of <strong>{{ items.length }}</strong> clients</span>
-        <nav class="pagination" aria-label="Client pagination">
-          <button type="button" aria-label="Previous page">‹</button>
-          <button class="active" type="button" aria-current="page">1</button>
-          <button type="button">2</button>
-          <button type="button">3</button>
-          <button type="button" aria-label="Next page">›</button>
-        </nav>
-      </footer>
-    </section>
+    <ng-template #clientCell let-item let-index="index" let-column="column">
+      <ng-container [ngSwitch]="column.key">
+        <app-client-identity *ngSwitchCase="'displayName'" [name]="item.client.displayName" [description]="clientDescription(item.client)" [avatarBackground]="avatarTone(index)" [avatarColor]="avatarInk(index)"></app-client-identity>
+        <app-status-badge *ngSwitchCase="'status'" [status]="isActiveClient(item.client) ? 'active' : 'inactive'"></app-status-badge>
+        <div *ngSwitchCase="'balance'" class="balance-cell">
+          <strong *ngIf="item.invoiceSummary; else balanceLoading">{{ currencySymbol() }}{{ item.invoiceSummary.outstandingBalance | number:'1.2-2' }}</strong>
+          <ng-template #balanceLoading><strong class="muted">—</strong></ng-template>
+          <span class="text-label" [class.settled]="balanceTone(item.invoiceSummary) === 'settled'" [class.overdue]="balanceTone(item.invoiceSummary) === 'overdue'">{{ balanceStatus(item.invoiceSummary) }}</span>
+        </div>
+        <div *ngSwitchCase="'contact'" class="contact-cell muted"><span>{{ item.client.email || 'email unavailable' }}</span><span>{{ item.client.phone || 'phone unavailable' }}</span></div>
+        <div *ngSwitchCase="'actions'" class="row-actions" (click)="$event.stopPropagation()">
+          <button class="icon-button" type="button" aria-label="View client" (click)="goClient(item.client)">⌕</button>
+          <button class="icon-button" type="button" aria-label="Edit client" (click)="goClient(item.client)">✎</button>
+          <button class="icon-button" type="button" aria-label="More actions">⋯</button>
+        </div>
+      </ng-container>
+    </ng-template>
     <section class="client-card-grid" *ngIf="items.length > 0 && viewMode() === 'cards'" aria-label="Client cards">
       <article class="client-summary-card" *ngFor="let item of items; let i = index">
         <label class="card-select">
           <input type="checkbox" [checked]="isSelected(item.client)" (change)="toggleClientSelection(item.client, $any($event.target).checked)" />
           Select
         </label>
-        <div class="client-identity">
-          <span class="avatar-initial" [style.background]="avatarTone(i)" [style.color]="avatarInk(i)">{{ initials(item.client.displayName) }}</span>
-          <div>
-            <strong>{{ item.client.displayName }}</strong>
-            <span class="text-small muted">{{ clientDescription(item.client) }}</span>
-          </div>
-        </div>
-        <span class="status-chip" [class.inactive]="!isActiveClient(item.client)">{{ isActiveClient(item.client) ? 'Active' : 'Inactive' }}</span>
+        <app-client-identity [name]="item.client.displayName" [description]="clientDescription(item.client)" [avatarBackground]="avatarTone(i)" [avatarColor]="avatarInk(i)"></app-client-identity>
+        <app-status-badge [status]="isActiveClient(item.client) ? 'active' : 'inactive'"></app-status-badge>
         <p class="muted">{{ item.client.email || 'email unavailable' }} · {{ item.client.phone || 'phone unavailable' }}</p>
         <strong>{{ currencySymbol() }}{{ (item.invoiceSummary?.outstandingBalance || 0) | number:'1.2-2' }}</strong>
         <button class="secondary" type="button" (click)="goClient(item.client)">Open client</button>
       </article>
     </section>
   </ng-container>
-</main>
+</app-workspace-shell>

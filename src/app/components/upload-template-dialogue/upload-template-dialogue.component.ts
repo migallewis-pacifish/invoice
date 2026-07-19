@@ -1,11 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { UploadTemplateComponent } from '../../pages/upload-template/upload-template.component';
 import { DialogRef } from '@angular/cdk/dialog';
+import { DialogShellComponent } from '../dialog-shell/dialog-shell.component';
 
 @Component({
   selector: 'app-upload-template-dialogue',
   standalone: true,
-  imports: [UploadTemplateComponent],
+  imports: [UploadTemplateComponent, DialogShellComponent],
   templateUrl: './upload-template-dialogue.component.html',
   styleUrl: './upload-template-dialogue.component.scss'
 })

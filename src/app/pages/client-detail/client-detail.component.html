@@ -1,6 +1,4 @@
-<app-nav-bar></app-nav-bar>
-
-<main class="workspace-shell" *ngIf="!loading(); else loadingTpl">
+<app-workspace-shell shellClass="workspace-shell" *ngIf="!loading(); else loadingTpl">
   <section class="workspace-container">
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/clients">Clients</a>
@@ -21,7 +19,6 @@
       </div>
       <div class="entity-actions">
         <button class="secondary action-button" type="button">✉ Message</button>
-        <button class="primary action-button" type="button" (click)="startEditClient()">✎ Edit Client</button>
       </div>
     </header>
 
@@ -55,7 +52,7 @@
             <div><dt>Relationship Type</dt><dd>{{ relationshipType }}</dd></div>
             <div>
               <dt>Status</dt>
-              <dd><span class="status-chip" [ngClass]="clientStatusClass">{{ clientStatus }}</span></dd>
+              <dd><app-status-badge [status]="clientStatus" [label]="clientStatus"></app-status-badge></dd>
             </div>
           </dl>
         </article>
@@ -79,17 +76,8 @@
               <button class="secondary pill-button" type="button" (click)="addInvoice()">＋ New Invoice</button>
             </div>
           </div>
-          <div class="data-table compact-table">
-            <div class="table-row table-head"><span>Invoice ID</span><span>Due Date</span><span>Amount</span><span>Status</span><span>Actions</span></div>
-            <div class="table-row" *ngFor="let inv of (invoices() | orderByDateDesc).slice(0, 4); let i = index">
-              <strong>{{ inv.invoiceNumber || '#INV-' + (8821 - i) }}</strong>
-              <span>{{ (inv.dueDate || inv.date) | date:'mediumDate' }}</span>
-              <span>{{ inv.total | currency:currency():'symbol' }}</span>
-              <span><span class="status-chip" [ngClass]="'status-' + normalizedInvoiceStatus(inv)">{{ invoiceStatusLabel(inv) }}</span></span>
-              <button class="ellipsis" type="button" (click)="viewInvoice(inv)">•••</button>
-            </div>
-          </div>
-          <p class="muted empty-state" *ngIf="invoices().length === 0">No invoices yet for this client.</p>
+          <app-invoice-table [invoices]="invoices()" [currency]="currency()" [limit]="4" [compact]="true" [showPaid]="false" [statusFor]="invoiceStatusFor" [canRemind]="invoiceCanRemind" [reminderText]="invoiceReminderText" (viewed)="viewInvoice($event)" (emailed)="sendDocumentEmail('invoice', $event)" (reminded)="sendInvoiceReminder($event)"></app-invoice-table>
+          <app-empty-state *ngIf="invoices().length === 0" message="No invoices yet for this client."></app-empty-state>
         </article>
 
         <article class="card timeline-card">
@@ -111,18 +99,6 @@
           <textarea [ngModel]="noteDraft()" (ngModelChange)="updateNote($event)" rows="6" aria-label="Client notes"></textarea>
           <div class="notes-actions"><button class="text-button" type="button">Discard</button><button class="primary" type="button">Save Note</button></div>
         </article>
-      </section>
-
-      <section *ngSwitchCase="'details'" class="card details-card">
-        <div class="table-toolbar"><div><h2 class="section-title">Client Details</h2><p>View or edit client profile, relationship, and address information.</p></div><button class="secondary" type="button" (click)="startEditClient()" *ngIf="!editingClient()">Edit Client</button></div>
-        <app-create-client *ngIf="editingClient(); else clientDetailsReadOnly" [client]="client()" (clientSaved)="onClientSaved()" (cancel)="cancelEditClient()"></app-create-client>
-        <ng-template #clientDetailsReadOnly>
-        <div class="grid-info">
-          <div><h4>Address</h4><p>{{ formattedAddress }}</p></div>
-          <div><h4>Contact</h4><p *ngIf="client()?.email">📧 {{ client()?.email }}</p><p *ngIf="client()?.phone">📞 {{ client()?.phone }}</p></div>
-          <div><h4>Other Details</h4><p *ngIf="client()?.relationshipType || client()?.clientType">Relationship Type: {{ relationshipType }}</p><p *ngIf="client()?.status">Status: {{ clientStatus }}</p><p *ngIf="client()?.vatNo">VAT No: {{ client()?.vatNo }}</p><p *ngIf="client()?.notes">Notes: {{ client()?.notes }}</p></div>
-        </div>
-        </ng-template>
       </section>
 
 
@@ -175,8 +151,8 @@
       <section *ngSwitchCase="'invoices'" class="card table-card full-table-card">
         <div class="table-toolbar"><div><h2 class="section-title">Invoices</h2><p>Search, filter, and manage invoice records for this client.</p></div><div class="card-actions"><button class="secondary pill-button" type="button" (click)="copyLastInvoice()" [disabled]="!lastInvoice()">Copy Last Invoice</button><button class="primary" type="button" (click)="addInvoice()">New Invoice</button></div></div>
         <div class="workspace-controls"><input type="search" placeholder="Search invoices..."><button class="secondary" type="button">Filters</button><button class="secondary" type="button">Sort</button></div>
-        <div class="data-table"><div class="table-row table-head six"><span>Invoice ID</span><span>Due Date</span><span>Total</span><span>Paid</span><span>Status</span><span>Actions</span></div><div class="table-row six" *ngFor="let inv of invoices() | orderByDateDesc"><strong>{{ inv.invoiceNumber || '(unnumbered)' }}</strong><span>{{ (inv.dueDate || inv.date) | date:'mediumDate' }}</span><span>{{ inv.total | currency:currency():'symbol' }}</span><span>{{ inv.amountPaid || 0 | currency:currency():'symbol' }}</span><span><span class="status-chip" [ngClass]="'status-' + normalizedInvoiceStatus(inv)">{{ invoiceStatusLabel(inv) }}</span></span><span class="row-actions"><button class="secondary small" type="button" (click)="viewInvoice(inv)">View</button><button class="secondary small" type="button" (click)="updateInvoiceTracking(inv)">Update</button></span></div></div>
-        <p class="muted empty-state" *ngIf="invoices().length === 0">No invoices yet for this client.</p><div class="pagination">Page 1 of 1</div>
+        <app-invoice-table [invoices]="invoices()" [currency]="currency()" [statusFor]="invoiceStatusFor" [canRemind]="invoiceCanRemind" [reminderText]="invoiceReminderText" (viewed)="viewInvoice($event)" (updated)="updateInvoiceTracking($event)" (emailed)="sendDocumentEmail('invoice', $event)" (reminded)="sendInvoiceReminder($event)"></app-invoice-table>
+        <app-empty-state *ngIf="invoices().length === 0" message="No invoices yet for this client."></app-empty-state><div class="pagination">Page 1 of 1</div>
       </section>
 
       <section *ngSwitchCase="'expenses'" class="full-table-card">
@@ -192,13 +168,13 @@
 
       <section *ngSwitchCase="'letters'" class="card table-card full-table-card">
         <div class="table-toolbar"><div><h2 class="section-title">Letters</h2><p>Create letters and view saved Firestore letter records for this client.</p></div><button class="primary" type="button" (click)="addLetter()">New Letter</button></div>
-        <div class="data-table"><div class="table-row table-head"><span>Letter</span><span>Signed By</span><span>Created</span><span>File</span><span>Status</span></div><div class="table-row" *ngFor="let letter of letters()"><strong>{{ letter.title }}</strong><span>{{ letter.signedBy || '—' }}</span><span>{{ (letter.date || letter.createdAt) | date:'mediumDate' }}</span><span>{{ letter.filename || '—' }}</span><span><span class="status-chip status-generated">Generated</span></span></div></div>
-        <p class="muted empty-state" *ngIf="letters().length === 0">No letters saved for this client yet.</p>
+        <div class="data-table"><div class="table-row table-head"><span>Letter</span><span>Signed By</span><span>Created</span><span>File</span><span>Actions</span></div><div class="table-row" *ngFor="let letter of letters()"><strong>{{ letter.title }}</strong><span>{{ letter.signedBy || '—' }}</span><span>{{ (letter.date || letter.createdAt) | date:'mediumDate' }}</span><span>{{ letter.filename || '—' }}</span><span class="row-actions"><button class="secondary small" type="button" (click)="sendDocumentEmail('letter', letter)">Send email</button></span></div></div>
+        <app-empty-state *ngIf="letters().length === 0" message="No letters saved for this client yet."></app-empty-state>
       </section>
     </ng-container>
   </section>
-</main>
+</app-workspace-shell>
 
 <ng-template #loadingTpl>
-  <div class="loading"><div class="spinner"></div><p>Loading client workspace...</p></div>
+  <app-loading-state message="Loading client workspace..."></app-loading-state>
 </ng-template>

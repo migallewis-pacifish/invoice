@@ -1,9 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
+import { WorkspaceTopbarComponent } from '../../components/workspace-topbar/workspace-topbar.component';
 import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
 import { Router, RouterLink } from '@angular/router';
-import { combineLatest } from 'rxjs';
-import { ClientListComponent } from '../client-list/client-list.component';
+import { combineLatest, Observable, switchMap } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
 import { UploadTemplateDialogueComponent } from '../../components/upload-template-dialogue/upload-template-dialogue.component';
@@ -16,11 +16,14 @@ import { ActivityRecord } from '../../models/activity.model';
 import { ActivityService } from '../../services/activity.service';
 import { CompanyContextService } from '../../services/company-context.service';
 import { AppUser, InvoiceRecord, InvoiceStatus } from '../../models/invoice.model';
+import { WorkspaceShellComponent } from '../../components/workspace-shell/workspace-shell.component';
+import { MetricCardComponent } from '../../components/metric-card/metric-card.component';
+import { LoadingStateComponent } from '../../components/loading-state/loading-state.component';
 
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [NavBarComponent, CommonModule, ClientListComponent, RouterLink],
+  imports: [NavBarComponent, WorkspaceTopbarComponent, CommonModule, RouterLink, WorkspaceShellComponent, MetricCardComponent, LoadingStateComponent],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
 })
@@ -138,7 +141,7 @@ export class LandingComponent {
 
         combineLatest([
           this.clientService.getInvoicesForCompany(),
-          this.expensesService.listAll(companyId)
+          this.allExpensesForCompany(companyId)
         ]).subscribe(([invoices, expenses]) => {
           this.invoices.set(invoices);
           this.expenses.set(expenses);
@@ -149,6 +152,12 @@ export class LandingComponent {
         this.router.navigate([err?.message === 'Not authenticated' ? '/login' : '/register']);
       }
     });
+  }
+
+  private allExpensesForCompany(companyId: string): Observable<Expense[]> {
+    return this.clientService.clients$().pipe(
+      switchMap(clients => this.expensesService.listAllIncludingClients(companyId, clients.map(client => client.id)))
+    );
   }
 
   goToUpload() {

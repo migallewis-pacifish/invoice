@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { LinkFolderDialogueComponent } from './link-folder-dialogue.component';
+import { DialogRef } from '@angular/cdk/dialog';
 
 describe('LinkFolderDialogueComponent', () => {
   let component: LinkFolderDialogueComponent;
@@ -9,6 +10,7 @@ describe('LinkFolderDialogueComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [LinkFolderDialogueComponent]
+      , providers: [{ provide: DialogRef, useValue: { close: jasmine.createSpy('close') } }]
     })
     .compileComponents();
 

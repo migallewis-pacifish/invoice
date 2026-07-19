@@ -1,0 +1,6 @@
+.status-badge { display: inline-flex; align-items: center; justify-content: center; width: fit-content; border-radius: 999px; padding: 5px 9px; font-size: 10px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; background: #e8eef8; color: var(--primary); }
+.status-active, .status-paid { background: #d8fae8; color: var(--accent); }
+.status-inactive, .status-draft { background: #edf1f6; color: #64748b; }
+.status-overdue, .status-refunded { background: #fee2e2; color: var(--danger); }
+.status-sent, .status-partial { background: #dbeafe; color: var(--primary); }
+.status-overpaid, .status-credited, .status-prospect { background: #fef3c7; color: #92400e; }

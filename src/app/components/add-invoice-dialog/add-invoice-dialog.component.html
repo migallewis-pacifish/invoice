@@ -1,9 +1,4 @@
-<div class="dialog-shell">
-    <div class="dialog-header">
-        <h3>{{ dialogTitle }}</h3>
-        <button class="icon-btn" (click)="close()">✕</button>
-    </div>
-
+<app-dialog-shell [title]="dialogTitle" (closed)="close()">
     <form [formGroup]="form" (ngSubmit)="generateInvoice()" class="dialog-body">
         <p class="copy-note" *ngIf="previousInvoice || viewOnly || trackingOnly">{{ helperText }}</p>
         <div class="form-group">
@@ -96,4 +91,4 @@
 
         <div class="msg error" *ngIf="error()">{{ error() }}</div>
     </form>
-</div>
+</app-dialog-shell>

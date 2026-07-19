@@ -17,8 +17,8 @@ describe('DocumentStorageService', () => {
   });
 
   it('returns user-friendly provider labels', () => {
-    expect(service.providerLabel('google_drive')).toBe('Google Drive');
-    expect(service.providerLabel('onedrive')).toBe('OneDrive');
+    expect(service.providerLabel('google_drive')).toBe('Google Workspace Drive');
+    expect(service.providerLabel('onedrive')).toBe('Microsoft 365 OneDrive');
     expect(service.providerLabel('browser_download')).toBe('Browser Download');
     expect(service.providerLabel('local_folder')).toBe('Local Folder (future)');
     expect(service.providerLabel('external_link')).toBe('External Link');
