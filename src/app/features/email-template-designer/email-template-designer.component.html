@@ -2,16 +2,55 @@
   <main class="designer-page">
     <header class="designer-header">
       <button type="button" class="secondary" (click)="back()">Back</button>
+      <div class="wizard-steps" aria-label="Email template workflow">
+        <button *ngFor="let step of steps" type="button" [class.active]="currentStep === step.value" (click)="goTo(step.value)">{{ step.label }}</button>
+      </div>
       <label>Template name<input [(ngModel)]="template.name" (ngModelChange)="changed()"></label>
       <label>Email subject<input [(ngModel)]="template.subject" (ngModelChange)="changed()"></label>
       <label>Template type<select [(ngModel)]="template.type" (ngModelChange)="changed()"><option *ngFor="let type of types" [ngValue]="type.value">{{ type.label }}</option></select></label>
-      <div class="header-actions"><button type="button" class="primary" (click)="save()">Save</button><button type="button" class="secondary" (click)="preview()">Preview</button><button type="button" class="secondary" (click)="clear()">Clear</button></div>
+      <div class="header-actions"><button type="button" class="primary" (click)="save()">Save</button><button type="button" class="secondary" (click)="openPreviewStep()">Preview step</button><button type="button" class="secondary" (click)="preview()">Pop-out preview</button><button type="button" class="secondary" (click)="clear()">Clear</button></div>
     </header>
-    <section class="designer-grid">
-      <app-email-template-palette [sections]="template.sections"></app-email-template-palette>
-      <app-email-template-canvas [(sections)]="template.sections" [(selection)]="selection" (sectionsChange)="changed()"></app-email-template-canvas>
-      <app-email-template-inspector [section]="selectedSection" [column]="selectedColumn" [element]="selectedElement" (changed)="changed()" (duplicate)="duplicateSelected()" (delete)="deleteSelected()"></app-email-template-inspector>
+
+    <section class="starter-panel panel" *ngIf="currentStep === 'choose'">
+      <div class="panel-heading with-border">
+        <div>
+          <h1>Start with a modern email template</h1>
+          <p>Choose one of three editable templates per email type, or start with a blank design.</p>
+        </div>
+        <button type="button" class="primary" (click)="createNew()">Create new blank template</button>
+      </div>
+      <div class="template-type-group" *ngFor="let type of types">
+        <h2>{{ type.label }}</h2>
+        <div class="starter-grid">
+          <article class="starter-card" *ngFor="let starter of templatesFor(type.value)" [class.selected]="selectedStarterId === starter.id">
+            <div class="starter-accent" [style.background]="starter.accent"></div>
+            <p class="eyebrow">{{ starter.audience }}</p>
+            <h3>{{ starter.name }}</h3>
+            <p>{{ starter.description }}</p>
+            <strong>{{ starter.subject }}</strong>
+            <button type="button" class="primary" (click)="useStarter(starter)">Use and edit</button>
+          </article>
+        </div>
+      </div>
     </section>
+
+    <ng-container *ngIf="currentStep === 'design'">
+      <section class="designer-grid">
+        <app-email-template-palette [sections]="template.sections"></app-email-template-palette>
+        <app-email-template-canvas [(sections)]="template.sections" [(selection)]="selection" (sectionsChange)="changed()"></app-email-template-canvas>
+        <app-email-template-inspector [section]="selectedSection" [column]="selectedColumn" [element]="selectedElement" (changed)="changed()" (duplicate)="duplicateSelected()" (delete)="deleteSelected()"></app-email-template-inspector>
+      </section>
+    </ng-container>
+
+    <section class="preview-step panel" *ngIf="currentStep === 'preview'">
+      <div class="panel-heading with-border">
+        <div><h1>Preview your email</h1><p>Review the rendered template with sample data before saving.</p></div>
+        <div class="header-actions"><button type="button" class="secondary" (click)="goTo('design')">Back to design</button><button type="button" class="primary" (click)="save()">Save template</button></div>
+      </div>
+      <iframe title="Email preview" [class.mobile]="previewWidth === 'mobile'" [srcdoc]="generatedHtml"></iframe>
+      <div class="preview-toggle"><button type="button" class="secondary" (click)="previewWidth='desktop'">Desktop</button><button type="button" class="secondary" (click)="previewWidth='mobile'">Mobile</button></div>
+    </section>
+
     <section class="output panel" *ngIf="savedJson"><div class="panel-heading with-border"><div><h2>Serializable template definition</h2><p>First-version save output for backend persistence.</p></div></div><pre>{{ savedJson }}</pre></section>
   </main>
   <app-email-template-preview [open]="previewOpen" [html]="generatedHtml" [(width)]="previewWidth" (close)="previewOpen=false"></app-email-template-preview>
