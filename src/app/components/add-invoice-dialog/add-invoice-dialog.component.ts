@@ -11,6 +11,7 @@ import { doc, docData, Firestore, serverTimestamp } from '@angular/fire/firestor
 import { CurrencyService } from '../../services/currency.service';
 import { NotificationService } from '../../services/notification.service';
 import { DialogShellComponent } from '../dialog-shell/dialog-shell.component';
+import { Timestamp } from 'firebase/firestore';
 
 
 type InvoiceDownloadFormat = 'docx';
@@ -18,6 +19,21 @@ type InvoiceDownloadFormat = 'docx';
 export interface InvoicePaymentAdjustment {
   creditAmount?: number;
   refundAmount?: number;
+}
+
+export function buildPaymentHistoryEntries(
+  amountPaid: number,
+  creditAmount: number,
+  refundAmount: number,
+  createdBy?: string,
+  createdAt: Timestamp = Timestamp.now()
+) {
+  const attribution = createdBy ? { createdBy } : {};
+  return [
+    amountPaid > 0 ? { type: 'payment', amount: amountPaid, createdAt, ...attribution } : null,
+    creditAmount > 0 ? { type: 'credit', amount: creditAmount, createdAt, ...attribution } : null,
+    refundAmount > 0 ? { type: 'refund', amount: refundAmount, createdAt, ...attribution } : null,
+  ].filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 }
 
 export function resolveTrackedAmountPaid(status: string, total: number, amountPaid: number, adjustment: InvoicePaymentAdjustment = {}): number {
@@ -456,14 +472,7 @@ export class AddInvoiceDialogComponent {
   }
 
   private buildPaymentHistory(amountPaid: number, creditAmount: number, refundAmount: number) {
-    const createdBy = this.auth.currentUser?.uid;
-    const history = [
-      amountPaid > 0 ? { type: 'payment', amount: amountPaid, createdAt: serverTimestamp(), createdBy } : null,
-      creditAmount > 0 ? { type: 'credit', amount: creditAmount, createdAt: serverTimestamp(), createdBy } : null,
-      refundAmount > 0 ? { type: 'refund', amount: refundAmount, createdAt: serverTimestamp(), createdBy } : null,
-    ];
-
-    return history.filter(Boolean);
+    return buildPaymentHistoryEntries(amountPaid, creditAmount, refundAmount, this.auth.currentUser?.uid);
   }
 
   private startOfToday(): Date {
