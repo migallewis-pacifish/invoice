@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { CreateClientComponent } from './create-client.component';
+import { ClientService } from '../../services/client.service';
 
 describe('CreateClientComponent', () => {
   let component: CreateClientComponent;
@@ -9,6 +10,7 @@ describe('CreateClientComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [CreateClientComponent]
+      , providers: [{ provide: ClientService, useValue: {} }]
     })
     .compileComponents();
 

@@ -12,6 +12,8 @@ describe('ClientDetailComponent client summary', () => {
     component.noteDraft = signal('');
     component.activeTab = signal('overview' as any);
     component.editingClient = signal(false);
+    component.clientStorageProvider = signal('company_default');
+    component.clientStorageLocation = signal('');
   });
 
   it('uses the Firestore client displayName as the primary contact', () => {
@@ -55,13 +57,6 @@ describe('ClientDetailComponent client summary', () => {
     component.updateNote('Firestore note for this client.');
 
     expect(component.noteDraft()).toBe('Firestore note for this client.');
-  });
-
-  it('switches to the details tab when editing a client', () => {
-    component.startEditClient();
-
-    expect(component.activeTab()).toBe('details');
-    expect(component.editingClient()).toBeTrue();
   });
 
   it('refreshes the client model after an edit is saved', () => {

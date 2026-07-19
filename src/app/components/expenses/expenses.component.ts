@@ -26,7 +26,7 @@ export class ExpensesComponent {
   private readonly currencyService = inject(CurrencyService);
 
   // Provided by parent
-  companyId = input.required<string>();
+  companyId = input<string>('');
   clientId = input<string | null>(null);
   showClientPicker = input(true);
   title = input('Expenses');

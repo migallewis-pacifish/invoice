@@ -162,7 +162,12 @@ export class ClientDetailComponent {
   }
 
   get primaryContact(): string {
-    return this.client()?.phone || 'Not provided';
+    return this.client()?.displayName || this.client()?.phone || 'Not provided';
+  }
+
+  startEditClient(): void {
+    this.editingClient.set(true);
+    this.activeTab.set('details');
   }
 
   get clientEmail(): string {
@@ -501,4 +506,4 @@ async sendDocumentEmail(documentType: EmailDocumentType, document: any, reminder
 
 }
 
-type ClientTab = 'overview' | 'documents' | 'invoices' | 'expenses' | 'letters';
+type ClientTab = 'overview' | 'details' | 'documents' | 'invoices' | 'expenses' | 'letters';

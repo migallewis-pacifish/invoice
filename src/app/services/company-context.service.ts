@@ -1,8 +1,13 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, InjectionToken } from '@angular/core';
 import { Auth, authState, User } from '@angular/fire/auth';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { firstValueFrom, map, Observable, of, switchMap, take, throwError } from 'rxjs';
 import { AppUser } from '../models/invoice.model';
+
+export const CURRENT_AUTH_USER = new InjectionToken<Observable<User | null>>('CURRENT_AUTH_USER', {
+  providedIn: 'root',
+  factory: () => authState(inject(Auth))
+});
 
 export interface CompanyContext {
   user: User;
@@ -14,9 +19,10 @@ export interface CompanyContext {
 export class CompanyContextService {
   private readonly auth = inject(Auth);
   private readonly db = inject(Firestore);
+  private readonly authUser$ = inject(CURRENT_AUTH_USER);
 
   currentUser$(): Observable<User | null> {
-    return authState(this.auth);
+    return this.authUser$;
   }
 
   currentProfile$(): Observable<AppUser | null> {
@@ -42,7 +48,7 @@ export class CompanyContextService {
       take(1),
       switchMap(user => {
         if (!user) return throwError(() => new Error('Not authenticated'));
-        return (docData(doc(this.db, `users/${user.uid}`)) as Observable<AppUser | undefined>).pipe(
+        return this.currentProfile$().pipe(
           take(1),
           map(profile => {
             if (!profile) throw new Error('User profile not found');

@@ -1,11 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, inject, Input, Output, signal } from '@angular/core';
-import { Auth, authState } from '@angular/fire/auth';
 import { collection, collectionData, doc, docData, Firestore } from '@angular/fire/firestore';
 import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 import { take } from 'rxjs';
 import { ActivityService } from '../../services/activity.service';
 import { TemplateService } from '../../services/template.service';
+import { CURRENT_AUTH_USER } from '../../services/company-context.service';
 
 @Component({
   selector: 'app-upload-template',
@@ -18,7 +18,7 @@ export class UploadTemplateComponent {
   @Input() inDialog = false;                         // hide page-only bits when in a dialog
   @Output() uploaded = new EventEmitter<string>();   // emits storage path on success
   @Output() cancel = new EventEmitter<void>();
-  private auth = inject(Auth);
+  private authUser$ = inject(CURRENT_AUTH_USER);
   private db = inject(Firestore);
   private storage = inject(Storage);
   private activityService = inject(ActivityService);
@@ -48,7 +48,7 @@ export class UploadTemplateComponent {
 
   constructor() {
     // Load current user -> company -> template path/url
-    authState(this.auth).pipe(take(1)).subscribe(async (user) => {
+    this.authUser$.pipe(take(1)).subscribe(async (user) => {
       if (!user) { this.error.set('Not signed in'); return; }
       const userRef = doc(this.db, `users/${user.uid}`);
       const sub = docData(userRef).subscribe(async (u: any) => {
