@@ -1,4 +1,5 @@
-import { resolveTrackedAmountPaid, resolveTrackedInvoiceStatus } from './add-invoice-dialog.component';
+import { buildPaymentHistoryEntries, resolveTrackedAmountPaid, resolveTrackedInvoiceStatus } from './add-invoice-dialog.component';
+import { Timestamp } from 'firebase/firestore';
 
 describe('invoice payment tracking resolution', () => {
   const today = new Date('2026-07-09T12:00:00Z');
@@ -57,5 +58,26 @@ describe('invoice payment tracking resolution', () => {
 
     expect(amountPaid).toBe(125);
     expect(status).toBe('refunded');
+  });
+});
+
+describe('invoice payment history', () => {
+  it('uses concrete timestamps that Firestore supports inside arrays', () => {
+    const createdAt = Timestamp.fromDate(new Date('2026-07-09T12:00:00Z'));
+    const history = buildPaymentHistoryEntries(100, 0, 0, 'user-1', createdAt);
+
+    expect(history).toEqual([{
+      type: 'payment',
+      amount: 100,
+      createdAt,
+      createdBy: 'user-1'
+    }]);
+    expect(history[0].createdAt instanceof Timestamp).toBeTrue();
+  });
+
+  it('does not write an undefined createdBy value', () => {
+    const [entry] = buildPaymentHistoryEntries(100, 0, 0);
+
+    expect(Object.prototype.hasOwnProperty.call(entry, 'createdBy')).toBeFalse();
   });
 });
