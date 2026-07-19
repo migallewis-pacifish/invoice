@@ -7,7 +7,6 @@
 
 .clients-topbar,
 .clients-header,
-.table-card,
 .empty-state {
   max-width: 1180px;
   margin-inline: auto;
@@ -114,8 +113,6 @@
   background: #eef4ff;
 }
 
-.actions-heading { text-align: right; }
-
 @media (max-width: 1024px) {
   .clients-page {
     margin-left: 0;
@@ -171,18 +168,12 @@
   font-weight: 800;
 }
 
-.bulk-actions button,
-.sort-button {
+.bulk-actions button {
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
   cursor: pointer;
-}
-
-.sort-button {
-  color: var(--primary);
-  font-weight: 900;
 }
 
 .client-card-grid {
