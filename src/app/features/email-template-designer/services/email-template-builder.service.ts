@@ -1,11 +1,12 @@
 import { Injectable, SecurityContext, inject } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
-import { EmailElement, EmailImageElement, EmailSection, EmailTemplateDefinition, EmailTextElement } from '../../../models/email-template-designer.model';
+import { EmailColumnStyles, EmailElement, EmailImageElement, EmailSection, EmailTemplateDefinition, EmailTextElement } from '../../../models/email-template-designer.model';
 
 @Injectable({ providedIn: 'root' })
 export class EmailTemplateBuilderService {
   private sanitizer = inject(DomSanitizer);
-  newSection(widths: number[]): EmailSection { return { id: crypto.randomUUID(), type: 'layout', columnWidths: widths, styles: { backgroundColor: '#ffffff', contentWidth: 600, columnGap: 16, paddingTop: 24, paddingRight: 24, paddingBottom: 24, paddingLeft: 24 }, columns: widths.map(() => ({ id: crypto.randomUUID(), elements: [] })) }; }
+  newSection(widths: number[]): EmailSection { return { id: crypto.randomUUID(), type: 'layout', columnWidths: widths, styles: { backgroundColor: '#ffffff', contentWidth: 600, columnGap: 16, paddingTop: 24, paddingRight: 24, paddingBottom: 24, paddingLeft: 24 }, columns: widths.map(() => ({ id: crypto.randomUUID(), elements: [], styles: this.defaultColumnStyles() })) }; }
+  defaultColumnStyles(): EmailColumnStyles { return { backgroundColor: '#ffffff', verticalAlign: 'top', paddingTop: 10, paddingRight: 10, paddingBottom: 10, paddingLeft: 10, borderColor: '#c6d5ea', borderWidth: 0, borderRadius: 0 }; }
   newElement(type: string, variablePath?: string): EmailElement {
     const id = crypto.randomUUID();
     if (type === 'image') return { id, type: 'image', url: '', alt: '', widthPercent: 100, alignment: 'center', linkUrl: '', borderRadius: 0 };
@@ -13,7 +14,7 @@ export class EmailTemplateBuilderService {
     if (type === 'variable') return { id, type: 'variable', path: variablePath ?? 'invoice.number', token: `{{${variablePath ?? 'invoice.number'}}}` };
     return { id, type: 'text', content: 'Write your email text here.', styles: { fontSize: 16, fontWeight: '400', fontStyle: 'normal', textAlign: 'left', color: '#071f4d', backgroundColor: '#ffffff', lineHeight: 1.5, paddingTop: 8, paddingRight: 8, paddingBottom: 8, paddingLeft: 8 } };
   }
-  duplicateSection(section: EmailSection): EmailSection { return { ...structuredClone(section), id: crypto.randomUUID(), columns: section.columns.map(c => ({ id: crypto.randomUUID(), elements: c.elements.map(e => ({ ...structuredClone(e), id: crypto.randomUUID() })) })) }; }
+  duplicateSection(section: EmailSection): EmailSection { return { ...structuredClone(section), id: crypto.randomUUID(), columns: section.columns.map(c => ({ id: crypto.randomUUID(), styles: { ...this.defaultColumnStyles(), ...(c.styles ?? {}) }, elements: c.elements.map(e => ({ ...structuredClone(e), id: crypto.randomUUID() })) })) }; }
   duplicateElement(element: EmailElement): EmailElement { return { ...structuredClone(element), id: crypto.randomUUID() } as EmailElement; }
   buildHtml(template: EmailTemplateDefinition, renderTokens = (v: string) => v): string {
     const body = template.sections.map(s => this.sectionHtml(s, renderTokens)).join('');
@@ -21,7 +22,7 @@ export class EmailTemplateBuilderService {
   }
   private sectionHtml(section: EmailSection, renderTokens: (v: string) => string): string {
     const s = section.styles;
-    const cols = section.columns.map((c, i) => `<td style="width:${section.columnWidths[i]}%;vertical-align:top;padding:0 ${s.columnGap / 2}px;">${c.elements.map(e => this.elementHtml(e, renderTokens)).join('')}</td>`).join('');
+    const cols = section.columns.map((c, i) => { const cs = { ...this.defaultColumnStyles(), ...(c.styles ?? {}) }; return `<td style="width:${section.columnWidths[i]}%;vertical-align:${cs.verticalAlign};padding:${cs.paddingTop}px ${cs.paddingRight + s.columnGap / 2}px ${cs.paddingBottom}px ${cs.paddingLeft + s.columnGap / 2}px;background:${this.safeCss(cs.backgroundColor)};border:${cs.borderWidth}px solid ${this.safeCss(cs.borderColor)};border-radius:${cs.borderRadius}px;">${c.elements.map(e => this.elementHtml(e, renderTokens)).join('')}</td>`; }).join('');
     return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:${s.contentWidth}px;background:${this.safeCss(s.backgroundColor)};padding:${s.paddingTop}px ${s.paddingRight}px ${s.paddingBottom}px ${s.paddingLeft}px;"><tr>${cols}</tr></table>`;
   }
   private elementHtml(element: EmailElement, renderTokens: (v: string) => string): string {

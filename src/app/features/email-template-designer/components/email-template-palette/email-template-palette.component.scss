@@ -20,14 +20,12 @@ h3 {
   text-transform: uppercase;
 }
 
-.palette-list,
-.variable-group {
+.palette-list {
   display: grid;
   gap: 8px;
 }
 
-.palette-item,
-.token {
+.palette-item {
   display: grid;
   gap: 3px;
   width: 100%;
@@ -47,20 +45,7 @@ h3 {
   font-weight: 700;
 }
 
-.palette-item:hover,
-.token:hover {
+.palette-item:hover {
   border-color: #9fc0ee;
   background: #eef4ff;
-}
-
-.variable-group strong {
-  margin-top: 6px;
-  color: var(--primary);
-  font-size: 13px;
-}
-
-.token {
-  color: var(--primary);
-  font-family: ui-monospace, monospace;
-  font-size: 12px;
 }

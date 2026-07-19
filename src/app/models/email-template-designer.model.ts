@@ -1,6 +1,6 @@
 export type EmailTemplateType = 'invoice' | 'payment-reminder' | 'general';
 export type EmailElementType = 'text' | 'image' | 'spacer' | 'variable';
-export type EmailSelection = { kind: 'section'; sectionId: string } | { kind: 'element'; sectionId: string; columnId: string; elementId: string } | null;
+export type EmailSelection = { kind: 'section'; sectionId: string } | { kind: 'column'; sectionId: string; columnId: string } | { kind: 'element'; sectionId: string; columnId: string; elementId: string } | null;
 export type EmailTextAlign = 'left' | 'center' | 'right';
 
 export interface EmailTemplateDefinition {
@@ -15,7 +15,8 @@ export interface EmailTemplateDefinition {
   updatedAt?: unknown;
 }
 export interface EmailSection { id: string; type: 'layout'; columnWidths: number[]; styles: EmailSectionStyles; columns: EmailColumn[]; }
-export interface EmailColumn { id: string; elements: EmailElement[]; }
+export interface EmailColumn { id: string; elements: EmailElement[]; styles: EmailColumnStyles; }
+export interface EmailColumnStyles { backgroundColor: string; verticalAlign: 'top' | 'middle' | 'bottom'; paddingTop: number; paddingRight: number; paddingBottom: number; paddingLeft: number; borderColor: string; borderWidth: number; borderRadius: number; }
 export interface EmailSectionStyles { backgroundColor: string; contentWidth: number; columnGap: number; paddingTop: number; paddingRight: number; paddingBottom: number; paddingLeft: number; }
 export interface EmailElementBase { id: string; type: EmailElementType; }
 export interface EmailTextElement extends EmailElementBase { type: 'text'; content: string; styles: EmailTextStyles; }

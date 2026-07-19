@@ -8,6 +8,8 @@ import {
   transferArrayItem
 } from '@angular/cdk/drag-drop';
 import {
+  EmailColumn,
+  EmailColumnStyles,
   EmailElement,
   EmailPaletteItem,
   EmailSection,
@@ -31,7 +33,6 @@ export class EmailTemplateCanvasComponent {
   readonly canvasDropListId = 'email-template-section-canvas';
   readonly layoutPaletteDropListId = 'email-template-layout-palette';
   readonly elementPaletteDropListId = 'email-template-element-palette';
-  readonly variablePaletteDropListId = 'email-template-variable-palette';
 
   private readonly builder = inject(EmailTemplateBuilderService);
 
@@ -42,7 +43,6 @@ export class EmailTemplateCanvasComponent {
   columnDropListIds(): string[] {
     return [
       this.elementPaletteDropListId,
-      this.variablePaletteDropListId,
       ...this.sections.flatMap(section => section.columns.map(column => column.id))
     ];
   }
@@ -99,6 +99,12 @@ export class EmailTemplateCanvasComponent {
     this.selectionChange.emit({ kind: 'section', sectionId: section.id });
   }
 
+  selectColumn(section: EmailSection, column: EmailColumn, event: Event): void {
+    event.stopPropagation();
+    column.styles = { ...this.builder.defaultColumnStyles(), ...column.styles };
+    this.selectionChange.emit({ kind: 'column', sectionId: section.id, columnId: column.id });
+  }
+
   selectElement(section: EmailSection, columnId: string, element: EmailElement, event: Event): void {
     event.stopPropagation();
     this.selectionChange.emit({ kind: 'element', sectionId: section.id, columnId, elementId: element.id });
@@ -110,6 +116,14 @@ export class EmailTemplateCanvasComponent {
 
   isSelectedElement(element: EmailElement): boolean {
     return this.selection?.kind === 'element' && this.selection.elementId === element.id;
+  }
+
+  isSelectedColumn(column: EmailColumn): boolean {
+    return this.selection?.kind === 'column' && this.selection.columnId === column.id;
+  }
+
+  columnStyles(column: EmailColumn): EmailColumnStyles {
+    return { ...this.builder.defaultColumnStyles(), ...column.styles };
   }
 
   private isPaletteItem(data: EmailPaletteItem | EmailSection | EmailElement): data is EmailPaletteItem {

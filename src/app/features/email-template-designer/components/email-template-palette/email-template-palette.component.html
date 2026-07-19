@@ -6,6 +6,7 @@
     id="email-template-layout-palette"
     class="palette-list"
     [cdkDropListData]="layouts"
+    [cdkDropListConnectedTo]="['email-template-section-canvas']"
     [cdkDropListSortingDisabled]="true">
     <h3>Sections</h3>
     <button class="palette-item" type="button" cdkDrag [cdkDragData]="item" *ngFor="let item of layouts">
@@ -19,6 +20,7 @@
     id="email-template-element-palette"
     class="palette-list"
     [cdkDropListData]="elements"
+    [cdkDropListConnectedTo]="columnDropListIds()"
     [cdkDropListSortingDisabled]="true">
     <h3>Content</h3>
     <button class="palette-item" type="button" cdkDrag [cdkDragData]="item" *ngFor="let item of elements">
@@ -26,23 +28,4 @@
     </button>
   </div>
 
-  <div
-    cdkDropList
-    id="email-template-variable-palette"
-    class="palette-list"
-    [cdkDropListSortingDisabled]="true">
-    <h3>Variables</h3>
-    <div *ngFor="let group of registry.groupedVariables()" class="variable-group">
-      <strong>{{ group.group }}</strong>
-      <button
-        type="button"
-        class="token"
-        *ngFor="let variable of group.variables"
-        cdkDrag
-        [cdkDragData]="{ kind: 'element', label: variable.label, elementType: 'variable', variablePath: variable.path }"
-        (click)="variableInsert.emit(variable.token)">
-        {{ variable.token }}
-      </button>
-    </div>
-  </div>
 </section>

@@ -39,12 +39,21 @@
             class="column"
             *ngFor="let column of section.columns; let columnIndex = index"
             [style.flex-basis.%]="section.columnWidths[columnIndex]"
+            [class.selected]="isSelectedColumn(column)"
+            [ngStyle]="{
+              'background': columnStyles(column).backgroundColor,
+              'padding': columnStyles(column).paddingTop + 'px ' + columnStyles(column).paddingRight + 'px ' + columnStyles(column).paddingBottom + 'px ' + columnStyles(column).paddingLeft + 'px',
+              'border-color': columnStyles(column).borderColor,
+              'border-width.px': columnStyles(column).borderWidth,
+              'border-radius.px': columnStyles(column).borderRadius
+            }"
             cdkDropList
             [id]="column.id"
             [cdkDropListData]="column.elements"
             [cdkDropListConnectedTo]="columnDropListIds()"
             [cdkDropListEnterPredicate]="elementDropPredicate"
-            (cdkDropListDropped)="dropElement($event)">
+            (cdkDropListDropped)="dropElement($event)"
+            (click)="selectColumn(section, column, $event)">
             <div class="drop-hint" *ngIf="!column.elements.length">Drop content here</div>
 
             <div
@@ -55,7 +64,17 @@
               [class.selected]="isSelectedElement(element)"
               (click)="selectElement(section, column.id, element, $event)">
               <ng-container [ngSwitch]="element.type">
-                <div *ngSwitchCase="'text'" class="text-el" [ngStyle]="$any(element).styles">
+                <div
+                  *ngSwitchCase="'text'"
+                  class="text-el"
+                  [style.font-size.px]="$any(element).styles.fontSize"
+                  [style.font-weight]="$any(element).styles.fontWeight"
+                  [style.font-style]="$any(element).styles.fontStyle"
+                  [style.text-align]="$any(element).styles.textAlign"
+                  [style.color]="$any(element).styles.color"
+                  [style.background]="$any(element).styles.backgroundColor"
+                  [style.line-height]="$any(element).styles.lineHeight"
+                  [style.padding]="$any(element).styles.paddingTop + 'px ' + $any(element).styles.paddingRight + 'px ' + $any(element).styles.paddingBottom + 'px ' + $any(element).styles.paddingLeft + 'px'">
                   {{ $any(element).content }}
                 </div>
                 <div *ngSwitchCase="'image'" class="image-el">
