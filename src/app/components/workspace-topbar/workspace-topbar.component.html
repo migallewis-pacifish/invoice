@@ -1,6 +1,6 @@
 <section class="dashboard-topbar" aria-label="Workspace controls">
   <label class="search-box" aria-label="Search workspace">
-    <span aria-hidden="true">⌕</span>
+    <span class="app-icon icon-glyph" aria-hidden="true">🔎</span>
     <input
       *ngIf="searchControl; else uncontrolledSearch"
       type="search"
@@ -12,8 +12,8 @@
   </label>
 
   <div class="topbar-actions">
-    <button class="icon-button" type="button" aria-label="Notifications">⌁</button>
-    <button class="icon-button" type="button" aria-label="Help and updates">○</button>
+    <button class="icon-button" type="button" aria-label="Notifications"><span class="app-icon" aria-hidden="true">🔔</span></button>
+    <button class="icon-button" type="button" aria-label="Help and updates"><span class="app-icon" aria-hidden="true">?</span></button>
     <div class="user-chip">
       <span>
         <strong>{{ signedInUserName() }}</strong>

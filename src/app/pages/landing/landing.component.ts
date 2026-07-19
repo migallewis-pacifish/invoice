@@ -106,7 +106,7 @@ export class LandingComponent {
         name: item.invoice.invoiceNumber || item.invoice.filename || 'Invoice payment',
         meta: `${this.invoiceStatusLabel(item.status)} · ${this.formatDueDate(item.dueDate!)}`,
         amount: item.outstanding,
-        icon: item.status === 'overdue' ? '!' : '▣',
+        icon: item.status === 'overdue' ? '⚠️' : '📅',
         tone: item.status === 'partial' ? 'green' : 'red',
       }));
   });
@@ -298,8 +298,8 @@ export class LandingComponent {
 
   private activityIcon(changeType: ActivityRecord['changeType']): string {
     switch (changeType) {
-      case 'create': return '+';
-      case 'delete': return '−';
+      case 'create': return '✓';
+      case 'delete': return '🗑️';
       default: return '↻';
     }
   }

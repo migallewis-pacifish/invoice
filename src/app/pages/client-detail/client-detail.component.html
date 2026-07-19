@@ -14,11 +14,11 @@
             <h1>{{ client()?.displayName }}</h1>
             <span class="badge entity-badge">Enterprise</span>
           </div>
-          <p class="entity-address">⌖ {{ formattedAddress }}</p>
+          <p class="entity-address"><span class="app-icon" aria-hidden="true">📍</span> {{ formattedAddress }}</p>
         </div>
       </div>
       <div class="entity-actions">
-        <button class="secondary action-button" type="button">✉ Message</button>
+        <button class="secondary action-button" type="button"><span class="app-icon" aria-hidden="true">✉️</span> Message</button>
       </div>
     </header>
 
@@ -40,7 +40,7 @@
         <article class="card summary-card balance-card">
           <p class="eyebrow">Outstanding Balance</p>
           <strong class="balance-amount">{{ outstandingBalance() | currency:currency():'symbol' }}</strong>
-          <span class="overdue">▣ Overdue: {{ overdueBalance() | currency:currency():'symbol' }}</span>
+          <span class="overdue"><span class="app-icon" aria-hidden="true">⚠️</span> Overdue: {{ overdueBalance() | currency:currency():'symbol' }}</span>
           <button class="primary wide" type="button">Create Payment Link</button>
         </article>
 
@@ -73,7 +73,7 @@
             <h2 class="section-title">Recent Invoices</h2>
             <div class="card-actions">
               <button class="secondary pill-button" type="button" (click)="copyLastInvoice()" [disabled]="!lastInvoice()">Copy Last Invoice</button>
-              <button class="secondary pill-button" type="button" (click)="addInvoice()">＋ New Invoice</button>
+              <button class="secondary pill-button" type="button" (click)="addInvoice()"><span class="app-icon" aria-hidden="true">＋</span> New Invoice</button>
             </div>
           </div>
           <app-invoice-table [invoices]="invoices()" [currency]="currency()" [limit]="4" [compact]="true" [showPaid]="false" [statusFor]="invoiceStatusFor" [canRemind]="invoiceCanRemind" [reminderText]="invoiceReminderText" (viewed)="viewInvoice($event)" (emailed)="sendDocumentEmail('invoice', $event)" (reminded)="sendInvoiceReminder($event)"></app-invoice-table>
@@ -93,7 +93,7 @@
 
         <article class="card notes-card">
           <div class="card-heading compact-heading">
-            <h2 class="section-title">▱ Client Notes</h2>
+            <h2 class="section-title"><span class="app-icon" aria-hidden="true">📝</span> Client Notes</h2>
             <span class="autosave">Auto-saved at 11:20 AM</span>
           </div>
           <textarea [ngModel]="noteDraft()" (ngModelChange)="updateNote($event)" rows="6" aria-label="Client notes"></textarea>
@@ -150,7 +150,7 @@
 
       <section *ngSwitchCase="'invoices'" class="card table-card full-table-card">
         <div class="table-toolbar"><div><h2 class="section-title">Invoices</h2><p>Search, filter, and manage invoice records for this client.</p></div><div class="card-actions"><button class="secondary pill-button" type="button" (click)="copyLastInvoice()" [disabled]="!lastInvoice()">Copy Last Invoice</button><button class="primary" type="button" (click)="addInvoice()">New Invoice</button></div></div>
-        <div class="workspace-controls"><input type="search" placeholder="Search invoices..."><button class="secondary" type="button">Filters</button><button class="secondary" type="button">Sort</button></div>
+        <div class="workspace-controls"><input type="🔎" placeholder="Search invoices..."><button class="secondary" type="button">Filters</button><button class="secondary" type="button">Sort</button></div>
         <app-invoice-table [invoices]="invoices()" [currency]="currency()" [statusFor]="invoiceStatusFor" [canRemind]="invoiceCanRemind" [reminderText]="invoiceReminderText" (viewed)="viewInvoice($event)" (updated)="updateInvoiceTracking($event)" (emailed)="sendDocumentEmail('invoice', $event)" (reminded)="sendInvoiceReminder($event)"></app-invoice-table>
         <app-empty-state *ngIf="invoices().length === 0" message="No invoices yet for this client."></app-empty-state><div class="pagination">Page 1 of 1</div>
       </section>
