@@ -1,0 +1,18 @@
+<app-workspace-shell searchPlaceholder="Search email templates...">
+  <main class="designer-page">
+    <header class="designer-header">
+      <button type="button" class="secondary" (click)="back()">Back</button>
+      <label>Template name<input [(ngModel)]="template.name" (ngModelChange)="changed()"></label>
+      <label>Email subject<input [(ngModel)]="template.subject" (ngModelChange)="changed()"></label>
+      <label>Template type<select [(ngModel)]="template.type" (ngModelChange)="changed()"><option *ngFor="let type of types" [ngValue]="type.value">{{ type.label }}</option></select></label>
+      <div class="header-actions"><button type="button" class="primary" (click)="save()">Save</button><button type="button" class="secondary" (click)="preview()">Preview</button><button type="button" class="secondary" (click)="clear()">Clear</button></div>
+    </header>
+    <section class="designer-grid">
+      <app-email-template-palette (variableInsert)="insertVariable($event)"></app-email-template-palette>
+      <app-email-template-canvas [(sections)]="template.sections" [(selection)]="selection" (sectionsChange)="changed()"></app-email-template-canvas>
+      <app-email-template-inspector [section]="selectedSection" [element]="selectedElement" (changed)="changed()" (duplicate)="duplicateSelected()" (delete)="deleteSelected()"></app-email-template-inspector>
+    </section>
+    <section class="output panel" *ngIf="savedJson"><div class="panel-heading with-border"><div><h2>Serializable template definition</h2><p>First-version save output for backend persistence.</p></div></div><pre>{{ savedJson }}</pre></section>
+  </main>
+  <app-email-template-preview [open]="previewOpen" [html]="generatedHtml" [(width)]="previewWidth" (close)="previewOpen=false"></app-email-template-preview>
+</app-workspace-shell>

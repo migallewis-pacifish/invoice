@@ -12,6 +12,7 @@ import { MembershipPlanComponent } from './libraries/membership-plan/membership-
 import { PlaceholderPageComponent } from './pages/placeholder/placeholder-page.component';
 import { TemplatesComponent } from './pages/templates/templates.component';
 import { FinanceComponent } from './pages/finance/finance.component';
+import { EmailTemplateDesignerComponent } from './features/email-template-designer/email-template-designer.component';
 
 const companyRoutes = [authGuard, companyGuard];
 
@@ -24,6 +25,7 @@ export const routes: Routes = [
   { path: 'clients/new', component: CreateClientComponent, canActivate: companyRoutes },
   { path: 'clients', component: ClientListComponent, canActivate: companyRoutes },
   { path: 'templates', component: TemplatesComponent, canActivate: companyRoutes },
+  { path: 'email-templates/designer', component: EmailTemplateDesignerComponent, canActivate: companyRoutes },
   { path: 'template', redirectTo: 'templates' },
   { path: 'company-expenses', component: FinanceComponent, canActivate: companyRoutes },
   { path: 'bank-statements', component: PlaceholderPageComponent, canActivate: companyRoutes, data: { sectionName: 'Bank Statement Uploads' } },
