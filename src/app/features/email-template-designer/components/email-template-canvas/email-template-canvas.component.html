@@ -1,1 +1,74 @@
-<section class="canvas-wrap"><div class="email-canvas" cdkDropList id="canvas" [cdkDropListData]="sections" [cdkDropListConnectedTo]="sectionIds()" (cdkDropListDropped)="dropSection($event)"><div class="empty" *ngIf="!sections.length">Drag a layout here to start your email template.</div><article class="section" *ngFor="let section of sections" cdkDrag [cdkDragData]="section" [class.selected]="isSelectedSection(section)" (click)="selectSection(section)" [ngStyle]="{'background':section.styles.backgroundColor,'max-width.px':section.styles.contentWidth,'padding':section.styles.paddingTop+'px '+section.styles.paddingRight+'px '+section.styles.paddingBottom+'px '+section.styles.paddingLeft+'px'}"><div class="columns" [style.gap.px]="section.styles.columnGap"><div class="column" *ngFor="let column of section.columns; let i=index" [style.flex-basis.%]="section.columnWidths[i]" cdkDropList [id]="column.id" [cdkDropListData]="column.elements" [cdkDropListConnectedTo]="columnIds()" (cdkDropListDropped)="dropElement($event)"><div class="drop-hint" *ngIf="!column.elements.length">Drop content</div><div class="element" *ngFor="let element of column.elements" cdkDrag [cdkDragData]="element" [class.selected]="isSelectedElement(element)" (click)="selectElement(section,column.id,element,$event)"><ng-container [ngSwitch]="element.type"><div *ngSwitchCase="'text'" class="text-el" [ngStyle]="$any(element).styles">{{ $any(element).content }}</div><div *ngSwitchCase="'image'" class="image-el"><img *ngIf="$any(element).url" [src]="$any(element).url" [alt]="$any(element).alt"><span *ngIf="!$any(element).url">Image placeholder</span></div><div *ngSwitchCase="'spacer'" class="spacer-el" [style.height.px]="$any(element).height"></div><span *ngSwitchCase="'variable'" class="variable-el">{{ $any(element).token }}</span></ng-container></div></div></div></article></div></section>
+<section class="canvas-panel" aria-label="Email canvas">
+  <header class="canvas-heading">
+    <div>
+      <p class="eyebrow">Sections</p>
+      <h2>Email canvas</h2>
+    </div>
+    <span>{{ sections.length }} section{{ sections.length === 1 ? '' : 's' }}</span>
+  </header>
+
+  <div class="canvas-stage">
+    <div
+      class="email-canvas"
+      cdkDropList
+      [id]="canvasDropListId"
+      [cdkDropListData]="sections"
+      [cdkDropListConnectedTo]="sectionDropListIds()"
+      [cdkDropListEnterPredicate]="sectionDropPredicate"
+      (cdkDropListDropped)="dropSection($event)">
+      <div class="empty" *ngIf="!sections.length">
+        <strong>Start with a section layout</strong>
+        <span>Drag any layout from the Sections palette into this larger design area.</span>
+      </div>
+
+      <article
+        class="section"
+        *ngFor="let section of sections; let sectionIndex = index"
+        cdkDrag
+        [cdkDragData]="section"
+        [class.selected]="isSelectedSection(section)"
+        (click)="selectSection(section)"
+        [ngStyle]="{
+          'background': section.styles.backgroundColor,
+          'max-width.px': section.styles.contentWidth,
+          'padding': section.styles.paddingTop + 'px ' + section.styles.paddingRight + 'px ' + section.styles.paddingBottom + 'px ' + section.styles.paddingLeft + 'px'
+        }">
+        <div class="section-label">Section {{ sectionIndex + 1 }}</div>
+        <div class="columns" [style.gap.px]="section.styles.columnGap">
+          <div
+            class="column"
+            *ngFor="let column of section.columns; let columnIndex = index"
+            [style.flex-basis.%]="section.columnWidths[columnIndex]"
+            cdkDropList
+            [id]="column.id"
+            [cdkDropListData]="column.elements"
+            [cdkDropListConnectedTo]="columnDropListIds()"
+            [cdkDropListEnterPredicate]="elementDropPredicate"
+            (cdkDropListDropped)="dropElement($event)">
+            <div class="drop-hint" *ngIf="!column.elements.length">Drop content here</div>
+
+            <div
+              class="element"
+              *ngFor="let element of column.elements"
+              cdkDrag
+              [cdkDragData]="element"
+              [class.selected]="isSelectedElement(element)"
+              (click)="selectElement(section, column.id, element, $event)">
+              <ng-container [ngSwitch]="element.type">
+                <div *ngSwitchCase="'text'" class="text-el" [ngStyle]="$any(element).styles">
+                  {{ $any(element).content }}
+                </div>
+                <div *ngSwitchCase="'image'" class="image-el">
+                  <img *ngIf="$any(element).url" [src]="$any(element).url" [alt]="$any(element).alt">
+                  <span *ngIf="!$any(element).url">Image placeholder</span>
+                </div>
+                <div *ngSwitchCase="'spacer'" class="spacer-el" [style.height.px]="$any(element).height"></div>
+                <span *ngSwitchCase="'variable'" class="variable-el">{{ $any(element).token }}</span>
+              </ng-container>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
