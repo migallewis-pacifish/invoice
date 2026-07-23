@@ -10,6 +10,7 @@ import { Company } from '../models/invoice.model';
 import { LetterData, LetterSignature } from '../models/letter.model';
 import { ActivityService } from './activity.service';
 import { TemplateService } from './template.service';
+import { TemplateRendererService } from './template-renderer.service';
 import { DocumentStorageService } from './document-storage.service';
 
 @Injectable({ providedIn: 'root' })
@@ -19,6 +20,7 @@ export class LetterDocxService {
   private db = inject(Firestore);
   private activityService = inject(ActivityService);
   private templateService = inject(TemplateService);
+  private templateRenderer = inject(TemplateRendererService);
   private documentStorage = inject(DocumentStorageService);
 
   uploadTemplate(companyId: string, file: File): Promise<{ path: string; url: string }> {
@@ -90,8 +92,14 @@ export class LetterDocxService {
         return this.templateService.getDefaultTemplate(companyId, 'letter').pipe(
           take(1),
           switchMap(template => {
-            if (!template?.storagePath) return throwError(() => new Error('No letter template uploaded for company.'));
-            return from(getDownloadURL(ref(this.storage, template.storagePath))).pipe(map(url => ({ url, company })));
+            const path = template?.bodyStoragePath || template?.storagePath;
+            if (!template || !path) return throwError(() => new Error('No letter template uploaded for company.'));
+            try {
+              this.templateRenderer.assertRenderable(template, 'letter');
+            } catch (error) {
+              return throwError(() => error);
+            }
+            return from(getDownloadURL(ref(this.storage, path))).pipe(map(url => ({ url, company })));
           })
         );
       }),

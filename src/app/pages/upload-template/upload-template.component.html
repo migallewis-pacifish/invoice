@@ -2,9 +2,17 @@
   <div class="card">
     <div class="head">
       <div>
-        <p class="muted">Upload or replace your Word invoice template (.docx).</p>
+        <p class="muted">Upload or replace an invoice template in the format your renderer should use.</p>
       </div>
       <button class="ghost" routerLink="/landing" *ngIf="!inDialog">Back to Dashboard</button>
+    </div>
+
+    <div class="format-picker" aria-label="Template format">
+      <label *ngFor="let option of formatOptions">
+        <input type="radio" name="templateFormat" [ngModel]="format()" [value]="option.value" (ngModelChange)="onFormatChanged($event)" [disabled]="uploading()">
+        <strong>{{ option.label }}</strong>
+        <span class="muted tiny">{{ option.description }}</span>
+      </label>
     </div>
 
     <div class="status">
@@ -30,12 +38,12 @@
       <div class="dz-inner">
         <div class="dz-icon app-icon" aria-hidden="true">📄</div>
         <div class="dz-text">
-          <strong>Drag & drop your .docx here</strong>
+          <strong>Drag & drop your {{ acceptList() }} template here</strong>
           <span class="muted"> or </span>
           <button class="pick" (click)="onPickClicked(fileInput)" [disabled]="uploading()">Choose file</button>
-          <input #fileInput type="file" accept=".docx" (change)="onFilePicked($event)" hidden>
+          <input #fileInput type="file" [accept]="acceptList()" (change)="onFilePicked($event)" hidden>
         </div>
-        <div class="muted tiny">Max {{ maxSizeMB }}MB • .docx only</div>
+        <div class="muted tiny">Max {{ maxSizeMB }}MB • Required variables: {{ requiredVariables[format()].join(', ') || 'Configured later' }}</div>
       </div>
     </div>
 
