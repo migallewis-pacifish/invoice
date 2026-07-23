@@ -1,11 +1,20 @@
 import { inject, Injectable } from '@angular/core';
-import { collection, collectionData, doc, docData, Firestore, query, serverTimestamp, setDoc, where } from '@angular/fire/firestore';
+import { collection, collectionData, doc, docData, Firestore, getDocs, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from '@angular/fire/firestore';
 import { ref, Storage, uploadBytes } from '@angular/fire/storage';
 import { map, Observable } from 'rxjs';
-import { EmailTemplateDefinition, EmailTemplateType } from '../../../models/email-template-designer.model';
+import { EmailTemplateDefinition, EmailTemplateScenario, EmailTemplateType } from '../../../models/email-template-designer.model';
 import { EmailTemplateBuilderService } from './email-template-builder.service';
 
 export type DesignedEmailTemplateUseCase = 'invoice' | 'reminder' | 'letter' | 'general';
+export const EMAIL_TEMPLATE_SCENARIOS: { value: EmailTemplateScenario; label: string; type: EmailTemplateType }[] = [
+  { value: 'invoice-sending', label: 'Invoice sending', type: 'invoice' },
+  { value: 'before-due-reminder', label: 'Before-due reminder', type: 'payment-reminder' },
+  { value: 'due-today-reminder', label: 'Due-today reminder', type: 'payment-reminder' },
+  { value: 'overdue-reminder', label: 'Overdue reminder', type: 'payment-reminder' },
+  { value: 'overdue-notice', label: 'Overdue notice', type: 'payment-reminder' },
+  { value: 'letter-sending', label: 'Letter sending', type: 'letter' },
+  { value: 'general-email', label: 'General email', type: 'general' }
+];
 
 const USE_CASE_TYPES: Record<DesignedEmailTemplateUseCase, EmailTemplateType[]> = {
   invoice: ['invoice'],
@@ -30,13 +39,36 @@ export class EmailTemplateDefinitionService {
 
   listSelectable(companyId: string, useCase: DesignedEmailTemplateUseCase): Observable<EmailTemplateDefinition[]> {
     return collectionData(query(collection(this.db, this.collectionPath(companyId)), where('type', 'in', USE_CASE_TYPES[useCase])), { idField: 'id' }).pipe(
-      map(templates => (templates as EmailTemplateDefinition[]).filter(template => !!template.freemarkerStoragePath))
+      map(templates => (templates as EmailTemplateDefinition[]).filter(template => !!template.freemarkerStoragePath && !template.archived))
     );
   }
 
   useCaseFor(documentType: 'invoice' | 'letter', reminderType?: unknown): DesignedEmailTemplateUseCase {
     if (reminderType) return 'reminder';
     return documentType === 'letter' ? 'letter' : 'invoice';
+  }
+
+  async duplicate(companyId: string, template: EmailTemplateDefinition): Promise<string> {
+    return this.save(companyId, { ...structuredClone(template), id: undefined, name: `${template.name} copy`, archived: false, defaultForScenarios: [], createdAt: undefined, updatedAt: undefined });
+  }
+
+  async rename(companyId: string, templateId: string, name: string): Promise<void> {
+    await updateDoc(doc(this.db, `${this.collectionPath(companyId)}/${templateId}`), { name, updatedAt: serverTimestamp() });
+  }
+
+  async archive(companyId: string, templateId: string, archived: boolean): Promise<void> {
+    await updateDoc(doc(this.db, `${this.collectionPath(companyId)}/${templateId}`), { archived, updatedAt: serverTimestamp(), ...(archived ? { defaultForScenarios: [] } : {}) });
+  }
+
+  async setDefaultForScenario(companyId: string, template: EmailTemplateDefinition, scenario: EmailTemplateScenario): Promise<void> {
+    const batch = writeBatch(this.db);
+    const snapshot = await getDocs(collection(this.db, this.collectionPath(companyId)));
+    snapshot.docs.forEach(templateDoc => {
+      const data = templateDoc.data() as EmailTemplateDefinition;
+      batch.update(templateDoc.ref, { defaultForScenarios: removeDefaultScenario(data, scenario) });
+    });
+    batch.update(doc(this.db, `${this.collectionPath(companyId)}/${template.id}`), { defaultForScenarios: addDefaultScenario(template, scenario), scenario, archived: false, updatedAt: serverTimestamp() });
+    await batch.commit();
   }
 
   async save(companyId: string, template: EmailTemplateDefinition): Promise<string> {
@@ -88,4 +120,12 @@ export function renderDesignedEmailPreview(text: string, variables: Record<strin
 
 function lookupTemplateValue(source: Record<string, unknown>, path: string): unknown {
   return path.split('.').reduce<unknown>((value, key) => (value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined), source);
+}
+
+export function removeDefaultScenario(template: Pick<EmailTemplateDefinition, 'defaultForScenarios'>, scenario: EmailTemplateScenario): EmailTemplateScenario[] {
+  return (template.defaultForScenarios ?? []).filter(value => value !== scenario);
+}
+
+export function addDefaultScenario(template: Pick<EmailTemplateDefinition, 'defaultForScenarios'>, scenario: EmailTemplateScenario): EmailTemplateScenario[] {
+  return Array.from(new Set([...(template.defaultForScenarios ?? []), scenario]));
 }

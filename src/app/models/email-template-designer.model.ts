@@ -1,4 +1,5 @@
 export type EmailTemplateType = 'invoice' | 'payment-reminder' | 'letter' | 'general';
+export type EmailTemplateScenario = 'invoice-sending' | 'before-due-reminder' | 'due-today-reminder' | 'overdue-reminder' | 'overdue-notice' | 'letter-sending' | 'general-email';
 export type EmailElementType = 'text' | 'image' | 'spacer' | 'variable';
 export type EmailSelection = { kind: 'section'; sectionId: string } | { kind: 'column'; sectionId: string; columnId: string } | { kind: 'element'; sectionId: string; columnId: string; elementId: string } | null;
 export type EmailTextAlign = 'left' | 'center' | 'right';
@@ -11,6 +12,9 @@ export interface EmailTemplateDefinition {
   subject: string;
   type: EmailTemplateType;
   sections: EmailSection[];
+  scenario?: EmailTemplateScenario;
+  defaultForScenarios?: EmailTemplateScenario[];
+  archived?: boolean;
   freemarkerStoragePath?: string;
   variables?: string[];
   createdAt?: unknown;

@@ -15,10 +15,14 @@ import { CompanyEmailTemplate, EMAIL_TEMPLATE_VARIABLE_LABELS, EMAIL_TEMPLATE_VA
 import { EmailTemplateService, validateEmailTemplate } from '../../services/email-template.service';
 import { WorkspaceShellComponent } from '../../components/workspace-shell/workspace-shell.component';
 import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
-import { EmailTemplateDefinition } from '../../models/email-template-designer.model';
-import { EmailTemplateDefinitionService } from '../../features/email-template-designer/services/email-template-definition.service';
+import { EmailTemplateDefinition, EmailTemplateScenario } from '../../models/email-template-designer.model';
+import { EMAIL_TEMPLATE_SCENARIOS, EmailTemplateDefinitionService } from '../../features/email-template-designer/services/email-template-definition.service';
 import { Dialog } from '@angular/cdk/dialog';
 import { EmailTemplateDesignerComponent } from '../../features/email-template-designer/email-template-designer.component';
+import { createStarterEmailTemplates, cloneStarterEmailTemplate, StarterEmailTemplate } from '../../features/email-template-designer/email-template-starter-catalog';
+import { EmailTemplateBuilderService } from '../../features/email-template-designer/services/email-template-builder.service';
+import { EmailTemplatePreviewDataService } from '../../features/email-template-designer/services/email-template-preview-data.service';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 type TemplateType = 'invoice' | 'letter';
 type TemplateTab = 'overview' | 'gallery' | 'emails';
@@ -70,6 +74,9 @@ export class TemplatesComponent {
   private emailTemplateDefinitions = inject(EmailTemplateDefinitionService);
   private fb = inject(FormBuilder);
   private dialog = inject(Dialog);
+  private emailBuilder = inject(EmailTemplateBuilderService);
+  private previewData = inject(EmailTemplatePreviewDataService);
+  private sanitizer = inject(DomSanitizer);
 
   protected readonly showUpload = signal(false);
   protected readonly activeTab = signal<TemplateTab>('overview');
@@ -79,6 +86,10 @@ export class TemplatesComponent {
   protected readonly filter = signal<'active' | 'archived' | TemplateType>('active');
   protected readonly emailTemplates = signal<CompanyEmailTemplate[]>([]);
   protected readonly designedEmailTemplates = signal<EmailTemplateDefinition[]>([]);
+  protected readonly starterEmailTemplates = createStarterEmailTemplates();
+  protected readonly previewEmailTemplate = signal<EmailTemplateDefinition | StarterEmailTemplate | null>(null);
+  protected readonly previewEmailHtml = signal<SafeHtml>('');
+  protected readonly scenarios = EMAIL_TEMPLATE_SCENARIOS;
   protected readonly selectedEmailTemplate = signal<CompanyEmailTemplate | null>(null);
   protected readonly emailTemplateMessage = signal('');
   protected readonly variables = EMAIL_TEMPLATE_VARIABLES;
@@ -97,7 +108,7 @@ export class TemplatesComponent {
   protected readonly activeTemplates = computed(() => filterTemplates(this.templates(), this.filter()));
   protected readonly invoiceTemplateCount = computed(() => this.templates().filter(template => template.type === 'invoice' && !template.archived).length);
   protected readonly letterTemplateCount = computed(() => this.templates().filter(template => template.type === 'letter' && !template.archived).length);
-  protected readonly emailTemplateCount = computed(() => this.designedEmailTemplates().length);
+  protected readonly emailTemplateCount = computed(() => this.designedEmailTemplates().filter(template => !template.archived).length);
   protected readonly formatLabels: Record<string, string> = { docx: 'Word DOCX', 'freemarker-html': 'FreeMarker/HTML', 'pdf-mapped': 'PDF-mapped' };
   protected readonly totalTemplateCount = computed(() => this.templates().filter(template => template.active && !template.archived).length + this.emailTemplateCount());
 
@@ -222,6 +233,63 @@ export class TemplatesComponent {
     } catch (e: any) {
       this.emailTemplateMessage.set(e?.message ?? 'Unable to save email template.');
     }
+  }
+
+  protected async createFromStarter(starter: StarterEmailTemplate): Promise<void> {
+    try {
+      const companyId = await this.companyContext.requireCompanyIdOnce();
+      const id = await this.emailTemplateDefinitions.save(companyId, cloneStarterEmailTemplate(starter, companyId));
+      this.router.navigate(['/email-templates/designer', id]);
+    } catch (e: any) {
+      this.error.set(e?.message ?? 'Unable to create email template.');
+    }
+  }
+
+  protected previewDesignedEmailTemplate(template: EmailTemplateDefinition | StarterEmailTemplate): void {
+    this.previewEmailTemplate.set(template);
+    const html = this.emailBuilder.buildHtml(template as EmailTemplateDefinition, value => this.previewData.renderTokens(value));
+    this.previewEmailHtml.set(this.sanitizer.bypassSecurityTrustHtml(html));
+  }
+
+  protected closeEmailPreview(): void {
+    this.previewEmailTemplate.set(null);
+  }
+
+  protected async duplicateDesignedEmailTemplate(template: EmailTemplateDefinition): Promise<void> {
+    try {
+      const companyId = await this.companyContext.requireCompanyIdOnce();
+      await this.emailTemplateDefinitions.duplicate(companyId, template);
+    } catch (e: any) {
+      this.error.set(e?.message ?? 'Unable to duplicate email template.');
+    }
+  }
+
+  protected async renameDesignedEmailTemplate(template: EmailTemplateDefinition): Promise<void> {
+    if (!template.id) return;
+    const name = window.prompt('Email template name', template.name);
+    if (!name) return;
+    const companyId = await this.companyContext.requireCompanyIdOnce();
+    await this.emailTemplateDefinitions.rename(companyId, template.id, name);
+  }
+
+  protected async archiveDesignedEmailTemplate(template: EmailTemplateDefinition): Promise<void> {
+    if (!template.id) return;
+    const companyId = await this.companyContext.requireCompanyIdOnce();
+    await this.emailTemplateDefinitions.archive(companyId, template.id, !template.archived);
+  }
+
+  protected async setDefaultEmailTemplate(template: EmailTemplateDefinition, scenario: EmailTemplateScenario): Promise<void> {
+    if (!template.id) return;
+    const companyId = await this.companyContext.requireCompanyIdOnce();
+    await this.emailTemplateDefinitions.setDefaultForScenario(companyId, template, scenario);
+  }
+
+  protected scenarioLabel(scenario: EmailTemplateScenario): string {
+    return this.scenarios.find(item => item.value === scenario)?.label ?? scenario;
+  }
+
+  protected compatibleScenarios(template: EmailTemplateDefinition): typeof EMAIL_TEMPLATE_SCENARIOS {
+    return this.scenarios.filter(scenario => scenario.type === template.type);
   }
 
   protected newEmailTemplate(): void {
