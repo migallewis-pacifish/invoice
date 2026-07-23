@@ -11,6 +11,8 @@ export interface EmailTemplateDefinition {
   subject: string;
   type: EmailTemplateType;
   sections: EmailSection[];
+  freemarkerStoragePath?: string;
+  variables?: string[];
   createdAt?: unknown;
   updatedAt?: unknown;
 }

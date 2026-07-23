@@ -195,7 +195,7 @@ export class TemplatesComponent {
   protected selectEmailTemplate(template: CompanyEmailTemplate): void {
     this.selectedEmailTemplate.set(template);
     this.emailTemplateMessage.set('');
-    this.emailTemplateForm.setValue({ subject: template.subject, body: template.body });
+    this.emailTemplateForm.setValue({ subject: template.subject, body: template.body ?? '' });
   }
 
   protected insertVariable(variable: string): void {

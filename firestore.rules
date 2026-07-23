@@ -91,7 +91,9 @@ service cloud.firestore {
           && request.resource.data.companyId == companyId
           && request.resource.data.name is string
           && request.resource.data.subject is string
-          && request.resource.data.sections is list;
+          && request.resource.data.sections is list
+          && request.resource.data.freemarkerStoragePath is string
+          && request.resource.data.variables is list;
         allow delete: if isCompanyMember(companyId);
       }
 
@@ -100,7 +102,9 @@ service cloud.firestore {
         allow create, update: if isCompanyMember(companyId)
           && request.resource.data.companyId == companyId
           && request.resource.data.subject is string
-          && request.resource.data.body is string;
+          && request.resource.data.bodyStoragePath is string
+          && request.resource.data.variables is list
+          && !('body' in request.resource.data);
         allow delete: if isCompanyMember(companyId);
       }
     }

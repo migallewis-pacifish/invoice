@@ -7,7 +7,9 @@ export interface CompanyEmailTemplate {
   name: string;
   description: string;
   subject: string;
-  body: string;
+  body?: string;
+  bodyStoragePath?: string;
+  variables?: (keyof EmailTemplateVariables)[];
   updatedAt?: any;
   createdAt?: any;
 }
