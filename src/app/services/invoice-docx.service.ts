@@ -10,6 +10,7 @@ import { Observable, catchError, from, map, switchMap, take, throwError } from '
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 import { NotificationService } from './notification.service';
+import { DocumentStorageService } from './document-storage.service';
 
 @Injectable({
   providedIn: 'root'
@@ -25,6 +26,7 @@ export class InvoiceDocxService {
   private currencyService = inject(CurrencyService);
   private templateService = inject(TemplateService);
   private notifications = inject(NotificationService);
+  private documentStorage = inject(DocumentStorageService);
 
   calculateInvoiceTotals(items: InvoiceItem[], includeVat = true, currencyCode?: string | null) {
     // compute per-line totals if missing
@@ -64,7 +66,7 @@ export class InvoiceDocxService {
 
     return this.generateInvoiceDocx(companyId, data).pipe(
       switchMap(({ blob, company, fileName }) =>
-        from(this.downloadInBrowser(blob, data.client_name, fileName)).pipe(map(() => fileName))
+        from(this.documentStorage.saveGeneratedDocument({ companyId, clientName: data.client_name, documentType: 'invoice', documentId: data.invoice_number, fileName, mimeType: blob.type, blob })).pipe(map(() => fileName))
       ),
       catchError(err => {
         const userError = new Error(InvoiceDocxService.GENERATE_INVOICE_ERROR_MESSAGE);

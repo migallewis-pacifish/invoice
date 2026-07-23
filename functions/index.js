@@ -147,3 +147,109 @@ exports.queueOverdueInvoiceReminders = onSchedule('every day 08:00', async () =>
 
   console.log(`Queued ${queued} overdue invoice reminder(s).`);
 });
+
+const googleClientId = defineSecret('GOOGLE_DRIVE_CLIENT_ID');
+const googleClientSecret = defineSecret('GOOGLE_DRIVE_CLIENT_SECRET');
+const microsoftClientId = defineSecret('MICROSOFT_ONEDRIVE_CLIENT_ID');
+const microsoftClientSecret = defineSecret('MICROSOFT_ONEDRIVE_CLIENT_SECRET');
+const documentStorageRedirectUri = defineSecret('DOCUMENT_STORAGE_REDIRECT_URI');
+
+const PROVIDERS = {
+  google_drive: {
+    field: 'googleDrive',
+    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    uploadUrl: folderId => `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true`,
+    scopes: ['https://www.googleapis.com/auth/drive.file'],
+  },
+  onedrive: {
+    field: 'oneDrive',
+    authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    scopes: ['offline_access', 'Files.ReadWrite'],
+  },
+};
+
+function providerSecrets(provider) {
+  return provider === 'google_drive'
+    ? { clientId: googleClientId.value(), clientSecret: googleClientSecret.value() }
+    : { clientId: microsoftClientId.value(), clientSecret: microsoftClientSecret.value() };
+}
+
+function assertProvider(provider) {
+  if (!PROVIDERS[provider]) throw new HttpsError('invalid-argument', 'Unsupported document storage provider.');
+  return PROVIDERS[provider];
+}
+
+exports.startDocumentStorageConnection = onCall({ secrets: [googleClientId, microsoftClientId, documentStorageRedirectUri] }, async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required to connect document storage.');
+  const { companyId, provider } = request.data || {};
+  if (!companyId) throw new HttpsError('invalid-argument', 'companyId is required.');
+  const config = assertProvider(provider);
+  await assertCompanyMember(request.auth.uid, companyId);
+  const clientId = provider === 'google_drive' ? googleClientId.value() : microsoftClientId.value();
+  const redirectUri = documentStorageRedirectUri.value();
+  if (!clientId || !redirectUri) throw new HttpsError('failed-precondition', 'Document storage OAuth secrets are not configured.');
+  const state = Buffer.from(JSON.stringify({ companyId, provider, uid: request.auth.uid, nonce: Date.now() })).toString('base64url');
+  await admin.firestore().collection(`companies/${companyId}/documentStorageOAuthStates`).doc(state).set({ provider, uid: request.auth.uid, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+  const params = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri, response_type: 'code', state, scope: config.scopes.join(' '), access_type: 'offline', prompt: 'consent' });
+  return { authorizationUrl: `${config.authUrl}?${params.toString()}` };
+});
+
+exports.completeDocumentStorageConnection = require('firebase-functions/v2/https').onRequest({ secrets: [googleClientId, googleClientSecret, microsoftClientId, microsoftClientSecret, documentStorageRedirectUri] }, async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    if (!code || !state) return res.status(400).send('Missing code or state.');
+    const parsed = JSON.parse(Buffer.from(String(state), 'base64url').toString('utf8'));
+    const config = assertProvider(parsed.provider);
+    const stateRef = admin.firestore().doc(`companies/${parsed.companyId}/documentStorageOAuthStates/${state}`);
+    const stateSnap = await stateRef.get();
+    if (!stateSnap.exists || stateSnap.get('uid') !== parsed.uid) return res.status(403).send('Invalid state.');
+    const secrets = providerSecrets(parsed.provider);
+    const redirectUri = documentStorageRedirectUri.value();
+    const tokenResponse = await fetch(config.tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: secrets.clientId, client_secret: secrets.clientSecret, redirect_uri: redirectUri, code: String(code), grant_type: 'authorization_code' }) });
+    const token = await tokenResponse.json();
+    if (!tokenResponse.ok) return res.status(502).send(`Token exchange failed: ${JSON.stringify(token).slice(0, 300)}`);
+    await admin.firestore().doc(`companies/${parsed.companyId}`).set({ documentStorage: { [config.field]: { connected: true, connectedAt: admin.firestore.FieldValue.serverTimestamp(), expiresAt: Date.now() + Number(token.expires_in || 3600) * 1000, scopes: String(token.scope || '').split(/\s+/).filter(Boolean) } } }, { merge: true });
+    await admin.firestore().doc(`companies/${parsed.companyId}/privateDocumentStorageTokens/${parsed.provider}`).set({ refreshToken: token.refresh_token || null, accessToken: token.access_token, expiresAt: Date.now() + Number(token.expires_in || 3600) * 1000, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    await stateRef.delete();
+    res.send('Document storage connected. You can close this window.');
+  } catch (error) { console.error(error); res.status(500).send('Unable to complete document storage connection.'); }
+});
+
+async function accessTokenFor(companyId, provider) {
+  const config = assertProvider(provider);
+  const tokenRef = admin.firestore().doc(`companies/${companyId}/privateDocumentStorageTokens/${provider}`);
+  const snap = await tokenRef.get();
+  const token = snap.data() || {};
+  if (token.accessToken && token.expiresAt > Date.now() + 60000) return token.accessToken;
+  if (!token.refreshToken) throw new HttpsError('failed-precondition', 'Document storage provider needs reconnection.');
+  const secrets = providerSecrets(provider);
+  const response = await fetch(config.tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: secrets.clientId, client_secret: secrets.clientSecret, refresh_token: token.refreshToken, grant_type: 'refresh_token' }) });
+  const refreshed = await response.json();
+  if (!response.ok) throw new HttpsError('internal', 'Unable to refresh document storage token.');
+  await tokenRef.set({ accessToken: refreshed.access_token, expiresAt: Date.now() + Number(refreshed.expires_in || 3600) * 1000, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  return refreshed.access_token;
+}
+
+exports.uploadGeneratedDocument = onCall({ secrets: [googleClientId, googleClientSecret, microsoftClientId, microsoftClientSecret] }, async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required to upload documents.');
+  const data = request.data || {};
+  if (!data.companyId || !data.provider || !data.fileName || !data.base64) throw new HttpsError('invalid-argument', 'companyId, provider, fileName and base64 are required.');
+  await assertCompanyMember(request.auth.uid, data.companyId);
+  const accessToken = await accessTokenFor(data.companyId, data.provider);
+  const bytes = Buffer.from(data.base64, 'base64');
+  let response;
+  if (data.provider === 'google_drive') {
+    const boundary = `invoice_${Date.now()}`;
+    const metadata = { name: data.fileName, parents: data.folderId ? [data.folderId] : undefined };
+    const body = Buffer.concat([Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: ${data.mimeType}\r\n\r\n`), bytes, Buffer.from(`\r\n--${boundary}--`)]);
+    response = await fetch(PROVIDERS.google_drive.uploadUrl(data.folderId), { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': `multipart/related; boundary=${boundary}` }, body });
+  } else {
+    const path = data.folderId ? `items/${data.folderId}:/${encodeURIComponent(data.fileName)}:/content` : `root:/${encodeURIComponent(data.fileName)}:/content`;
+    response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/${path}`, { method: 'PUT', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': data.mimeType }, body: bytes });
+  }
+  const uploaded = await response.json().catch(() => ({}));
+  if (!response.ok) throw new HttpsError('internal', `Cloud upload failed (${response.status}).`);
+  return { provider: data.provider, id: uploaded.id, webUrl: uploaded.webViewLink || uploaded.webUrl, fileName: data.fileName, folderId: data.folderId, uploaded: true, fallback: false };
+});
