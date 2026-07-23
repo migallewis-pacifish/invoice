@@ -1,9 +1,18 @@
 import { inject, Injectable } from '@angular/core';
-import { collection, collectionData, doc, docData, Firestore, serverTimestamp, setDoc } from '@angular/fire/firestore';
+import { collection, collectionData, doc, docData, Firestore, query, serverTimestamp, setDoc, where } from '@angular/fire/firestore';
 import { ref, Storage, uploadBytes } from '@angular/fire/storage';
-import { Observable } from 'rxjs';
-import { EmailTemplateDefinition } from '../../../models/email-template-designer.model';
+import { map, Observable } from 'rxjs';
+import { EmailTemplateDefinition, EmailTemplateType } from '../../../models/email-template-designer.model';
 import { EmailTemplateBuilderService } from './email-template-builder.service';
+
+export type DesignedEmailTemplateUseCase = 'invoice' | 'reminder' | 'letter' | 'general';
+
+const USE_CASE_TYPES: Record<DesignedEmailTemplateUseCase, EmailTemplateType[]> = {
+  invoice: ['invoice'],
+  reminder: ['payment-reminder'],
+  letter: ['letter'],
+  general: ['general']
+};
 
 @Injectable({ providedIn: 'root' })
 export class EmailTemplateDefinitionService {
@@ -17,6 +26,17 @@ export class EmailTemplateDefinitionService {
 
   get(companyId: string, templateId: string): Observable<EmailTemplateDefinition | undefined> {
     return docData(doc(this.db, `${this.collectionPath(companyId)}/${templateId}`), { idField: 'id' }) as Observable<EmailTemplateDefinition | undefined>;
+  }
+
+  listSelectable(companyId: string, useCase: DesignedEmailTemplateUseCase): Observable<EmailTemplateDefinition[]> {
+    return collectionData(query(collection(this.db, this.collectionPath(companyId)), where('type', 'in', USE_CASE_TYPES[useCase])), { idField: 'id' }).pipe(
+      map(templates => (templates as EmailTemplateDefinition[]).filter(template => !!template.freemarkerStoragePath))
+    );
+  }
+
+  useCaseFor(documentType: 'invoice' | 'letter', reminderType?: unknown): DesignedEmailTemplateUseCase {
+    if (reminderType) return 'reminder';
+    return documentType === 'letter' ? 'letter' : 'invoice';
   }
 
   async save(companyId: string, template: EmailTemplateDefinition): Promise<string> {
@@ -45,11 +65,27 @@ export class EmailTemplateDefinitionService {
   }
 }
 
-
 export function toFreemarkerTemplate(text: string): string {
   return text.replace(/{{\s*([a-zA-Z0-9_.]+)\s*}}/g, (_, key) => '${' + key + '}');
 }
 
 export function extractDesignerTemplateVariables(text: string): string[] {
   return Array.from(new Set([...text.matchAll(/\$\{\s*([a-zA-Z0-9_.]+)\s*}/g)].map(match => match[1])));
+}
+
+export function renderDesignedEmailPreview(text: string, variables: Record<string, unknown>): { html: string; unresolved: string[] } {
+  const unresolved = new Set<string>();
+  const html = text.replace(/\$\{\s*([a-zA-Z0-9_.]+)\s*}/g, (_, key: string) => {
+    const value = lookupTemplateValue(variables, key);
+    if (value === undefined || value === null || value === '') {
+      unresolved.add(key);
+      return '${' + key + '}';
+    }
+    return String(value);
+  });
+  return { html, unresolved: Array.from(unresolved) };
+}
+
+function lookupTemplateValue(source: Record<string, unknown>, path: string): unknown {
+  return path.split('.').reduce<unknown>((value, key) => (value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined), source);
 }

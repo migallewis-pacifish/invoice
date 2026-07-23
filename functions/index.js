@@ -26,7 +26,8 @@ function validatePayload(data) {
     if (!EMAIL_PATTERN.test(email)) errors.push(`copy recipient is invalid: ${email}`);
   }
   if (!String(data.subject || '').trim()) errors.push('subject is required');
-  if (!String(data.messageBody || '').trim()) errors.push('messageBody is required');
+  if (!String(data.messageBody || '').trim() && data.templateSelection?.kind !== 'designed') errors.push('messageBody is required');
+  if (data.templateSelection?.kind === 'designed' && !String(data.templateSelection.templateId || '').trim()) errors.push('templateSelection.templateId is required');
   if (!data.attachment?.storagePath && !data.attachment?.generatedDocumentPayloadRef) {
     errors.push('attachment.storagePath or attachment.generatedDocumentPayloadRef is required');
   }
@@ -45,12 +46,63 @@ async function assertCompanyMember(uid, companyId) {
   }
 }
 
+const APPROVED_TEMPLATE_VARIABLES = new Set(['clientName', 'invoiceNumber', 'dueDate', 'total', 'companyName', 'paymentReference', 'outstandingBalance', 'daysOverdue', 'company.name', 'company.email', 'company.phone', 'company.address', 'client.name', 'client.email', 'invoice.number', 'invoice.date', 'invoice.dueDate', 'invoice.subtotal', 'invoice.vat', 'invoice.total', 'invoice.outstandingBalance', 'invoice.daysOverdue']);
+
+function lookupVariable(source, path) {
+  return path.split('.').reduce((value, key) => value && typeof value === 'object' ? value[key] : undefined, source);
+}
+
+function renderFreeMarkerTemplate(template, variables = {}) {
+  const unresolved = new Set();
+  const html = String(template || '').replace(/\$\{\s*([a-zA-Z0-9_.]+)\s*}/g, (_, key) => {
+    if (!APPROVED_TEMPLATE_VARIABLES.has(key)) {
+      unresolved.add(key);
+      return '';
+    }
+    const value = lookupVariable(variables, key);
+    if (value === undefined || value === null || value === '') {
+      unresolved.add(key);
+      return '';
+    }
+    return String(value);
+  });
+  return { html, unresolved: Array.from(unresolved) };
+}
+
+function htmlToText(html) {
+  return String(html || '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+async function loadDesignedTemplate(data) {
+  if (data.templateSelection?.kind !== 'designed') return null;
+  const templateId = String(data.templateSelection.templateId || '').trim();
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(templateId)) throw new HttpsError('invalid-argument', 'Designed template ID is invalid.');
+  const snap = await admin.firestore().doc(`companies/${data.companyId}/emailDesignTemplates/${templateId}`).get();
+  if (!snap.exists) throw new HttpsError('not-found', 'Designed email template was not found.');
+  const template = snap.data() || {};
+  const expectedPath = `companies/${data.companyId}/email-design-templates/${templateId}.ftl`;
+  if (template.freemarkerStoragePath !== expectedPath) throw new HttpsError('failed-precondition', 'Designed email template storage path is not valid.');
+  const [buffer] = await admin.storage().bucket().file(expectedPath).download();
+  const rendered = renderFreeMarkerTemplate(buffer.toString('utf8'), data.templateVariables || {});
+  if (rendered.unresolved.length) throw new HttpsError('invalid-argument', `Designed email template has unresolved variables: ${rendered.unresolved.join(', ')}`);
+  return { html: rendered.html, text: htmlToText(rendered.html) || data.messageBody || data.subject };
+}
+
+async function buildEmailContent(data) {
+  const designed = await loadDesignedTemplate(data);
+  return designed
+    ? [{ type: 'text/plain', value: designed.text }, { type: 'text/html', value: designed.html }]
+    : [{ type: 'text/plain', value: data.messageBody }];
+}
+
 async function sendWithSendGrid(data) {
   const apiKey = sendGridApiKey.value();
   const fromEmail = sendGridFromEmail.value();
   if (!apiKey || !fromEmail) {
     throw new HttpsError('failed-precondition', 'Email provider secrets are not configured.');
   }
+
+  const content = await buildEmailContent(data);
 
   const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
@@ -66,7 +118,7 @@ async function sendWithSendGrid(data) {
       }],
       from: { email: fromEmail },
       subject: data.subject,
-      content: [{ type: 'text/plain', value: data.messageBody }],
+      content,
       custom_args: {
         companyId: data.companyId,
         clientId: data.clientId,
@@ -253,3 +305,5 @@ exports.uploadGeneratedDocument = onCall({ secrets: [googleClientId, googleClien
   if (!response.ok) throw new HttpsError('internal', `Cloud upload failed (${response.status}).`);
   return { provider: data.provider, id: uploaded.id, webUrl: uploaded.webViewLink || uploaded.webUrl, fileName: data.fileName, folderId: data.folderId, uploaded: true, fallback: false };
 });
+
+module.exports._test = { validatePayload, renderFreeMarkerTemplate, htmlToText, normalizeEmailList, buildEmailContent };
