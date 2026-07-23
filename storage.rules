@@ -33,6 +33,24 @@ service firebase.storage {
       allow write: if isCompanyMember(companyId) && isDocxTemplateUpload();
     }
 
+    match /companies/{companyId}/email-templates/{fileName} {
+      allow read: if isCompanyMember(companyId);
+      allow write: if isCompanyMember(companyId)
+        && request.resource != null
+        && request.resource.size <= 256 * 1024
+        && request.resource.contentType in ['text/plain', 'text/x-freemarker', 'application/octet-stream']
+        && fileName.matches('.*\.ftl');
+    }
+
+    match /companies/{companyId}/email-design-templates/{fileName} {
+      allow read: if isCompanyMember(companyId);
+      allow write: if isCompanyMember(companyId)
+        && request.resource != null
+        && request.resource.size <= 512 * 1024
+        && request.resource.contentType in ['text/plain', 'text/x-freemarker', 'application/octet-stream']
+        && fileName.matches('.*\.ftl');
+    }
+
     match /companies/{companyId}/generated/{allPaths=**} {
       allow read, write: if isCompanyMember(companyId);
     }
