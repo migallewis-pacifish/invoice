@@ -6,6 +6,7 @@ import { collection, collectionData, Firestore } from '@angular/fire/firestore';
 import { NavBarComponent } from '../../components/nav-bar/nav-bar.component';
 import { WorkspaceTopbarComponent } from '../../components/workspace-topbar/workspace-topbar.component';
 import { CompanyTemplate } from '../../models/invoice.model';
+import { normalizeTemplateFormat } from '../../services/template-renderer.service';
 import { TemplateService } from '../../services/template.service';
 import { LetterDocxService } from '../../services/letter-docx.service';
 import { CompanyContextService } from '../../services/company-context.service';
@@ -97,6 +98,7 @@ export class TemplatesComponent {
   protected readonly invoiceTemplateCount = computed(() => this.templates().filter(template => template.type === 'invoice' && !template.archived).length);
   protected readonly letterTemplateCount = computed(() => this.templates().filter(template => template.type === 'letter' && !template.archived).length);
   protected readonly emailTemplateCount = computed(() => this.designedEmailTemplates().length);
+  protected readonly formatLabels: Record<string, string> = { docx: 'Word DOCX', 'freemarker-html': 'FreeMarker/HTML', 'pdf-mapped': 'PDF-mapped' };
   protected readonly totalTemplateCount = computed(() => this.templates().filter(template => template.active && !template.archived).length + this.emailTemplateCount());
 
   protected setTab(tab: TemplateTab): void {
@@ -153,7 +155,7 @@ export class TemplatesComponent {
 
   protected async viewTemplate(template: TemplateCard): Promise<void> {
     try {
-      const url = await this.templateService.getDownloadUrl(template.storagePath);
+      const url = await this.templateService.getDownloadUrl(template.bodyStoragePath || template.storagePath);
       window.open(url, '_blank', 'noopener');
     } catch (e: any) {
       this.error.set(e?.message ?? 'Unable to open template.');
@@ -272,8 +274,8 @@ export class TemplatesComponent {
       name,
       type,
       category: type === 'letter' ? 'Letter' : 'Invoice',
-      description: `${template.fileName || name} stored at ${template.storagePath}.`,
-      fileUrl: template.storagePath,
+      description: `${template.fileName || name} • ${this.formatLabels[normalizeTemplateFormat(template)]} • stored at ${template.bodyStoragePath || template.storagePath}.`,
+      fileUrl: template.bodyStoragePath || template.storagePath,
       active: !template.archived,
       accent: type === 'letter' ? 'letter' : 'invoice'
     };

@@ -144,13 +144,35 @@ export interface RegisterWizardPayload {
   extraUserEmail?: string;   // optional, max 1 additional user
 }
 
+export type CompanyTemplateFormat = 'docx' | 'freemarker-html' | 'pdf-mapped';
+
+export interface CompanyTemplatePreviewMetadata {
+  storagePath?: string;
+  imageStoragePath?: string;
+  thumbnailStoragePath?: string;
+  updatedAt?: number;
+}
+
 export interface CompanyTemplate {
   id: string;
   companyId: string;
   type: 'invoice' | 'letter';
   name: string;
+  /**
+   * Template renderer format. Older records omitted this field and are treated as DOCX.
+   */
+  format?: CompanyTemplateFormat;
+  /**
+   * Primary template body location. Defaults to storagePath for legacy DOCX templates.
+   */
+  bodyStoragePath?: string;
+  /**
+   * Legacy storage location used by existing DOCX templates. Kept for compatibility.
+   */
   storagePath: string;
   fileName?: string;
+  preview?: CompanyTemplatePreviewMetadata;
+  requiredVariables?: string[];
   isDefault?: boolean;
   archived?: boolean;
   createdAt?: number;

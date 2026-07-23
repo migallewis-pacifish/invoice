@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { InvoiceData, InvoiceItem, Company } from '../models/invoice.model';
 import { TemplateService } from './template.service';
+import { TemplateRendererService } from './template-renderer.service';
 import { CurrencyService } from './currency.service';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
@@ -25,6 +26,7 @@ export class InvoiceDocxService {
   private db = inject(Firestore);
   private currencyService = inject(CurrencyService);
   private templateService = inject(TemplateService);
+  private templateRenderer = inject(TemplateRendererService);
   private notifications = inject(NotificationService);
   private documentStorage = inject(DocumentStorageService);
 
@@ -94,10 +96,16 @@ export class InvoiceDocxService {
         return this.templateService.getDefaultTemplate(companyId, 'invoice').pipe(
           take(1),
           switchMap(template => {
-            if (!template?.storagePath) {
+            const path = template?.bodyStoragePath || template?.storagePath;
+            if (!template || !path) {
               return throwError(() => new Error('No invoice template found for company.'));
             }
-            const templateRef = ref(this.storage, template.storagePath);
+            try {
+              this.templateRenderer.assertRenderable(template, 'invoice');
+            } catch (error) {
+              return throwError(() => error);
+            }
+            const templateRef = ref(this.storage, path);
             return from(getDownloadURL(templateRef)).pipe(map(url => ({ url, company })));
           })
         );

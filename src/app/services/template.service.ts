@@ -2,13 +2,26 @@ import { inject, Injectable } from '@angular/core';
 import { Storage, ref, uploadBytes, getDownloadURL, getBlob, deleteObject } from '@angular/fire/storage';
 import { Firestore, collection, collectionData, deleteDoc, doc, getDocs, setDoc, updateDoc } from '@angular/fire/firestore';
 import { firstValueFrom, map, Observable } from 'rxjs';
-import { CompanyTemplate } from '../models/invoice.model';
+import { CompanyTemplate, CompanyTemplateFormat } from '../models/invoice.model';
+import { normalizeTemplateFormat } from './template-renderer.service';
 import { ActivityService } from './activity.service';
 
 export type CompanyTemplateType = CompanyTemplate['type'];
 
+export interface TemplateUploadOptions {
+  format?: CompanyTemplateFormat;
+  name?: string;
+  requiredVariables?: string[];
+}
+
+const FORMAT_CONFIG: Record<CompanyTemplateFormat, { ext: string; contentType: string; label: string }> = {
+  docx: { ext: '.docx', contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', label: 'Word DOCX' },
+  'freemarker-html': { ext: '.html', contentType: 'text/html', label: 'FreeMarker/HTML' },
+  'pdf-mapped': { ext: '.pdf', contentType: 'application/pdf', label: 'PDF-mapped' }
+};
+
 export function selectDefaultTemplate(templates: CompanyTemplate[], type: CompanyTemplateType, configuredTemplateId?: string | null): CompanyTemplate | null {
-  const candidates = templates.filter(template => template.type === type && !template.archived && !!template.storagePath);
+  const candidates = templates.filter(template => template.type === type && !template.archived && !!(template.bodyStoragePath || template.storagePath));
   return candidates.find(template => template.id === configuredTemplateId)
     ?? candidates.find(template => template.isDefault)
     ?? candidates[0]
@@ -23,14 +36,14 @@ export class TemplateService {
   private db = inject(Firestore);
   private activityService = inject(ActivityService);
 
-  async upload(companyId: string, file: File, type: CompanyTemplateType = 'invoice', templateId = this.newTemplateId(type)) {
-    this.assertDocx(file);
+  async upload(companyId: string, file: File, type: CompanyTemplateType = 'invoice', templateId = this.newTemplateId(type), options: TemplateUploadOptions = {}) {
+    const format = options.format ?? 'docx';
+    await this.validateTemplateFile(file, format, type);
 
-    const path = `companies/${companyId}/templates/${templateId}.docx`;
+    const config = FORMAT_CONFIG[format];
+    const path = `companies/${companyId}/templates/${templateId}${config.ext}`;
     const r = ref(this.storage, path);
-    await uploadBytes(r, file, {
-      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    });
+    await uploadBytes(r, file, { contentType: file.type || config.contentType });
     const url = await getDownloadURL(r);
     const now = Date.now();
     const shouldDefault = await this.shouldBecomeDefault(companyId, type);
@@ -38,9 +51,12 @@ export class TemplateService {
       id: templateId,
       companyId,
       type,
-      name: shouldDefault ? this.defaultName(type) : this.nameFromFile(file.name, type),
+      name: options.name?.trim() || (shouldDefault ? this.defaultName(type) : this.nameFromFile(file.name, type, format)),
+      format,
+      bodyStoragePath: path,
       storagePath: path,
       fileName: file.name,
+      requiredVariables: this.requiredVariablesFor(type, format),
       isDefault: shouldDefault,
       archived: false,
       updatedAt: now,
@@ -51,7 +67,7 @@ export class TemplateService {
       companyId,
       'update',
       `companies/${companyId}/templates/${templateId}`,
-      `Uploaded ${type} template.`,
+      `Uploaded ${type} ${config.label} template.`,
       async () => {
         await setDoc(doc(this.db, `companies/${companyId}/templates/${templateId}`), template, { merge: true });
         if (shouldDefault) await this.setDefaultTemplate(companyId, templateId, type);
@@ -96,26 +112,30 @@ export class TemplateService {
   }
 
   async deleteTemplate(companyId: string, template: CompanyTemplate): Promise<void> {
-    if (template.storagePath) {
-      await deleteObject(ref(this.storage, template.storagePath)).catch(() => undefined);
-    }
+    const paths = Array.from(new Set([template.bodyStoragePath, template.storagePath, template.preview?.storagePath, template.preview?.imageStoragePath, template.preview?.thumbnailStoragePath].filter(Boolean) as string[]));
+    await Promise.all(paths.map(path => deleteObject(ref(this.storage, path)).catch(() => undefined)));
     await deleteDoc(doc(this.db, `companies/${companyId}/templates/${template.id}`));
   }
 
   async duplicateTemplate(companyId: string, template: CompanyTemplate): Promise<CompanyTemplate> {
-    if (!template.storagePath) throw new Error('Template path is required.');
+    if (!(template.bodyStoragePath || template.storagePath)) throw new Error('Template path is required.');
     const copyId = this.newTemplateId(template.type);
-    const copyPath = `companies/${companyId}/templates/${copyId}.docx`;
-    const source = ref(this.storage, template.storagePath);
+    const format = normalizeTemplateFormat(template);
+    const config = FORMAT_CONFIG[format];
+    const sourcePath = template.bodyStoragePath || template.storagePath;
+    const copyPath = `companies/${companyId}/templates/${copyId}${config.ext}`;
+    const source = ref(this.storage, sourcePath);
     const target = ref(this.storage, copyPath);
     const blob = await getBlob(source);
-    await uploadBytes(target, blob, { contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    await uploadBytes(target, blob, { contentType: config.contentType });
     const now = Date.now();
     const copy: CompanyTemplate = {
       ...template,
       id: copyId,
       companyId,
       name: `${template.name || this.defaultName(template.type)} Copy`,
+      format,
+      bodyStoragePath: copyPath,
       storagePath: copyPath,
       isDefault: false,
       archived: false,
@@ -136,9 +156,15 @@ export class TemplateService {
     return !template;
   }
 
-  private assertDocx(file: File) {
+  private async validateTemplateFile(file: File, format: CompanyTemplateFormat, type: CompanyTemplateType): Promise<void> {
     if (!file) throw new Error('Template file is required.');
-    if (!file.name.toLowerCase().endsWith('.docx')) throw new Error('Template must be a .docx file.');
+    const config = FORMAT_CONFIG[format];
+    if (!file.name.toLowerCase().endsWith(config.ext)) throw new Error(`${config.label} templates must use ${config.ext} files.`);
+    if (format === 'freemarker-html') {
+      const body = await file.text();
+      const missing = this.requiredVariablesFor(type, format).filter(variable => !body.includes(`{{${variable}}`) && !body.includes('${' + variable + '}'));
+      if (missing.length) throw new Error(`Missing required ${type} variables: ${missing.join(', ')}.`);
+    }
   }
 
   private newTemplateId(type: CompanyTemplateType) {
@@ -149,7 +175,14 @@ export class TemplateService {
     return type === 'invoice' ? 'Default invoice template' : 'Default letter template';
   }
 
-  private nameFromFile(fileName: string, type: CompanyTemplateType) {
-    return fileName?.replace(/\.docx$/i, '') || this.defaultName(type);
+  private nameFromFile(fileName: string, type: CompanyTemplateType, format: CompanyTemplateFormat) {
+    return fileName?.replace(new RegExp(`${FORMAT_CONFIG[format].ext}$`, 'i'), '') || this.defaultName(type);
+  }
+
+  private requiredVariablesFor(type: CompanyTemplateType, format: CompanyTemplateFormat): string[] {
+    if (format === 'pdf-mapped') return [];
+    return type === 'invoice'
+      ? ['invoice_number', 'invoice_date', 'client_name', 'items', 'total']
+      : ['letter_title', 'letter_date', 'letter_message', 'client_name', 'company_name'];
   }
 }

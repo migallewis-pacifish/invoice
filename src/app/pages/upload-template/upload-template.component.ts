@@ -1,16 +1,19 @@
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Component, EventEmitter, inject, Input, Output, signal } from '@angular/core';
 import { collection, collectionData, doc, docData, Firestore } from '@angular/fire/firestore';
 import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 import { take } from 'rxjs';
+import { RouterLink } from '@angular/router';
 import { ActivityService } from '../../services/activity.service';
 import { TemplateService } from '../../services/template.service';
+import { CompanyTemplateFormat } from '../../models/invoice.model';
 import { CURRENT_AUTH_USER } from '../../services/company-context.service';
 
 @Component({
   selector: 'app-upload-template',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './upload-template.component.html',
   styleUrl: './upload-template.component.scss'
 })
@@ -44,7 +47,17 @@ export class UploadTemplateComponent {
 
   // Config
   readonly maxSizeMB = 5;
-  readonly allowedExt = ['.docx'];
+  readonly formatOptions: { value: CompanyTemplateFormat; label: string; description: string; ext: string }[] = [
+    { value: 'docx', label: 'Word DOCX', description: 'Current Word template renderer.', ext: '.docx' },
+    { value: 'freemarker-html', label: 'Designed FreeMarker/HTML', description: 'HTML body using {{variable}} or ${variable} placeholders.', ext: '.html' },
+    { value: 'pdf-mapped', label: 'PDF-mapped', description: 'Future mapped PDF renderer.', ext: '.pdf' }
+  ];
+  format = signal<CompanyTemplateFormat>('docx');
+  readonly requiredVariables: Record<CompanyTemplateFormat, string[]> = {
+    docx: ['invoice_number', 'invoice_date', 'client_name', 'items', 'total'],
+    'freemarker-html': ['invoice_number', 'invoice_date', 'client_name', 'items', 'total'],
+    'pdf-mapped': []
+  };
 
   constructor() {
     // Load current user -> company -> template path/url
@@ -58,6 +71,7 @@ export class UploadTemplateComponent {
         collectionData(collection(this.db, `companies/${cid}/templates`), { idField: 'id' }).subscribe(async (templates: any[]) => {
           const c = templates.find(template => template.type === 'invoice' && template.isDefault && !template.archived)
             ?? templates.find(template => template.type === 'invoice' && !template.archived);
+          if (c?.format) this.format.set(c.format);
           const path = c?.storagePath ?? null;
           this.templateId.set(c?.id ?? null);
           this.templatePath.set(path);
@@ -98,9 +112,10 @@ export class UploadTemplateComponent {
     this.error.set(null);
     // Validate ext
     const name = f.name.toLowerCase();
-    const okExt = this.allowedExt.some(ext => name.endsWith(ext));
+    const expectedExt = this.formatOptions.find(option => option.value === this.format())?.ext || '.docx';
+    const okExt = name.endsWith(expectedExt);
     if (!okExt) {
-      this.error.set('Please upload a .docx Word file.');
+      this.error.set(`Please upload a ${expectedExt} template file.`);
       this.file.set(null);
       return;
     }
@@ -112,7 +127,7 @@ export class UploadTemplateComponent {
       return;
     }
     this.file.set(f);
-    this.info.set(`${f.name} • ${(f.size / 1024 / 1024).toFixed(2)} MB`);
+    this.info.set(`${f.name} • ${(f.size / 1024 / 1024).toFixed(2)} MB • ${this.formatLabel()}`);
   }
 
   async upload() {
@@ -125,7 +140,7 @@ export class UploadTemplateComponent {
     this.progress.set(0);
 
     try {
-      const result = await this.templateService.upload(cid, f, 'invoice');
+      const result = await this.templateService.upload(cid, f, 'invoice', undefined, { format: this.format() });
       const url = await getDownloadURL(ref(this.storage, result.path));
       this.templateId.set(result.template.id);
       this.templatePath.set(result.path);
@@ -141,6 +156,21 @@ export class UploadTemplateComponent {
       this.progress.set(0);
       this.currentTask = null;
     }
+  }
+
+  onFormatChanged(format: CompanyTemplateFormat): void {
+    this.format.set(format);
+    this.file.set(null);
+    this.info.set(null);
+    this.error.set(null);
+  }
+
+  formatLabel(): string {
+    return this.formatOptions.find(option => option.value === this.format())?.label || 'Word DOCX';
+  }
+
+  acceptList(): string {
+    return this.formatOptions.find(option => option.value === this.format())?.ext || '.docx';
   }
 
   cancelUpload() {
@@ -169,7 +199,7 @@ export class UploadTemplateComponent {
         'update',
         `companies/${cid}/templates/${id}`,
         'Removed invoice template.',
-        () => this.templateService.deleteTemplate(cid, { id, companyId: cid, type: 'invoice', name: 'Invoice template', storagePath: path })
+        () => this.templateService.deleteTemplate(cid, { id, companyId: cid, type: 'invoice', name: 'Invoice template', format: this.format(), bodyStoragePath: path, storagePath: path })
       );
     } catch (e: any) {
       this.error.set(e?.message ?? 'Failed to remove template.');
