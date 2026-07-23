@@ -10,6 +10,7 @@ import { Company } from '../models/invoice.model';
 import { LetterData, LetterSignature } from '../models/letter.model';
 import { ActivityService } from './activity.service';
 import { TemplateService } from './template.service';
+import { DocumentStorageService } from './document-storage.service';
 
 @Injectable({ providedIn: 'root' })
 export class LetterDocxService {
@@ -18,6 +19,7 @@ export class LetterDocxService {
   private db = inject(Firestore);
   private activityService = inject(ActivityService);
   private templateService = inject(TemplateService);
+  private documentStorage = inject(DocumentStorageService);
 
   uploadTemplate(companyId: string, file: File): Promise<{ path: string; url: string }> {
     return this.templateService.upload(companyId, file, 'letter').then(result => ({
@@ -62,10 +64,9 @@ export class LetterDocxService {
     signature?: LetterSignature | null;
   }): Observable<string> {
     return this.generateLetterDocx(companyId, input).pipe(
-      map(({ blob, fileName }) => {
-        this.downloadInBrowser(blob, input.client?.displayName || 'client', fileName);
-        return fileName;
-      }),
+      switchMap(({ blob, fileName }) =>
+        from(this.documentStorage.saveGeneratedDocument({ companyId, clientId: input.client?.id, clientName: input.client?.displayName || 'client', documentType: 'letter', documentId: input.title, fileName, mimeType: blob.type, blob })).pipe(map(() => fileName))
+      ),
       catchError(err => {
         console.error('Letter generation error:', err);
         return throwError(() => new Error('Failed to generate letter document.'));
