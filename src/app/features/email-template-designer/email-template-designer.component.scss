@@ -87,6 +87,9 @@ pre {
 .starter-panel h1,.preview-step h1,.template-type-group h2{margin:0;color:var(--ink)}
 .template-type-group{padding:22px;border-top:1px solid var(--border)}
 .starter-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:14px}
+.scratch-grid{padding:22px;margin-top:0}
+.scratch-card{grid-column:1;align-content:start}
+.scratch-icon{width:46px;height:46px;display:grid;place-items:center;border-radius:50%;background:#dceaff;color:var(--primary);font-size:28px;font-weight:700}
 .starter-card{display:grid;gap:10px;padding:20px;border:1px solid var(--border);border-radius:var(--radius-lg);background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);box-shadow:var(--shadow2)}
 .starter-card.selected{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.14),var(--shadow2)}
 .starter-accent{width:46px;height:6px;border-radius:999px}

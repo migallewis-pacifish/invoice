@@ -19,7 +19,6 @@ import { EmailTemplateDefinition, EmailTemplateScenario } from '../../models/ema
 import { EMAIL_TEMPLATE_SCENARIOS, EmailTemplateDefinitionService } from '../../features/email-template-designer/services/email-template-definition.service';
 import { Dialog } from '@angular/cdk/dialog';
 import { EmailTemplateDesignerComponent } from '../../features/email-template-designer/email-template-designer.component';
-import { createStarterEmailTemplates, cloneStarterEmailTemplate, StarterEmailTemplate } from '../../features/email-template-designer/email-template-starter-catalog';
 import { EmailTemplateBuilderService } from '../../features/email-template-designer/services/email-template-builder.service';
 import { EmailTemplatePreviewDataService } from '../../features/email-template-designer/services/email-template-preview-data.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -86,8 +85,7 @@ export class TemplatesComponent {
   protected readonly filter = signal<'active' | 'archived' | TemplateType>('active');
   protected readonly emailTemplates = signal<CompanyEmailTemplate[]>([]);
   protected readonly designedEmailTemplates = signal<EmailTemplateDefinition[]>([]);
-  protected readonly starterEmailTemplates = createStarterEmailTemplates();
-  protected readonly previewEmailTemplate = signal<EmailTemplateDefinition | StarterEmailTemplate | null>(null);
+  protected readonly previewEmailTemplate = signal<EmailTemplateDefinition | null>(null);
   protected readonly previewEmailHtml = signal<SafeHtml>('');
   protected readonly scenarios = EMAIL_TEMPLATE_SCENARIOS;
   protected readonly selectedEmailTemplate = signal<CompanyEmailTemplate | null>(null);
@@ -235,17 +233,7 @@ export class TemplatesComponent {
     }
   }
 
-  protected async createFromStarter(starter: StarterEmailTemplate): Promise<void> {
-    try {
-      const companyId = await this.companyContext.requireCompanyIdOnce();
-      const id = await this.emailTemplateDefinitions.save(companyId, cloneStarterEmailTemplate(starter, companyId));
-      this.router.navigate(['/email-templates/designer', id]);
-    } catch (e: any) {
-      this.error.set(e?.message ?? 'Unable to create email template.');
-    }
-  }
-
-  protected previewDesignedEmailTemplate(template: EmailTemplateDefinition | StarterEmailTemplate): void {
+  protected previewDesignedEmailTemplate(template: EmailTemplateDefinition): void {
     this.previewEmailTemplate.set(template);
     const html = this.emailBuilder.buildHtml(template as EmailTemplateDefinition, value => this.previewData.renderTokens(value));
     this.previewEmailHtml.set(this.sanitizer.bypassSecurityTrustHtml(html));
@@ -282,6 +270,44 @@ export class TemplatesComponent {
     if (!template.id) return;
     const companyId = await this.companyContext.requireCompanyIdOnce();
     await this.emailTemplateDefinitions.setDefaultForScenario(companyId, template, scenario);
+  }
+
+  protected async openEmailMoreMenu(template: EmailTemplateDefinition): Promise<void> {
+    const action = window.prompt(
+      `Choose action: ${template.archived ? 'restore' : 'archive'}, rename, default, duplicate`,
+      template.archived ? 'restore' : 'default'
+    );
+    if (!action) return;
+
+    try {
+      switch (action.toLowerCase()) {
+        case 'archive':
+        case 'restore':
+          await this.archiveDesignedEmailTemplate(template);
+          break;
+        case 'rename':
+          await this.renameDesignedEmailTemplate(template);
+          break;
+        case 'duplicate':
+        case 'copy':
+          await this.duplicateDesignedEmailTemplate(template);
+          break;
+        case 'default':
+        case 'set default': {
+          const compatible = this.compatibleScenarios(template);
+          const scenario = window.prompt(
+            `Set as default for: ${compatible.map(item => `${item.label} (${item.value})`).join(', ')}`,
+            compatible[0]?.value ?? ''
+          ) as EmailTemplateScenario | null;
+          if (scenario && compatible.some(item => item.value === scenario)) {
+            await this.setDefaultEmailTemplate(template, scenario);
+          }
+          break;
+        }
+      }
+    } catch (e: any) {
+      this.error.set(e?.message ?? 'Unable to update email template.');
+    }
   }
 
   protected scenarioLabel(scenario: EmailTemplateScenario): string {

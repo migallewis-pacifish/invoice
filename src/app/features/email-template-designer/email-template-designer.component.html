@@ -12,7 +12,15 @@
           <h1>Start with a modern email template</h1>
           <p>Choose one of three editable templates per email type, or start with a blank design.</p>
         </div>
-        <button type="button" class="primary" (click)="createNew()">Create new blank template</button>
+      </div>
+      <div class="starter-grid scratch-grid">
+        <article class="starter-card scratch-card">
+          <div class="scratch-icon" aria-hidden="true">＋</div>
+          <p class="eyebrow">Blank canvas</p>
+          <h3>Start from scratch</h3>
+          <p>Build a completely custom email using layouts, content blocks, and your own styling.</p>
+          <button type="button" class="primary" (click)="createNew()">Start from scratch</button>
+        </article>
       </div>
       <div class="template-type-group" *ngFor="let type of types">
         <h2>{{ type.label }}</h2>

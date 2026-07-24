@@ -129,30 +129,10 @@
         <h2>Email Templates</h2>
         <p class="muted">Create, assign, and manage reusable email designs for every sending scenario.</p>
       </div>
-      <button class="edit-button" type="button" (click)="newEmailTemplate()">Create from scratch</button>
+      <button class="edit-button" type="button" (click)="newEmailTemplate()">Add new template</button>
     </div>
 
-    <h3>Starter gallery</h3>
-    <div class="email-template-grid" aria-label="Starter email templates">
-      <article class="email-template-card" *ngFor="let starter of starterEmailTemplates">
-        <div class="email-card-preview" [style.border-top-color]="starter.accent">
-          <span class="email-card-icon" aria-hidden="true">✉</span>
-          <span class="template-badge type-badge">{{ scenarioLabel(starter.scenario) }}</span>
-        </div>
-        <div class="template-content">
-          <h2>{{ starter.name }}</h2>
-          <p>{{ starter.description }}</p>
-          <small>{{ starter.audience }} • {{ starter.subject }}</small>
-        </div>
-        <div class="template-actions">
-          <button class="edit-button" type="button" (click)="createFromStarter(starter)">Use starter</button>
-          <button class="square-button" type="button" aria-label="Preview starter" (click)="previewDesignedEmailTemplate(starter)"><span class="app-icon" aria-hidden="true">👁</span></button>
-        </div>
-      </article>
-    </div>
-
-    <h3>Company designs</h3>
-    <div class="email-template-grid" aria-label="Company email templates">
+    <div class="email-template-grid" aria-label="Created email templates">
       <article class="email-template-card" *ngFor="let template of designedEmailTemplates()" [class.archived]="template.archived">
         <div class="email-card-preview">
           <span class="email-card-icon" aria-hidden="true">✉</span>
@@ -160,33 +140,27 @@
           <span class="template-badge category-badge" *ngIf="template.archived">Archived</span>
         </div>
         <div class="template-content">
-          <h2>{{ template.name }}</h2>
+          <div class="title-line">
+            <h2>{{ template.name }}</h2>
+            <button class="more-button" type="button" aria-label="More email template actions" (click)="openEmailMoreMenu(template)"><span class="app-icon" aria-hidden="true">⋮</span></button>
+          </div>
           <p>{{ template.subject }}</p>
           <small>{{ template.sections.length }} section{{ template.sections.length === 1 ? '' : 's' }}</small>
           <div class="default-list" *ngIf="template.defaultForScenarios?.length">
             Default for: <span *ngFor="let scenario of template.defaultForScenarios">{{ scenarioLabel(scenario) }}</span>
           </div>
-          <label class="scenario-picker">
-            Assign default
-            <select #scenarioSelect>
-              <option *ngFor="let scenario of compatibleScenarios(template)" [value]="scenario.value">{{ scenario.label }}</option>
-            </select>
-          </label>
         </div>
-        <div class="template-actions wrap-actions">
+        <div class="template-actions">
           <button class="edit-button" type="button" (click)="editDesignedEmailTemplate(template)">Edit</button>
-          <button class="square-button" type="button" aria-label="Preview email template" (click)="previewDesignedEmailTemplate(template)"><span class="app-icon" aria-hidden="true">👁</span></button>
           <button class="square-button" type="button" aria-label="Duplicate email template" (click)="duplicateDesignedEmailTemplate(template)"><span class="app-icon" aria-hidden="true">⧉</span></button>
-          <button class="square-button" type="button" aria-label="Rename email template" (click)="renameDesignedEmailTemplate(template)"><span class="app-icon" aria-hidden="true">✎</span></button>
-          <button class="square-button" type="button" aria-label="Archive email template" (click)="archiveDesignedEmailTemplate(template)"><span class="app-icon" aria-hidden="true">{{ template.archived ? '↩' : '🗄' }}</span></button>
-          <button class="edit-button" type="button" (click)="setDefaultEmailTemplate(template, $any(scenarioSelect.value))">Set default</button>
+          <button class="square-button" type="button" aria-label="Preview email template" (click)="previewDesignedEmailTemplate(template)"><span class="app-icon" aria-hidden="true">👁</span></button>
         </div>
       </article>
 
       <button class="upload-card" type="button" (click)="newEmailTemplate()">
         <span class="plus-icon app-icon" aria-hidden="true">＋</span>
-        <strong>New Template</strong>
-        <small>Start from a blank email canvas.</small>
+        <strong>Add new template</strong>
+        <small>Choose a starter design or start from scratch.</small>
       </button>
     </div>
 
