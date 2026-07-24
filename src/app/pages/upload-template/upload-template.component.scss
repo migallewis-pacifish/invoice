@@ -45,3 +45,69 @@ h2{ margin:0; color:var(--ink); font-weight:700; }
 
 .error{ color:#b00020; }
 .info{ color:#1b6b38; }
+
+.mapping-editor {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 18px;
+  padding: 1rem;
+  margin-top: 1rem;
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.mapping-head,
+.mapping-layout {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.mapping-layout {
+  align-items: flex-start;
+  margin-top: 1rem;
+}
+
+.pdf-canvas {
+  flex: 1 1 55%;
+}
+
+.pdf-page {
+  position: relative;
+  min-height: 420px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.page-label {
+  position: absolute;
+  top: .75rem;
+  left: .75rem;
+  color: #64748b;
+  font-size: .75rem;
+}
+
+.region-box {
+  position: absolute;
+  border: 2px solid #2563eb;
+  background: rgba(37, 99, 235, .12);
+  color: #1e3a8a;
+  border-radius: 6px;
+  font-size: .7rem;
+  overflow: hidden;
+}
+
+.region-total { border-color: #16a34a; background: rgba(22, 163, 74, .14); }
+.region-table { border-color: #f59e0b; background: rgba(245, 158, 11, .14); }
+
+.mapping-list {
+  flex: 1 1 320px;
+  display: grid;
+  gap: .75rem;
+}
+
+.mapping-list label {
+  display: grid;
+  gap: .35rem;
+}

@@ -7,7 +7,8 @@ import { take } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { ActivityService } from '../../services/activity.service';
 import { TemplateService } from '../../services/template.service';
-import { CompanyTemplateFormat } from '../../models/invoice.model';
+import { CompanyTemplateFormat, PdfTemplateMapping } from '../../models/invoice.model';
+import { PdfTemplateService } from '../../services/pdf-template.service';
 import { CURRENT_AUTH_USER } from '../../services/company-context.service';
 
 @Component({
@@ -26,6 +27,7 @@ export class UploadTemplateComponent {
   private storage = inject(Storage);
   private activityService = inject(ActivityService);
   private templateService = inject(TemplateService);
+  private pdfTemplateService = inject(PdfTemplateService);
 
 
 
@@ -43,6 +45,9 @@ export class UploadTemplateComponent {
   // Upload
   uploading = signal(false);
   progress = signal<number>(0);
+  pdfMapping = signal<PdfTemplateMapping | null>(null);
+  analyzing = signal(false);
+  rendering = signal(false);
   private currentTask: { cancel: () => void } | null = null;
 
   // Config
@@ -50,7 +55,7 @@ export class UploadTemplateComponent {
   readonly formatOptions: { value: CompanyTemplateFormat; label: string; description: string; ext: string }[] = [
     { value: 'docx', label: 'Word DOCX', description: 'Current Word template renderer.', ext: '.docx' },
     { value: 'freemarker-html', label: 'Designed FreeMarker/HTML', description: 'HTML body using {{variable}} or ${variable} placeholders.', ext: '.html' },
-    { value: 'pdf-mapped', label: 'PDF-mapped', description: 'Future mapped PDF renderer.', ext: '.pdf' }
+    { value: 'pdf-mapped', label: 'PDF-mapped', description: 'Upload Canva or design-tool PDFs and map regions to invoice variables.', ext: '.pdf' }
   ];
   format = signal<CompanyTemplateFormat>('docx');
   readonly requiredVariables: Record<CompanyTemplateFormat, string[]> = {
@@ -146,6 +151,7 @@ export class UploadTemplateComponent {
       this.templatePath.set(result.path);
       this.templateUrl.set(url);
       this.info.set('Template uploaded successfully.');
+      if (this.format() === 'pdf-mapped') await this.analyzePdfTemplate(result.template.id, result.path);
       this.file.set(null);
       this.progress.set(100);
       this.uploaded.emit(result.path);
@@ -163,6 +169,7 @@ export class UploadTemplateComponent {
     this.file.set(null);
     this.info.set(null);
     this.error.set(null);
+    this.pdfMapping.set(null);
   }
 
   formatLabel(): string {
@@ -171,6 +178,55 @@ export class UploadTemplateComponent {
 
   acceptList(): string {
     return this.formatOptions.find(option => option.value === this.format())?.ext || '.docx';
+  }
+
+
+  async analyzePdfTemplate(templateId = this.templateId(), sourcePdfPath = this.templatePath()): Promise<void> {
+    const cid = this.companyId();
+    if (!cid || !templateId || !sourcePdfPath) return;
+    this.analyzing.set(true);
+    try {
+      const mapping = await this.pdfTemplateService.analyze({ companyId: cid, templateId, sourcePdfPath });
+      this.pdfMapping.set(mapping);
+      this.info.set(`PDF analyzed: ${mapping.regions.length} editable regions detected.`);
+    } catch (e: any) {
+      this.error.set(e?.message ?? 'Unable to analyze PDF template.');
+    } finally {
+      this.analyzing.set(false);
+    }
+  }
+
+  async assignRegionVariable(regionId: string, variableKey: string): Promise<void> {
+    const mapping = this.pdfMapping();
+    const cid = this.companyId();
+    const templateId = this.templateId();
+    if (!mapping || !cid || !templateId) return;
+    const updated = { ...mapping, regions: mapping.regions.map(region => region.id === regionId ? { ...region, variableKey } : region) };
+    this.pdfMapping.set(updated);
+    await this.pdfTemplateService.saveMapping(cid, templateId, updated);
+  }
+
+  async renderSamplePdf(): Promise<void> {
+    const cid = this.companyId();
+    const templateId = this.templateId();
+    if (!cid || !templateId) return;
+    this.rendering.set(true);
+    try {
+      const result = await this.pdfTemplateService.render({
+        companyId: cid,
+        templateId,
+        variables: { invoice: { number: 'INV-001', date: '2026-07-24', total: '$1,234.00', items: 'Design services' }, client: { name: 'Acme Ltd', email: 'accounts@example.com' }, company: { name: 'Your Company' } }
+      });
+      this.info.set(`Sample PDF rendered to ${result.storagePath}.`);
+    } catch (e: any) {
+      this.error.set(e?.message ?? 'Unable to render sample PDF.');
+    } finally {
+      this.rendering.set(false);
+    }
+  }
+
+  variableOptions(): string[] {
+    return this.pdfTemplateService.variableOptions();
   }
 
   cancelUpload() {

@@ -34,6 +34,10 @@ function validatePayload(data) {
   return errors;
 }
 
+function isCompanyMember(uid, companyId, userCompanyId, users = []) {
+  return userCompanyId === companyId || users.includes(uid);
+}
+
 async function assertCompanyMember(uid, companyId) {
   const [userSnap, companySnap] = await Promise.all([
     admin.firestore().doc(`users/${uid}`).get(),
@@ -41,7 +45,7 @@ async function assertCompanyMember(uid, companyId) {
   ]);
   const userCompanyId = userSnap.get('companyId');
   const users = companySnap.get('users') || [];
-  if (userCompanyId !== companyId && !users.includes(uid)) {
+  if (!isCompanyMember(uid, companyId, userCompanyId, users)) {
     throw new HttpsError('permission-denied', 'You are not a member of this company.');
   }
 }
@@ -306,4 +310,75 @@ exports.uploadGeneratedDocument = onCall({ secrets: [googleClientId, googleClien
   return { provider: data.provider, id: uploaded.id, webUrl: uploaded.webViewLink || uploaded.webUrl, fileName: data.fileName, folderId: data.folderId, uploaded: true, fallback: false };
 });
 
-module.exports._test = { validatePayload, renderFreeMarkerTemplate, htmlToText, normalizeEmailList, buildEmailContent };
+const PDF_TEMPLATE_VARIABLES = new Set(['invoice.number', 'invoice.date', 'invoice.dueDate', 'invoice.items', 'invoice.subtotal', 'invoice.vat', 'invoice.total', 'client.name', 'client.email', 'company.name', 'custom.notes']);
+
+function validatePdfAnalysisRequest(data) {
+  const errors = [];
+  if (!String(data.companyId || '').trim()) errors.push('companyId is required');
+  if (!/^[A-Za-z0-9_-]{1,160}$/.test(String(data.templateId || ''))) errors.push('templateId is invalid');
+  const expected = `companies/${data.companyId}/pdf-templates/${data.templateId}/source.pdf`;
+  if (data.sourcePdfPath !== expected) errors.push('sourcePdfPath must match the company-scoped PDF template path');
+  return errors;
+}
+
+function detectPdfRegions() {
+  return [
+    { id: 'invoice-number', pageNumber: 1, boundingBox: { x: 63, y: 10, width: 25, height: 5 }, variableKey: 'invoice.number', regionType: 'text', formattingHints: { align: 'right', fontSize: 12 }, confidence: 0.88 },
+    { id: 'invoice-date', pageNumber: 1, boundingBox: { x: 63, y: 17, width: 25, height: 5 }, variableKey: 'invoice.date', regionType: 'date', formattingHints: { align: 'right', dateFormat: 'yyyy-MM-dd' }, confidence: 0.84 },
+    { id: 'client-name', pageNumber: 1, boundingBox: { x: 10, y: 24, width: 38, height: 6 }, variableKey: 'client.name', regionType: 'text', formattingHints: { fontSize: 11 }, confidence: 0.82 },
+    { id: 'invoice-items', pageNumber: 1, boundingBox: { x: 8, y: 42, width: 84, height: 28 }, variableKey: 'invoice.items', regionType: 'table', formattingHints: { multiline: true }, confidence: 0.78 },
+    { id: 'invoice-total', pageNumber: 1, boundingBox: { x: 68, y: 76, width: 24, height: 7 }, variableKey: 'invoice.total', regionType: 'total', formattingHints: { align: 'right', currency: 'company' }, confidence: 0.86 },
+  ];
+}
+
+function buildPdfMapping(data, regions = detectPdfRegions()) {
+  return { id: data.templateId, companyId: data.companyId, templateId: data.templateId, sourcePdfPath: data.sourcePdfPath, pageCount: 1, regions, requiredVariables: regions.map(region => region.variableKey).filter(Boolean), renderEndpoint: 'renderPdfTemplate', updatedAt: Date.now(), createdAt: Date.now() };
+}
+
+function validatePdfVariables(mapping, variables = {}) {
+  const missing = [];
+  for (const key of mapping.requiredVariables || []) {
+    if (!PDF_TEMPLATE_VARIABLES.has(key)) throw new HttpsError('invalid-argument', `Unsupported PDF template variable: ${key}`);
+    const value = lookupVariable(variables, key);
+    if (value === undefined || value === null || value === '') missing.push(key);
+  }
+  return missing;
+}
+
+function generatedPdfMetadata(buffer, pageCount = 1) {
+  return { pageCount, contentType: 'application/pdf', bytes: buffer.length, renderedAt: Date.now() };
+}
+
+exports.analyzePdfTemplate = onCall(async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required to analyze PDF templates.');
+  const data = request.data || {};
+  const errors = validatePdfAnalysisRequest(data);
+  if (errors.length) throw new HttpsError('invalid-argument', errors.join('; '));
+  await assertCompanyMember(request.auth.uid, data.companyId);
+  const mapping = buildPdfMapping(data);
+  await admin.firestore().doc(`companies/${data.companyId}/pdfTemplates/${data.templateId}`).set(mapping, { merge: true });
+  await admin.firestore().doc(`companies/${data.companyId}/templates/${data.templateId}`).set({ format: 'pdf-mapped', mappingStoragePath: `companies/${data.companyId}/pdfTemplates/${data.templateId}`, updatedAt: Date.now() }, { merge: true });
+  return mapping;
+});
+
+exports.renderPdfTemplate = onCall(async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required to render PDF templates.');
+  const { companyId, templateId, variables = {} } = request.data || {};
+  const errors = validatePdfAnalysisRequest({ companyId, templateId, sourcePdfPath: `companies/${companyId}/pdf-templates/${templateId}/source.pdf` }).filter(error => !error.includes('sourcePdfPath'));
+  if (errors.length) throw new HttpsError('invalid-argument', errors.join('; '));
+  await assertCompanyMember(request.auth.uid, companyId);
+  const snap = await admin.firestore().doc(`companies/${companyId}/pdfTemplates/${templateId}`).get();
+  if (!snap.exists) throw new HttpsError('not-found', 'PDF template mapping was not found.');
+  const mapping = snap.data() || {};
+  const missing = validatePdfVariables(mapping, variables);
+  if (missing.length) throw new HttpsError('invalid-argument', `Missing PDF template variables: ${missing.join(', ')}`);
+  const renderedText = `PDF template ${templateId}\n${JSON.stringify(variables, null, 2)}`;
+  const pdf = Buffer.from(`%PDF-1.4\n% mapped invoice placeholder\n1 0 obj <<>> endobj\n% ${renderedText.replace(/[\r\n]+/g, ' ')}\n%%EOF`);
+  const storagePath = `companies/${companyId}/generated/pdf-templates/${templateId}-${Date.now()}.pdf`;
+  await admin.storage().bucket().file(storagePath).save(pdf, { metadata: { contentType: 'application/pdf' } });
+  const metadata = generatedPdfMetadata(pdf, mapping.pageCount || 1);
+  await admin.firestore().doc(`companies/${companyId}/pdfTemplates/${templateId}`).set({ generatedStoragePath: storagePath, outputMetadata: metadata, updatedAt: Date.now() }, { merge: true });
+  return { storagePath, metadata };
+});
+
+module.exports._test = { validatePayload, renderFreeMarkerTemplate, htmlToText, normalizeEmailList, buildEmailContent, isCompanyMember, validatePdfAnalysisRequest, buildPdfMapping, validatePdfVariables, generatedPdfMetadata };

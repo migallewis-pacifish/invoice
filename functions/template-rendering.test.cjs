@@ -24,5 +24,34 @@ const { _test } = require('./index.js');
   const content = await _test.buildEmailContent({ messageBody: 'Plain fallback', templateSelection: { kind: 'simple' } });
   assert.deepStrictEqual(content, [{ type: 'text/plain', value: 'Plain fallback' }]);
 
+  assert.strictEqual(_test.isCompanyMember('u1', 'co1', 'co1', []), true);
+  assert.strictEqual(_test.isCompanyMember('u1', 'co1', 'co2', ['u1']), true);
+  assert.strictEqual(_test.isCompanyMember('u1', 'co1', 'co2', ['u2']), false);
+
+
+  assert.deepStrictEqual(_test.validatePdfAnalysisRequest({
+    companyId: 'co', templateId: 'invoice-123', sourcePdfPath: 'companies/co/pdf-templates/invoice-123/source.pdf'
+  }), []);
+
+  const badPdfRequest = _test.validatePdfAnalysisRequest({ companyId: 'co', templateId: '../x', sourcePdfPath: 'wrong.pdf' });
+  assert(badPdfRequest.includes('templateId is invalid'));
+  assert(badPdfRequest.includes('sourcePdfPath must match the company-scoped PDF template path'));
+
+  const mapping = _test.buildPdfMapping({ companyId: 'co', templateId: 'invoice-123', sourcePdfPath: 'companies/co/pdf-templates/invoice-123/source.pdf' });
+  assert.strictEqual(mapping.companyId, 'co');
+  assert.strictEqual(mapping.regions.length, 5);
+  assert(mapping.requiredVariables.includes('invoice.total'));
+
+  assert.deepStrictEqual(_test.validatePdfVariables(mapping, {
+    invoice: { number: 'INV-1', date: '2026-07-24', items: ['Design'], total: '$10.00' },
+    client: { name: 'Acme' }
+  }), []);
+  assert.deepStrictEqual(_test.validatePdfVariables(mapping, { invoice: { number: 'INV-1' } }), ['invoice.date', 'client.name', 'invoice.items', 'invoice.total']);
+
+  const meta = _test.generatedPdfMetadata(Buffer.from('%PDF'), 2);
+  assert.strictEqual(meta.contentType, 'application/pdf');
+  assert.strictEqual(meta.pageCount, 2);
+  assert.strictEqual(meta.bytes, 4);
+
   console.log('template rendering tests passed');
 })();

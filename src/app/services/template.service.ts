@@ -41,7 +41,9 @@ export class TemplateService {
     await this.validateTemplateFile(file, format, type);
 
     const config = FORMAT_CONFIG[format];
-    const path = `companies/${companyId}/templates/${templateId}${config.ext}`;
+    const path = format === 'pdf-mapped'
+      ? `companies/${companyId}/pdf-templates/${templateId}/source.pdf`
+      : `companies/${companyId}/templates/${templateId}${config.ext}`;
     const r = ref(this.storage, path);
     await uploadBytes(r, file, { contentType: file.type || config.contentType });
     const url = await getDownloadURL(r);
@@ -123,7 +125,9 @@ export class TemplateService {
     const format = normalizeTemplateFormat(template);
     const config = FORMAT_CONFIG[format];
     const sourcePath = template.bodyStoragePath || template.storagePath;
-    const copyPath = `companies/${companyId}/templates/${copyId}${config.ext}`;
+    const copyPath = format === 'pdf-mapped'
+      ? `companies/${companyId}/pdf-templates/${copyId}/source.pdf`
+      : `companies/${companyId}/templates/${copyId}${config.ext}`;
     const source = ref(this.storage, sourcePath);
     const target = ref(this.storage, copyPath);
     const blob = await getBlob(source);
