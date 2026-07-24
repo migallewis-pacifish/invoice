@@ -48,6 +48,12 @@ const { _test } = require('./index.js');
   }), []);
   assert.deepStrictEqual(_test.validatePdfVariables(mapping, { invoice: { number: 'INV-1' } }), ['invoice.date', 'client.name', 'invoice.items', 'invoice.total']);
 
+  assert.deepStrictEqual(_test.validatePdfGenerationRequest({ companyId: 'co', clientId: 'cl', documentType: 'invoice', documentId: 'INV-1' }), []);
+  assert(_test.validatePdfGenerationRequest({ companyId: '', documentType: 'receipt' }).includes('companyId is required'));
+  assert.strictEqual(_test.sanitizePathSegment('Client / ACME Ltd.'), 'Client-ACME-Ltd.');
+  const pdfBuffer = _test.minimalPdfBuffer('Invoice INV-1');
+  assert(pdfBuffer.toString('utf8', 0, 8).startsWith('%PDF-1.4'));
+
   const meta = _test.generatedPdfMetadata(Buffer.from('%PDF'), 2);
   assert.strictEqual(meta.contentType, 'application/pdf');
   assert.strictEqual(meta.pageCount, 2);

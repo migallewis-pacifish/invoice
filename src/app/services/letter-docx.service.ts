@@ -12,6 +12,7 @@ import { ActivityService } from './activity.service';
 import { TemplateService } from './template.service';
 import { TemplateRendererService } from './template-renderer.service';
 import { DocumentStorageService } from './document-storage.service';
+import { PdfGenerationResult, PdfGenerationService } from './pdf-generation.service';
 
 @Injectable({ providedIn: 'root' })
 export class LetterDocxService {
@@ -22,6 +23,7 @@ export class LetterDocxService {
   private templateService = inject(TemplateService);
   private templateRenderer = inject(TemplateRendererService);
   private documentStorage = inject(DocumentStorageService);
+  private pdfGeneration = inject(PdfGenerationService);
 
   uploadTemplate(companyId: string, file: File): Promise<{ path: string; url: string }> {
     return this.templateService.upload(companyId, file, 'letter').then(result => ({
@@ -74,6 +76,42 @@ export class LetterDocxService {
         return throwError(() => new Error('Failed to generate letter document.'));
       })
     );
+  }
+
+
+
+  generatePdfViaBackend(companyId: string, input: {
+    title: string;
+    message: string;
+    client: any;
+    signedBy?: string;
+    signature?: LetterSignature | null;
+  }): Observable<PdfGenerationResult> {
+    return from(this.pdfGeneration.generate({
+      companyId,
+      clientId: input.client?.id,
+      clientName: input.client?.displayName || 'client',
+      documentType: 'letter',
+      documentId: input.title,
+      payload: {
+        title: input.title,
+        message: input.message,
+        signedBy: input.signedBy || input.signature?.name || '',
+        signaturePath: input.signature?.path || null
+      },
+      client: input.client || {}
+    })).pipe(catchError(err => throwError(() => this.toPdfGenerationError(err))));
+  }
+
+  private toPdfGenerationError(err: any): Error {
+    const reason = err?.details?.reason;
+    const messages: Record<string, string> = {
+      'conversion-failed': 'PDF conversion failed. Please try again or contact support.',
+      'missing-template': 'No compatible letter template is available for PDF generation.',
+      'unsupported-template-format': 'This letter template format cannot be generated as a PDF yet.',
+      'insufficient-permissions': 'You do not have permission to generate this PDF.'
+    };
+    return new Error(messages[reason] || err?.message || 'PDF generation failed.');
   }
 
   private generateLetterDocx(companyId: string, input: {

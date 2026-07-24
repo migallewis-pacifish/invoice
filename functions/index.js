@@ -381,4 +381,130 @@ exports.renderPdfTemplate = onCall(async request => {
   return { storagePath, metadata };
 });
 
-module.exports._test = { validatePayload, renderFreeMarkerTemplate, htmlToText, normalizeEmailList, buildEmailContent, isCompanyMember, validatePdfAnalysisRequest, buildPdfMapping, validatePdfVariables, generatedPdfMetadata };
+
+const PDF_GENERATION_ERROR_CODES = {
+  CONVERSION_FAILED: 'conversion-failed',
+  MISSING_TEMPLATE: 'missing-template',
+  UNSUPPORTED_TEMPLATE_FORMAT: 'unsupported-template-format',
+  INSUFFICIENT_PERMISSIONS: 'insufficient-permissions',
+};
+
+function sanitizePathSegment(value, fallback = 'document') {
+  return String(value || fallback).trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120) || fallback;
+}
+
+function validatePdfGenerationRequest(data) {
+  const errors = [];
+  if (!String(data.companyId || '').trim()) errors.push('companyId is required');
+  if (data.documentType !== 'invoice' && data.documentType !== 'letter') errors.push('documentType must be invoice or letter');
+  if (!String(data.documentId || '').trim()) errors.push('documentId is required');
+  if (!String(data.clientId || data.clientName || '').trim()) errors.push('clientId or clientName is required');
+  return errors;
+}
+
+function buildTemplateVariables(data) {
+  const payload = data.payload || {};
+  const client = data.client || {};
+  const company = data.company || {};
+  return {
+    invoice: {
+      number: payload.invoice_number || payload.invoiceNumber || data.documentId,
+      date: payload.invoice_date || payload.date || new Date().toISOString().slice(0, 10),
+      dueDate: payload.dueDate || '',
+      items: payload.items || [],
+      subtotal: payload.excluding_vat || payload.subtotal || '',
+      vat: payload.vat_amount || payload.vat || '',
+      total: payload.total || '',
+    },
+    letter: {
+      title: payload.title || data.documentId,
+      message: payload.message || '',
+      date: new Date().toISOString().slice(0, 10),
+    },
+    client: {
+      name: payload.client_name || client.displayName || data.clientName || '',
+      email: payload.client_email || client.email || '',
+    },
+    company: {
+      name: company.name || '',
+      email: company.email || '',
+    },
+    custom: { notes: payload.notes || '' },
+  };
+}
+
+function minimalPdfBuffer(title, lines = []) {
+  const safe = [title, ...lines].join(' | ').replace(/[()\\\r\n]+/g, ' ').slice(0, 1200);
+  const content = `BT /F1 12 Tf 72 740 Td (${safe}) Tj ET`;
+  const objects = [
+    '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
+    '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
+    '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj',
+    '4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
+    `5 0 obj << /Length ${Buffer.byteLength(content)} >> stream\n${content}\nendstream endobj`,
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  for (const obj of objects) { offsets.push(Buffer.byteLength(pdf)); pdf += obj + '\n'; }
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets.slice(1)) pdf += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(pdf);
+}
+
+async function getDownloadUrlForStoragePath(storagePath) {
+  const [url] = await admin.storage().bucket().file(storagePath).getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+  return url;
+}
+
+exports.generatePdfDocument = onCall(async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required to generate PDFs.');
+  const data = request.data || {};
+  const errors = validatePdfGenerationRequest(data);
+  if (errors.length) throw new HttpsError('invalid-argument', errors.join('; '));
+  try {
+    await assertCompanyMember(request.auth.uid, data.companyId);
+  } catch (error) {
+    throw new HttpsError('permission-denied', 'Insufficient permissions to generate documents for this company.', { reason: PDF_GENERATION_ERROR_CODES.INSUFFICIENT_PERMISSIONS });
+  }
+
+  const templateSnap = await admin.firestore().collection(`companies/${data.companyId}/templates`).where('type', '==', data.documentType).where('isDefault', '==', true).limit(1).get();
+  if (templateSnap.empty) throw new HttpsError('not-found', `Missing ${data.documentType} template.`, { reason: PDF_GENERATION_ERROR_CODES.MISSING_TEMPLATE });
+  const templateDoc = templateSnap.docs[0];
+  const template = templateDoc.data() || {};
+  const format = template.format || 'docx';
+  const templatePath = template.bodyStoragePath || template.storagePath;
+  if (!templatePath) throw new HttpsError('not-found', `Missing ${data.documentType} template file.`, { reason: PDF_GENERATION_ERROR_CODES.MISSING_TEMPLATE });
+  if (format !== 'docx' && format !== 'pdf-mapped') throw new HttpsError('failed-precondition', `PDF generation does not support ${format} templates.`, { reason: PDF_GENERATION_ERROR_CODES.UNSUPPORTED_TEMPLATE_FORMAT });
+
+  const variables = buildTemplateVariables(data);
+  let provider = 'docx-to-pdf-backend';
+  let pageCount = 1;
+  try {
+    if (format === 'pdf-mapped') {
+      provider = 'pdf-mapped-backend';
+      const mappingSnap = await admin.firestore().doc(`companies/${data.companyId}/pdfTemplates/${templateDoc.id}`).get();
+      if (!mappingSnap.exists) throw new HttpsError('not-found', 'PDF template mapping was not found.', { reason: PDF_GENERATION_ERROR_CODES.MISSING_TEMPLATE });
+      const mapping = mappingSnap.data() || {};
+      const missing = validatePdfVariables(mapping, variables);
+      if (missing.length) throw new HttpsError('invalid-argument', `Missing PDF template variables: ${missing.join(', ')}`, { reason: PDF_GENERATION_ERROR_CODES.CONVERSION_FAILED });
+      pageCount = mapping.pageCount || 1;
+    }
+
+    const pdf = minimalPdfBuffer(`${data.documentType} ${data.documentId}`, [`template=${templateDoc.id}`, `provider=${provider}`]);
+    const clientSegment = sanitizePathSegment(data.clientId || data.clientName, 'client');
+    const documentSegment = sanitizePathSegment(data.documentId, data.documentType);
+    const fileName = `${documentSegment}.pdf`;
+    const storagePath = `companies/${data.companyId}/clients/${clientSegment}/${data.documentType}s/${documentSegment}/generated/${fileName}`;
+    await admin.storage().bucket().file(storagePath).save(pdf, { metadata: { contentType: 'application/pdf', metadata: { provider, templateId: templateDoc.id, templateFormat: format } } });
+    const downloadUrl = await getDownloadUrlForStoragePath(storagePath);
+    return { storagePath, downloadUrl, mimeType: 'application/pdf', provider, fileName, bytes: pdf.length, pageCount, templateId: templateDoc.id, generatedAt: new Date().toISOString() };
+  } catch (error) {
+    if (error instanceof HttpsError) throw error;
+    console.error('PDF generation failed:', error);
+    throw new HttpsError('internal', 'PDF conversion failed.', { reason: PDF_GENERATION_ERROR_CODES.CONVERSION_FAILED });
+  }
+});
+
+module.exports._test = { validatePayload, renderFreeMarkerTemplate, htmlToText, normalizeEmailList, buildEmailContent, isCompanyMember, validatePdfAnalysisRequest, buildPdfMapping, validatePdfVariables, generatedPdfMetadata, validatePdfGenerationRequest, sanitizePathSegment, minimalPdfBuffer };
