@@ -1,6 +1,7 @@
 import { Injectable, SecurityContext, inject } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { EmailColumnStyles, EmailElement, EmailImageElement, EmailSection, EmailTemplateDefinition, EmailTextElement } from '../../../models/email-template-designer.model';
+import { variableToken } from '../../../models/template-variable-registry.model';
 
 @Injectable({ providedIn: 'root' })
 export class EmailTemplateBuilderService {

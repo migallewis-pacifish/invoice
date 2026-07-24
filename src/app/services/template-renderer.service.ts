@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { CompanyTemplate, CompanyTemplateFormat } from '../models/invoice.model';
+import { requiredVariablesForTemplate, variableLabel } from '../models/template-variable-registry.model';
 
 export type TemplateRenderTarget = 'invoice' | 'letter';
 
@@ -34,5 +35,9 @@ export class TemplateRendererService {
   assertRenderable(template: CompanyTemplate, target: TemplateRenderTarget): void {
     const renderer = this.resolve(template, target);
     if (!renderer.available) throw new Error(`${renderer.label} ${target} rendering is not available yet.`);
+  }
+
+  requiredVariableLabels(target: TemplateRenderTarget, format: CompanyTemplateFormat): string[] {
+    return requiredVariablesForTemplate(target, format).map(variableLabel);
   }
 }

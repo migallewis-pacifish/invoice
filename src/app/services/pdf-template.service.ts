@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import { doc, Firestore, setDoc } from '@angular/fire/firestore';
 import { PdfTemplateMapping, PdfTemplateMappingRegion } from '../models/invoice.model';
+import { variableKeysForFormat } from '../models/template-variable-registry.model';
 
 export interface AnalyzePdfTemplateRequest {
   companyId: string;
@@ -43,7 +44,7 @@ export class PdfTemplateService {
   }
 
   variableOptions(): string[] {
-    return ['invoice.number', 'invoice.date', 'invoice.dueDate', 'client.name', 'client.email', 'invoice.items', 'invoice.subtotal', 'invoice.vat', 'invoice.total', 'company.name', 'custom.notes'];
+    return variableKeysForFormat('pdf-mapped');
   }
 
   withAssignedVariable(mapping: PdfTemplateMapping, region: PdfTemplateMappingRegion, variableKey: string): PdfTemplateMapping {
