@@ -173,7 +173,10 @@ export class TemplateService {
     const warnings: string[] = [];
     if (!file) return { variables: [], unknown: [], missing: requiredVariablesForTemplate(type, format), deprecated: [], errors: ['Template file is required.'], warnings };
     const config = FORMAT_CONFIG[format];
-    if (!file.name.toLowerCase().endsWith(config.ext)) errors.push(`${config.label} templates must use ${config.ext} files.`);
+    if (!file.name.toLowerCase().endsWith(config.ext)) {
+      errors.push(`${config.label} templates must use ${config.ext} files.`);
+      return { variables: [], unknown: [], missing: requiredVariablesForTemplate(type, format), deprecated: [], errors, warnings };
+    }
     const tokens = await this.extractTemplateTokens(file, format);
     const validation = validateTemplateVariables(tokens, type, format);
     validation.unknown.forEach(variable => errors.push(`Unknown template variable: ${variable}.`));
