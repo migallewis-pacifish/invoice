@@ -6,12 +6,12 @@ import {
   CompanyEmailTemplate,
   CompanyEmailTemplateType,
   DEFAULT_COMPANY_EMAIL_TEMPLATES,
-  EMAIL_TEMPLATE_VARIABLES,
   EmailTemplateVariables
 } from '../models/company-email-template.model';
+import { EMAIL_TEMPLATE_VARIABLES, LEGACY_EMAIL_VARIABLE_MAP, validateTemplateVariables } from '../models/template-variable-registry.model';
 
-const HANDLEBARS_TOKEN_PATTERN = /{{\s*([a-zA-Z0-9_]+)\s*}}/g;
-const FREEMARKER_TOKEN_PATTERN = /\$\{\s*([a-zA-Z0-9_]+)\s*}/g;
+const HANDLEBARS_TOKEN_PATTERN = /{{\s*([a-zA-Z0-9_.]+)\s*}}/g;
+const FREEMARKER_TOKEN_PATTERN = /\$\{\s*([a-zA-Z0-9_.]+)\s*}/g;
 
 @Injectable({ providedIn: 'root' })
 export class EmailTemplateService {
@@ -102,12 +102,17 @@ export class EmailTemplateService {
 }
 
 export function renderTemplateText(text: string, variables: EmailTemplateVariables): string {
+  const render = (key: string) => variables[key as keyof EmailTemplateVariables] ?? variables[legacyKeyForDottedPath(key)] ?? '';
   return text
-    .replace(HANDLEBARS_TOKEN_PATTERN, (_, key: keyof EmailTemplateVariables) => variables[key] ?? '')
-    .replace(FREEMARKER_TOKEN_PATTERN, (_, key: keyof EmailTemplateVariables) => variables[key] ?? '');
+    .replace(HANDLEBARS_TOKEN_PATTERN, (_, key: string) => render(key))
+    .replace(FREEMARKER_TOKEN_PATTERN, (_, key: string) => render(key));
 }
 
-export function toFreemarkerTemplate(text: string): string { return text.replace(HANDLEBARS_TOKEN_PATTERN, (_, key) => '${' + key + '}'); }
+function legacyKeyForDottedPath(path: string): keyof EmailTemplateVariables {
+  return (Object.keys(LEGACY_EMAIL_VARIABLE_MAP) as (keyof EmailTemplateVariables)[]).find(key => LEGACY_EMAIL_VARIABLE_MAP[key] === path) ?? path as keyof EmailTemplateVariables;
+}
+
+export function toFreemarkerTemplate(text: string): string { return text.replace(HANDLEBARS_TOKEN_PATTERN, (_, key) => '${' + (LEGACY_EMAIL_VARIABLE_MAP[key as keyof EmailTemplateVariables] ?? key) + '}'); }
 export function fromFreemarkerTemplate(text: string): string { return text.replace(FREEMARKER_TOKEN_PATTERN, (_, key) => '{{' + key + '}}'); }
 export function extractEmailTemplateVariables(text: string): (keyof EmailTemplateVariables)[] {
   const names = [...text.matchAll(HANDLEBARS_TOKEN_PATTERN), ...text.matchAll(FREEMARKER_TOKEN_PATTERN)].map(match => match[1] as keyof EmailTemplateVariables);
@@ -118,9 +123,10 @@ export function validateEmailTemplate(subject: string, body: string): string[] {
   const errors: string[] = [];
   if (!subject.trim()) errors.push('Template subject is required.');
   if (!body.trim()) errors.push('Template body is required.');
-  for (const token of [...subject.matchAll(HANDLEBARS_TOKEN_PATTERN), ...body.matchAll(HANDLEBARS_TOKEN_PATTERN), ...subject.matchAll(FREEMARKER_TOKEN_PATTERN), ...body.matchAll(FREEMARKER_TOKEN_PATTERN)].map(match => match[1])) {
-    if (!EMAIL_TEMPLATE_VARIABLES.includes(token as keyof EmailTemplateVariables)) errors.push(`Unknown template variable: ${token}.`);
-  }
+  const tokens = [...subject.matchAll(HANDLEBARS_TOKEN_PATTERN), ...body.matchAll(HANDLEBARS_TOKEN_PATTERN), ...subject.matchAll(FREEMARKER_TOKEN_PATTERN), ...body.matchAll(FREEMARKER_TOKEN_PATTERN)].map(match => match[1]);
+  const validation = validateTemplateVariables(tokens, 'invoice', 'email');
+  validation.unknown.forEach(token => errors.push(`Unknown template variable: ${token}.`));
+  validation.deprecated.forEach(item => errors.push(`Deprecated template variable: ${item.variable}. Use ${item.replacement} (${item.label}) instead.`));
   return Array.from(new Set(errors));
 }
 

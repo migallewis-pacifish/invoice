@@ -13,6 +13,7 @@ import { TemplateService } from './template.service';
 import { TemplateRendererService } from './template-renderer.service';
 import { DocumentStorageService } from './document-storage.service';
 import { PdfGenerationResult, PdfGenerationService } from './pdf-generation.service';
+import { requiredVariablesForTemplate, variableLabel } from '../models/template-variable-registry.model';
 
 @Injectable({ providedIn: 'root' })
 export class LetterDocxService {
@@ -146,6 +147,7 @@ export class LetterDocxService {
         const data = this.buildTemplateData(company, input);
         const zip = new PizZip(arrayBuffer as ArrayBuffer);
         const docx = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+        this.assertRequiredTemplateData(data, 'letter');
         docx.setData(data);
         docx.render();
         const blob = docx.getZip().generate({
@@ -155,6 +157,12 @@ export class LetterDocxService {
         return { blob, fileName: `${this.slug(input.title)}-${data.letter_date}.docx` };
       })
     );
+  }
+
+
+  private assertRequiredTemplateData(data: any, type: 'letter'): void {
+    const missing = requiredVariablesForTemplate(type, 'docx').filter(key => data[key] === undefined || data[key] === null || data[key] === '');
+    if (missing.length) throw new Error(`Missing required letter data for template variables: ${missing.map(variableLabel).join(', ')}.`);
   }
 
   private buildTemplateData(company: Company, input: { title: string; message: string; client: any; signedBy?: string; signature?: LetterSignature | null }): LetterData {

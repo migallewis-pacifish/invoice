@@ -3,6 +3,8 @@ import { Storage, ref, uploadBytes, getDownloadURL, getBlob, deleteObject } from
 import { Firestore, collection, collectionData, deleteDoc, doc, getDocs, setDoc, updateDoc } from '@angular/fire/firestore';
 import { firstValueFrom, map, Observable } from 'rxjs';
 import { CompanyTemplate, CompanyTemplateFormat } from '../models/invoice.model';
+import PizZip from 'pizzip';
+import { requiredVariablesForTemplate, validateTemplateVariables, TemplateVariableValidationResult } from '../models/template-variable-registry.model';
 import { normalizeTemplateFormat } from './template-renderer.service';
 import { ActivityService } from './activity.service';
 
@@ -12,6 +14,11 @@ export interface TemplateUploadOptions {
   format?: CompanyTemplateFormat;
   name?: string;
   requiredVariables?: string[];
+}
+
+export interface TemplateFileInspection extends TemplateVariableValidationResult {
+  errors: string[];
+  warnings: string[];
 }
 
 const FORMAT_CONFIG: Record<CompanyTemplateFormat, { ext: string; contentType: string; label: string }> = {
@@ -38,7 +45,8 @@ export class TemplateService {
 
   async upload(companyId: string, file: File, type: CompanyTemplateType = 'invoice', templateId = this.newTemplateId(type), options: TemplateUploadOptions = {}) {
     const format = options.format ?? 'docx';
-    await this.validateTemplateFile(file, format, type);
+    const inspection = await this.validateTemplateFile(file, format, type);
+    if (inspection.errors.length) throw new Error(inspection.errors.join(' '));
 
     const config = FORMAT_CONFIG[format];
     const path = format === 'pdf-mapped'
@@ -58,7 +66,7 @@ export class TemplateService {
       bodyStoragePath: path,
       storagePath: path,
       fileName: file.name,
-      requiredVariables: this.requiredVariablesFor(type, format),
+      requiredVariables: requiredVariablesForTemplate(type, format),
       isDefault: shouldDefault,
       archived: false,
       updatedAt: now,
@@ -160,15 +168,41 @@ export class TemplateService {
     return !template;
   }
 
-  private async validateTemplateFile(file: File, format: CompanyTemplateFormat, type: CompanyTemplateType): Promise<void> {
-    if (!file) throw new Error('Template file is required.');
+  async inspectTemplateFile(file: File, format: CompanyTemplateFormat, type: CompanyTemplateType): Promise<TemplateFileInspection> {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    if (!file) return { variables: [], unknown: [], missing: requiredVariablesForTemplate(type, format), deprecated: [], errors: ['Template file is required.'], warnings };
     const config = FORMAT_CONFIG[format];
-    if (!file.name.toLowerCase().endsWith(config.ext)) throw new Error(`${config.label} templates must use ${config.ext} files.`);
-    if (format === 'freemarker-html') {
-      const body = await file.text();
-      const missing = this.requiredVariablesFor(type, format).filter(variable => !body.includes(`{{${variable}}`) && !body.includes('${' + variable + '}'));
-      if (missing.length) throw new Error(`Missing required ${type} variables: ${missing.join(', ')}.`);
-    }
+    if (!file.name.toLowerCase().endsWith(config.ext)) errors.push(`${config.label} templates must use ${config.ext} files.`);
+    const tokens = await this.extractTemplateTokens(file, format);
+    const validation = validateTemplateVariables(tokens, type, format);
+    validation.unknown.forEach(variable => errors.push(`Unknown template variable: ${variable}.`));
+    validation.missing.forEach(variable => errors.push(`Missing required ${type} variable: ${variable}.`));
+    validation.deprecated.forEach(item => warnings.push(`Deprecated template variable: ${item.variable}. Use ${item.replacement} (${item.label}) instead.`));
+    return { ...validation, errors: Array.from(new Set(errors)), warnings: Array.from(new Set(warnings)) };
+  }
+
+  private async validateTemplateFile(file: File, format: CompanyTemplateFormat, type: CompanyTemplateType): Promise<TemplateFileInspection> {
+    if (!file) throw new Error('Template file is required.');
+    return this.inspectTemplateFile(file, format, type);
+  }
+
+  private async extractTemplateTokens(file: File, format: CompanyTemplateFormat): Promise<string[]> {
+    if (format === 'pdf-mapped') return [];
+    if (format === 'freemarker-html') return this.extractTextTokens(await file.text());
+    const zip = new PizZip(await file.arrayBuffer());
+    const text = Object.keys(zip.files)
+      .filter(name => name.startsWith('word/') && name.endsWith('.xml'))
+      .map(name => zip.file(name)?.asText() ?? '')
+      .join('\n');
+    return this.extractTextTokens(text.replace(/<[^>]+>/g, ''));
+  }
+
+  private extractTextTokens(text: string): string[] {
+    const handlebars = [...text.matchAll(/{{\s*([a-zA-Z0-9_.]+)\s*}}/g)].map(match => match[1]);
+    const freemarker = [...text.matchAll(/\$\{\s*([a-zA-Z0-9_.]+)\s*}/g)].map(match => match[1]);
+    const docx = [...text.matchAll(/{\s*([a-zA-Z0-9_.]+)\s*}/g)].map(match => match[1]);
+    return Array.from(new Set([...handlebars, ...freemarker, ...docx]));
   }
 
   private newTemplateId(type: CompanyTemplateType) {
@@ -183,10 +217,4 @@ export class TemplateService {
     return fileName?.replace(new RegExp(`${FORMAT_CONFIG[format].ext}$`, 'i'), '') || this.defaultName(type);
   }
 
-  private requiredVariablesFor(type: CompanyTemplateType, format: CompanyTemplateFormat): string[] {
-    if (format === 'pdf-mapped') return [];
-    return type === 'invoice'
-      ? ['invoice_number', 'invoice_date', 'client_name', 'items', 'total']
-      : ['letter_title', 'letter_date', 'letter_message', 'client_name', 'company_name'];
-  }
 }

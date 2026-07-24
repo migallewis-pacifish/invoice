@@ -25,27 +25,7 @@ export interface EmailTemplateVariables {
   daysOverdue: string;
 }
 
-export const EMAIL_TEMPLATE_VARIABLES: (keyof EmailTemplateVariables)[] = [
-  'clientName',
-  'invoiceNumber',
-  'dueDate',
-  'total',
-  'companyName',
-  'paymentReference',
-  'outstandingBalance',
-  'daysOverdue'
-];
-
-export const EMAIL_TEMPLATE_VARIABLE_LABELS: Record<keyof EmailTemplateVariables, string> = {
-  clientName: 'Client name',
-  invoiceNumber: 'Invoice number',
-  dueDate: 'Due date',
-  total: 'Total',
-  companyName: 'Company name',
-  paymentReference: 'Payment reference',
-  outstandingBalance: 'Outstanding balance',
-  daysOverdue: 'Days overdue'
-};
+export { EMAIL_TEMPLATE_VARIABLES, EMAIL_TEMPLATE_VARIABLE_LABELS, LEGACY_EMAIL_VARIABLE_MAP } from './template-variable-registry.model';
 
 export const DEFAULT_COMPANY_EMAIL_TEMPLATES: Omit<CompanyEmailTemplate, 'companyId' | 'createdAt' | 'updatedAt'>[] = [
   {

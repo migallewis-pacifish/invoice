@@ -90,7 +90,7 @@
           <label *ngFor="let region of mapping.regions">
             <span>{{ region.regionType }} • {{ region.confidence | percent:'1.0-0' }} confidence</span>
             <select [ngModel]="region.variableKey" (ngModelChange)="assignRegionVariable(region.id, $event)">
-              <option *ngFor="let variable of variableOptions()" [value]="variable">{{ variable }}</option>
+              <option *ngFor="let variable of variableOptions()" [value]="variable">{{ variableLabel(variable) }} ({{ variable }})</option>
             </select>
           </label>
           <button class="primary" type="button" (click)="renderSamplePdf()" [disabled]="rendering()">{{ rendering() ? 'Rendering…' : 'Render sample PDF' }}</button>

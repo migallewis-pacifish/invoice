@@ -9,6 +9,7 @@ import { ActivityService } from '../../services/activity.service';
 import { TemplateService } from '../../services/template.service';
 import { CompanyTemplateFormat, PdfTemplateMapping } from '../../models/invoice.model';
 import { PdfTemplateService } from '../../services/pdf-template.service';
+import { requiredVariablesForTemplate, variableLabel } from '../../models/template-variable-registry.model';
 import { CURRENT_AUTH_USER } from '../../services/company-context.service';
 
 @Component({
@@ -59,9 +60,9 @@ export class UploadTemplateComponent {
   ];
   format = signal<CompanyTemplateFormat>('docx');
   readonly requiredVariables: Record<CompanyTemplateFormat, string[]> = {
-    docx: ['invoice_number', 'invoice_date', 'client_name', 'items', 'total'],
-    'freemarker-html': ['invoice_number', 'invoice_date', 'client_name', 'items', 'total'],
-    'pdf-mapped': []
+    docx: requiredVariablesForTemplate('invoice', 'docx').map(variableLabel),
+    'freemarker-html': requiredVariablesForTemplate('invoice', 'freemarker-html').map(variableLabel),
+    'pdf-mapped': requiredVariablesForTemplate('invoice', 'pdf-mapped').map(variableLabel)
   };
 
   constructor() {
@@ -113,7 +114,7 @@ export class UploadTemplateComponent {
   }
   onDragOver(ev: DragEvent) { ev.preventDefault(); }
 
-  setFile(f: File) {
+  async setFile(f: File) {
     this.error.set(null);
     // Validate ext
     const name = f.name.toLowerCase();
@@ -131,8 +132,15 @@ export class UploadTemplateComponent {
       this.file.set(null);
       return;
     }
+    const inspection = await this.templateService.inspectTemplateFile(f, this.format(), 'invoice');
+    if (inspection.errors.length) {
+      this.error.set(inspection.errors.join(' '));
+      this.file.set(null);
+      return;
+    }
     this.file.set(f);
-    this.info.set(`${f.name} • ${(f.size / 1024 / 1024).toFixed(2)} MB • ${this.formatLabel()}`);
+    const warnings = inspection.warnings.length ? ` • Warnings: ${inspection.warnings.join(' ')}` : '';
+    this.info.set(`${f.name} • ${(f.size / 1024 / 1024).toFixed(2)} MB • ${this.formatLabel()} • Variables: ${inspection.variables.join(', ') || 'none'}${warnings}`);
   }
 
   async upload() {
@@ -228,6 +236,8 @@ export class UploadTemplateComponent {
   variableOptions(): string[] {
     return this.pdfTemplateService.variableOptions();
   }
+
+  variableLabel(variable: string): string { return variableLabel(variable); }
 
   cancelUpload() {
     if (this.currentTask) {

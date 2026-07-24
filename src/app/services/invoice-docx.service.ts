@@ -13,6 +13,7 @@ import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 import { NotificationService } from './notification.service';
 import { DocumentStorageService } from './document-storage.service';
 import { PdfGenerationResult, PdfGenerationService } from './pdf-generation.service';
+import { requiredVariablesForTemplate, variableLabel } from '../models/template-variable-registry.model';
 
 @Injectable({
   providedIn: 'root'
@@ -142,6 +143,7 @@ export class InvoiceDocxService {
         };
         const zip = new PizZip(arrayBuffer as ArrayBuffer);
         const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+        this.assertRequiredTemplateData(finalData, 'invoice');
         doc.setData(finalData);
         doc.render();
         const blob = doc.getZip().generate({
@@ -193,6 +195,12 @@ export class InvoiceDocxService {
       payload: data as unknown as Record<string, unknown>,
       client: { displayName: data.client_name, email: data.client_email }
     })).pipe(catchError(err => throwError(() => this.toPdfGenerationError(err))));
+  }
+
+
+  private assertRequiredTemplateData(data: any, type: 'invoice'): void {
+    const missing = requiredVariablesForTemplate(type, 'docx').filter(key => data[key] === undefined || data[key] === null || data[key] === '');
+    if (missing.length) throw new Error(`Missing required invoice data for template variables: ${missing.map(variableLabel).join(', ')}.`);
   }
 
   private toPdfGenerationError(err: any): Error {

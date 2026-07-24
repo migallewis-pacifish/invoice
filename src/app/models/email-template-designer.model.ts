@@ -32,4 +32,4 @@ export interface EmailSpacerElement extends EmailElementBase { type: 'spacer'; h
 export interface EmailVariableElement extends EmailElementBase { type: 'variable'; path: string; token: string; }
 export type EmailElement = EmailTextElement | EmailImageElement | EmailSpacerElement | EmailVariableElement;
 export interface EmailPaletteItem { kind: 'layout' | 'element'; label: string; description?: string; columnWidths?: number[]; elementType?: EmailElementType; variablePath?: string; }
-export interface EmailVariableDefinition { group: 'Company' | 'Client' | 'Invoice'; path: string; label: string; token: string; }
+export interface EmailVariableDefinition { group: 'Company' | 'Client' | 'Invoice' | 'Letter' | 'Payment' | 'Custom'; path: string; label: string; token: string; }
