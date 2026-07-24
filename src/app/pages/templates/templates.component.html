@@ -21,15 +21,14 @@
   <ng-container [ngSwitch]="activeTab()">
   <section *ngSwitchCase="'overview'" class="template-overview" aria-labelledby="template-overview-title">
     <div class="overview-heading">
-      <p class="eyebrow">Overview</p>
       <h2 id="template-overview-title">Template statistics</h2>
       <p class="muted">A live summary of the active document templates available to your company.</p>
     </div>
     <section class="stats-grid" aria-label="Template statistics">
       <article class="stats-card usage-card">
         <div class="stats-label">Active Templates <span class="app-icon" aria-hidden="true">📁</span></div>
-        <strong>{{ activeTemplates().length }}</strong>
-        <p>Templates currently ready to use</p>
+        <strong>{{ totalTemplateCount() }}</strong>
+        <p>Document and email templates ready to use</p>
       </article>
       <article class="stats-card active-types-card">
         <div class="stats-label">Invoice Templates <span class="app-icon" aria-hidden="true">🧾</span></div>
@@ -41,13 +40,17 @@
         <strong>{{ letterTemplateCount() }}</strong>
         <p>Active letter document layouts</p>
       </article>
+      <article class="stats-card email-stats-card">
+        <div class="stats-label">Email Templates <span class="app-icon" aria-hidden="true">📧</span></div>
+        <strong>{{ emailTemplateCount() }}</strong>
+        <p>Reusable email designs</p>
+      </article>
     </section>
   </section>
 
   <ng-container *ngSwitchCase="'gallery'">
   <section class="gallery-header gallery-tab-header">
     <div>
-      <p class="eyebrow">Documents</p>
       <h2>Template Gallery</h2>
       <p>Manage and deploy high-fidelity document structures across your workspace.</p>
     </div>
@@ -55,10 +58,6 @@
       <button class="filter-button" type="button" (click)="onFilter()">
         <span class="app-icon" aria-hidden="true">🔎</span>
         Filter: {{ filter() }}
-      </button>
-      <button class="primary-action" type="button" (click)="openUploadFlow()">
-        <span class="app-icon" aria-hidden="true">⬆️</span>
-        Upload New Template
       </button>
     </div>
   </section>
@@ -86,6 +85,7 @@
         </div>
         <span class="template-badge type-badge">{{ template.type }}</span>
         <span class="template-badge category-badge" *ngIf="template.category">{{ template.category }}</span>
+        <span class="template-badge category-badge">{{ formatLabels[template.format || 'docx'] || template.format || 'docx' }}</span>
       </div>
 
       <div class="template-content">
@@ -106,7 +106,7 @@
     <button class="upload-card" type="button" (click)="openUploadFlow()">
       <span class="plus-icon app-icon" aria-hidden="true">＋</span>
       <strong>New Template</strong>
-      <small>Start from a blank canvas or import a custom design.</small>
+      <small>Import DOCX, designed FreeMarker/HTML, or future PDF-mapped templates.</small>
     </button>
   </section>
 
@@ -123,47 +123,54 @@
   </section>
   </ng-container>
 
-  <section *ngSwitchCase="'emails'" class="email-template-settings" aria-label="Email template settings">
-    <div class="upload-heading">
+  <section *ngSwitchCase="'emails'" class="email-template-settings" aria-label="Email templates">
+    <div class="upload-heading email-gallery-heading">
       <div>
-        <p class="eyebrow">Email settings</p>
         <h2>Email Templates</h2>
-        <p class="muted">Edit reusable subjects and bodies stored under <code>companies/{{ "{" }}companyId{{ "}" }}/emailTemplates</code>.</p>
+        <p class="muted">Create, assign, and manage reusable email designs for every sending scenario.</p>
       </div>
+      <button class="edit-button" type="button" (click)="newEmailTemplate()">Add new template</button>
     </div>
 
-    <div class="email-template-layout">
-      <aside class="email-template-list" aria-label="Email template types">
-        <button
-          type="button"
-          *ngFor="let template of emailTemplates()"
-          [class.active]="selectedEmailTemplate()?.id === template.id"
-          (click)="selectEmailTemplate(template)">
-          <strong>{{ template.name }}</strong>
-          <small>{{ template.description }}</small>
-        </button>
-      </aside>
-
-      <form class="email-template-editor" [formGroup]="emailTemplateForm" (ngSubmit)="saveEmailTemplate()" *ngIf="selectedEmailTemplate() as template">
-        <label>Subject
-          <input formControlName="subject" placeholder="Invoice variable from company">
-        </label>
-
-        <label>Body
-          <textarea rows="10" formControlName="body" placeholder="Hi client name..."></textarea>
-        </label>
-
-        <div class="variable-pills" aria-label="Available template variables">
-          <span>Variables:</span>
-          <button type="button" *ngFor="let variable of variables" (click)="insertVariable(variable)">
-            {{ variableLabels[variable] }} <code>{{ '{{' + variable + '}}' }}</code>
-          </button>
+    <div class="email-template-grid" aria-label="Created email templates">
+      <article class="email-template-card" *ngFor="let template of designedEmailTemplates()" [class.archived]="template.archived">
+        <div class="email-card-preview">
+          <span class="email-card-icon" aria-hidden="true">✉</span>
+          <span class="template-badge type-badge">{{ template.type }}</span>
+          <span class="template-badge category-badge" *ngIf="template.archived">Archived</span>
         </div>
+        <div class="template-content">
+          <div class="title-line">
+            <h2>{{ template.name }}</h2>
+            <button class="more-button" type="button" aria-label="More email template actions" (click)="openEmailMoreMenu(template)"><span class="app-icon" aria-hidden="true">⋮</span></button>
+          </div>
+          <p>{{ template.subject }}</p>
+          <small>{{ template.sections.length }} section{{ template.sections.length === 1 ? '' : 's' }}</small>
+          <div class="default-list" *ngIf="template.defaultForScenarios?.length">
+            Default for: <span *ngFor="let scenario of template.defaultForScenarios">{{ scenarioLabel(scenario) }}</span>
+          </div>
+        </div>
+        <div class="template-actions">
+          <button class="edit-button" type="button" (click)="editDesignedEmailTemplate(template)">Edit</button>
+          <button class="square-button" type="button" aria-label="Duplicate email template" (click)="duplicateDesignedEmailTemplate(template)"><span class="app-icon" aria-hidden="true">⧉</span></button>
+          <button class="square-button" type="button" aria-label="Preview email template" (click)="previewDesignedEmailTemplate(template)"><span class="app-icon" aria-hidden="true">👁</span></button>
+        </div>
+      </article>
 
-        <p class="muted">Templates are validated for required subject/body text and supported variables before saving and again after rendering before sending.</p>
-        <p class="error" *ngIf="emailTemplateMessage()">{{ emailTemplateMessage() }}</p>
-        <button class="primary-action" type="submit">Save Email Template</button>
-      </form>
+      <button class="upload-card" type="button" (click)="newEmailTemplate()">
+        <span class="plus-icon app-icon" aria-hidden="true">＋</span>
+        <strong>Add new template</strong>
+        <small>Choose a starter design or start from scratch.</small>
+      </button>
+    </div>
+
+    <div class="email-preview-modal" *ngIf="previewEmailTemplate() as preview">
+      <div class="email-preview-panel">
+        <button class="filter-button" type="button" (click)="closeEmailPreview()">Close preview</button>
+        <h3>{{ preview.name }}</h3>
+        <p class="muted">{{ preview.subject }}</p>
+        <div class="email-preview-frame" [innerHTML]="previewEmailHtml()"></div>
+      </div>
     </div>
   </section>
   </ng-container>

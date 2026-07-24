@@ -1,4 +1,4 @@
-import { renderTemplateText, validateEmailTemplate, validateRenderedEmail } from './email-template.service';
+import { extractEmailTemplateVariables, fromFreemarkerTemplate, renderTemplateText, toFreemarkerTemplate, validateEmailTemplate, validateRenderedEmail } from './email-template.service';
 import { EmailTemplateVariables } from '../models/company-email-template.model';
 
 describe('email template utilities', () => {
@@ -20,10 +20,24 @@ describe('email template utilities', () => {
 
   it('rejects unknown template variables', () => {
     expect(validateEmailTemplate('Hello {{unknown}}', 'Body')).toContain('Unknown template variable: unknown.');
+    expect(validateEmailTemplate('Hello ${unknown}', 'Body')).toContain('Unknown template variable: unknown.');
+  });
+
+  it('converts handlebars variables to Apache FreeMarker variables for storage', () => {
+    expect(toFreemarkerTemplate('Hi {{clientName}}, invoice {{ invoiceNumber }} is ready.'))
+      .toBe('Hi ${clientName}, invoice ${invoiceNumber} is ready.');
+    expect(fromFreemarkerTemplate('Hi ${clientName}, invoice ${invoiceNumber} is ready.'))
+      .toBe('Hi {{clientName}}, invoice {{invoiceNumber}} is ready.');
+  });
+
+  it('extracts supported variables for Firestore metadata', () => {
+    expect(extractEmailTemplateVariables('Hi {{clientName}}, invoice ${invoiceNumber}. {{unknown}}'))
+      .toEqual(['clientName', 'invoiceNumber']);
   });
 
   it('validates rendered content before sending', () => {
     expect(validateRenderedEmail('Invoice {{invoiceNumber}}', 'Body')).toContain('Rendered email still contains unresolved template variables.');
+    expect(validateRenderedEmail('Invoice ${invoiceNumber}', 'Body')).toContain('Rendered email still contains unresolved template variables.');
     expect(validateRenderedEmail('Invoice INV-100', 'Body')).toEqual([]);
   });
 });

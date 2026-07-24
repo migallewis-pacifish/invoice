@@ -2,9 +2,17 @@
   <div class="card">
     <div class="head">
       <div>
-        <p class="muted">Upload or replace your Word invoice template (.docx).</p>
+        <p class="muted">Upload or replace an invoice template in the format your renderer should use.</p>
       </div>
       <button class="ghost" routerLink="/landing" *ngIf="!inDialog">Back to Dashboard</button>
+    </div>
+
+    <div class="format-picker" aria-label="Template format">
+      <label *ngFor="let option of formatOptions">
+        <input type="radio" name="templateFormat" [ngModel]="format()" [value]="option.value" (ngModelChange)="onFormatChanged($event)" [disabled]="uploading()">
+        <strong>{{ option.label }}</strong>
+        <span class="muted tiny">{{ option.description }}</span>
+      </label>
     </div>
 
     <div class="status">
@@ -30,12 +38,12 @@
       <div class="dz-inner">
         <div class="dz-icon app-icon" aria-hidden="true">📄</div>
         <div class="dz-text">
-          <strong>Drag & drop your .docx here</strong>
+          <strong>Drag & drop your {{ acceptList() }} template here</strong>
           <span class="muted"> or </span>
           <button class="pick" (click)="onPickClicked(fileInput)" [disabled]="uploading()">Choose file</button>
-          <input #fileInput type="file" accept=".docx" (change)="onFilePicked($event)" hidden>
+          <input #fileInput type="file" [accept]="acceptList()" (change)="onFilePicked($event)" hidden>
         </div>
-        <div class="muted tiny">Max {{ maxSizeMB }}MB • .docx only</div>
+        <div class="muted tiny">Max {{ maxSizeMB }}MB • Required variables: {{ requiredVariables[format()].join(', ') || 'Configured later' }}</div>
       </div>
     </div>
 
@@ -46,6 +54,49 @@
         <button class="primary" (click)="upload()" [disabled]="uploading()">Upload</button>
       </div>
     </div>
+
+
+
+    <section *ngIf="format() === 'pdf-mapped'" class="mapping-editor" aria-label="PDF mapping editor">
+      <div class="mapping-head">
+        <div>
+          <h3>PDF variable mapping</h3>
+          <p class="muted tiny">Upload PDFs exported from Canva or other design tools, then connect detected text blocks, tables, totals, dates, and editable zones to invoice variables.</p>
+        </div>
+        <button class="ghost" type="button" (click)="analyzePdfTemplate()" [disabled]="analyzing() || !templatePath()">{{ analyzing() ? 'Analyzing…' : 'Analyze PDF' }}</button>
+      </div>
+
+      <div *ngIf="pdfMapping() as mapping" class="mapping-layout">
+        <div class="pdf-canvas" aria-label="Detected PDF regions">
+          <div class="pdf-page">
+            <span class="page-label">Page {{ mapping.pageCount ? 1 : 0 }}</span>
+            <button
+              *ngFor="let region of mapping.regions"
+              type="button"
+              class="region-box"
+              [class.region-total]="region.regionType === 'total'"
+              [class.region-table]="region.regionType === 'table'"
+              [style.left.%]="region.boundingBox.x"
+              [style.top.%]="region.boundingBox.y"
+              [style.width.%]="region.boundingBox.width"
+              [style.height.%]="region.boundingBox.height"
+              [attr.aria-label]="region.regionType + ' mapped to ' + region.variableKey">
+              {{ region.variableKey || region.regionType }}
+            </button>
+          </div>
+        </div>
+
+        <div class="mapping-list">
+          <label *ngFor="let region of mapping.regions">
+            <span>{{ region.regionType }} • {{ region.confidence | percent:'1.0-0' }} confidence</span>
+            <select [ngModel]="region.variableKey" (ngModelChange)="assignRegionVariable(region.id, $event)">
+              <option *ngFor="let variable of variableOptions()" [value]="variable">{{ variableLabel(variable) }} ({{ variable }})</option>
+            </select>
+          </label>
+          <button class="primary" type="button" (click)="renderSamplePdf()" [disabled]="rendering()">{{ rendering() ? 'Rendering…' : 'Render sample PDF' }}</button>
+        </div>
+      </div>
+    </section>
 
     <div *ngIf="uploading()" class="progress">
       <div class="track"><div class="bar" [style.width.%]="progress()"></div></div>

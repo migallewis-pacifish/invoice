@@ -1,0 +1,76 @@
+<section class="designer-panel">
+  <div class="heading">
+    <h2>Properties</h2>
+    <div *ngIf="section || element">
+      <button type="button" (click)="duplicate.emit()">Duplicate</button>
+      <button type="button" class="danger" (click)="delete.emit()">Delete</button>
+    </div>
+  </div>
+  <p class="muted" *ngIf="!section && !column && !element">Select a section, column, or element to edit its settings.</p>
+
+  <ng-container *ngIf="section as s">
+    <h3>Layout</h3>
+    <label>Background colour<input [(ngModel)]="s.styles.backgroundColor" (ngModelChange)="changed.emit()"></label>
+    <label>Content width<input type="number" [(ngModel)]="s.styles.contentWidth" (ngModelChange)="changed.emit()"></label>
+    <label>Column gap<input type="number" [(ngModel)]="s.styles.columnGap" (ngModelChange)="changed.emit()"></label>
+    <div class="grid">
+      <label>Padding top<input type="number" [(ngModel)]="s.styles.paddingTop" (ngModelChange)="changed.emit()"></label>
+      <label>Right<input type="number" [(ngModel)]="s.styles.paddingRight" (ngModelChange)="changed.emit()"></label>
+      <label>Bottom<input type="number" [(ngModel)]="s.styles.paddingBottom" (ngModelChange)="changed.emit()"></label>
+      <label>Left<input type="number" [(ngModel)]="s.styles.paddingLeft" (ngModelChange)="changed.emit()"></label>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="column as c">
+    <h3>Column</h3>
+    <label>Background colour<input [(ngModel)]="c.styles.backgroundColor" (ngModelChange)="changed.emit()"></label>
+    <label>Vertical alignment<select [(ngModel)]="c.styles.verticalAlign" (ngModelChange)="changed.emit()"><option value="top">Top</option><option value="middle">Middle</option><option value="bottom">Bottom</option></select></label>
+    <div class="grid">
+      <label>Padding top<input type="number" min="0" [(ngModel)]="c.styles.paddingTop" (ngModelChange)="changed.emit()"></label>
+      <label>Right<input type="number" min="0" [(ngModel)]="c.styles.paddingRight" (ngModelChange)="changed.emit()"></label>
+      <label>Bottom<input type="number" min="0" [(ngModel)]="c.styles.paddingBottom" (ngModelChange)="changed.emit()"></label>
+      <label>Left<input type="number" min="0" [(ngModel)]="c.styles.paddingLeft" (ngModelChange)="changed.emit()"></label>
+    </div>
+    <label>Border colour<input [(ngModel)]="c.styles.borderColor" (ngModelChange)="changed.emit()"></label>
+    <div class="grid">
+      <label>Border width<input type="number" min="0" [(ngModel)]="c.styles.borderWidth" (ngModelChange)="changed.emit()"></label>
+      <label>Corner radius<input type="number" min="0" [(ngModel)]="c.styles.borderRadius" (ngModelChange)="changed.emit()"></label>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="element as e">
+    <h3>{{ e.type }} element</h3>
+    <ng-container *ngIf="e.type === 'text'">
+      <label>Text content<textarea rows="7" [(ngModel)]="e.content" (ngModelChange)="changed.emit()"></textarea></label>
+      <div class="grid">
+        <label>Font size<input type="number" [(ngModel)]="e.styles.fontSize" (ngModelChange)="changed.emit()"></label>
+        <label>Weight<select [(ngModel)]="e.styles.fontWeight" (ngModelChange)="changed.emit()"><option>400</option><option>600</option><option>700</option><option>900</option></select></label>
+        <label>Style<select [(ngModel)]="e.styles.fontStyle" (ngModelChange)="changed.emit()"><option>normal</option><option>italic</option></select></label>
+        <label>Align<select [(ngModel)]="e.styles.textAlign" (ngModelChange)="changed.emit()"><option>left</option><option>center</option><option>right</option></select></label>
+        <label>Text colour<input [(ngModel)]="e.styles.color" (ngModelChange)="changed.emit()"></label>
+        <label>Background<input [(ngModel)]="e.styles.backgroundColor" (ngModelChange)="changed.emit()"></label>
+        <label>Line height<input type="number" step="0.1" [(ngModel)]="e.styles.lineHeight" (ngModelChange)="changed.emit()"></label>
+      </div>
+      <div class="grid">
+        <label>Pad top<input type="number" [(ngModel)]="e.styles.paddingTop" (ngModelChange)="changed.emit()"></label>
+        <label>Right<input type="number" [(ngModel)]="e.styles.paddingRight" (ngModelChange)="changed.emit()"></label>
+        <label>Bottom<input type="number" [(ngModel)]="e.styles.paddingBottom" (ngModelChange)="changed.emit()"></label>
+        <label>Left<input type="number" [(ngModel)]="e.styles.paddingLeft" (ngModelChange)="changed.emit()"></label>
+      </div>
+    </ng-container>
+    <ng-container *ngIf="e.type === 'image'">
+      <label>Image URL<input [(ngModel)]="e.url" (ngModelChange)="changed.emit()"></label>
+      <label>Alternative text<input [(ngModel)]="e.alt" (ngModelChange)="changed.emit()"></label>
+      <label>Width %<input type="number" [(ngModel)]="e.widthPercent" (ngModelChange)="changed.emit()"></label>
+      <label>Alignment<select [(ngModel)]="e.alignment" (ngModelChange)="changed.emit()"><option>left</option><option>center</option><option>right</option></select></label>
+      <label>Optional link URL<input [(ngModel)]="e.linkUrl" (ngModelChange)="changed.emit()"></label>
+      <label>Border radius<input type="number" [(ngModel)]="e.borderRadius" (ngModelChange)="changed.emit()"></label>
+    </ng-container>
+    <ng-container *ngIf="e.type === 'spacer'">
+      <label>Height in pixels<input type="number" [(ngModel)]="e.height" (ngModelChange)="changed.emit()"></label>
+    </ng-container>
+    <ng-container *ngIf="e.type === 'variable'">
+      <label>Variable<select [ngModel]="e.path" (ngModelChange)="selectVariable(e, $event)"><optgroup *ngFor="let group of variableRegistry.groupedVariables()" [label]="group.group"><option *ngFor="let variable of group.variables" [value]="variable.path">{{ variable.label }} — {{ variable.token }}</option></optgroup></select></label>
+    </ng-container>
+  </ng-container>
+</section>

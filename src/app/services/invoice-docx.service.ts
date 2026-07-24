@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { InvoiceData, InvoiceItem, Company } from '../models/invoice.model';
 import { TemplateService } from './template.service';
+import { TemplateRendererService } from './template-renderer.service';
 import { CurrencyService } from './currency.service';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
@@ -10,6 +11,9 @@ import { Observable, catchError, from, map, switchMap, take, throwError } from '
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 import { NotificationService } from './notification.service';
+import { DocumentStorageService } from './document-storage.service';
+import { PdfGenerationResult, PdfGenerationService } from './pdf-generation.service';
+import { requiredVariablesForTemplate, variableLabel } from '../models/template-variable-registry.model';
 
 @Injectable({
   providedIn: 'root'
@@ -24,7 +28,10 @@ export class InvoiceDocxService {
   private db = inject(Firestore);
   private currencyService = inject(CurrencyService);
   private templateService = inject(TemplateService);
+  private templateRenderer = inject(TemplateRendererService);
   private notifications = inject(NotificationService);
+  private documentStorage = inject(DocumentStorageService);
+  private pdfGeneration = inject(PdfGenerationService);
 
   calculateInvoiceTotals(items: InvoiceItem[], includeVat = true, currencyCode?: string | null) {
     // compute per-line totals if missing
@@ -64,7 +71,7 @@ export class InvoiceDocxService {
 
     return this.generateInvoiceDocx(companyId, data).pipe(
       switchMap(({ blob, company, fileName }) =>
-        from(this.downloadInBrowser(blob, data.client_name, fileName)).pipe(map(() => fileName))
+        from(this.documentStorage.saveGeneratedDocument({ companyId, clientName: data.client_name, documentType: 'invoice', documentId: data.invoice_number, fileName, mimeType: blob.type, blob })).pipe(map(() => fileName))
       ),
       catchError(err => {
         const userError = new Error(InvoiceDocxService.GENERATE_INVOICE_ERROR_MESSAGE);
@@ -92,10 +99,16 @@ export class InvoiceDocxService {
         return this.templateService.getDefaultTemplate(companyId, 'invoice').pipe(
           take(1),
           switchMap(template => {
-            if (!template?.storagePath) {
+            const path = template?.bodyStoragePath || template?.storagePath;
+            if (!template || !path) {
               return throwError(() => new Error('No invoice template found for company.'));
             }
-            const templateRef = ref(this.storage, template.storagePath);
+            try {
+              this.templateRenderer.assertRenderable(template, 'invoice');
+            } catch (error) {
+              return throwError(() => error);
+            }
+            const templateRef = ref(this.storage, path);
             return from(getDownloadURL(templateRef)).pipe(map(url => ({ url, company })));
           })
         );
@@ -130,6 +143,7 @@ export class InvoiceDocxService {
         };
         const zip = new PizZip(arrayBuffer as ArrayBuffer);
         const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+        this.assertRequiredTemplateData(finalData, 'invoice');
         doc.setData(finalData);
         doc.render();
         const blob = doc.getZip().generate({
@@ -142,7 +156,8 @@ export class InvoiceDocxService {
     );
   }
 
-  async generatePdf(
+  /** @deprecated This creates a DOCX and asks the user to export it as PDF. Use generatePdfViaBackend() for real PDF generation. */
+  async generateDocxForManualPdfExport(
     companyId: string,
     data: Omit<InvoiceData, 'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'> & { invoice_number: string; includeVat?: boolean }
   ): Promise<void> {
@@ -164,6 +179,39 @@ export class InvoiceDocxService {
 
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
     window.alert('The invoice was generated from your Word template and downloaded as a .docx file. Please use Word or your browser\'s document viewer to Save/Export it as PDF so the PDF matches the template exactly.');
+  }
+
+  generatePdfViaBackend(
+    companyId: string,
+    clientId: string | undefined,
+    data: Omit<InvoiceData, 'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'> & { invoice_number: string; includeVat?: boolean }
+  ): Observable<PdfGenerationResult> {
+    return from(this.pdfGeneration.generate({
+      companyId,
+      clientId,
+      clientName: data.client_name,
+      documentType: 'invoice',
+      documentId: data.invoice_number,
+      payload: data as unknown as Record<string, unknown>,
+      client: { displayName: data.client_name, email: data.client_email }
+    })).pipe(catchError(err => throwError(() => this.toPdfGenerationError(err))));
+  }
+
+
+  private assertRequiredTemplateData(data: any, type: 'invoice'): void {
+    const missing = requiredVariablesForTemplate(type, 'docx').filter(key => data[key] === undefined || data[key] === null || data[key] === '');
+    if (missing.length) throw new Error(`Missing required invoice data for template variables: ${missing.map(variableLabel).join(', ')}.`);
+  }
+
+  private toPdfGenerationError(err: any): Error {
+    const reason = err?.details?.reason;
+    const messages: Record<string, string> = {
+      'conversion-failed': 'PDF conversion failed. Please try again or contact support.',
+      'missing-template': 'No compatible template is available for PDF generation.',
+      'unsupported-template-format': 'This template format cannot be generated as a PDF yet.',
+      'insufficient-permissions': 'You do not have permission to generate this PDF.'
+    };
+    return new Error(messages[reason] || err?.message || 'PDF generation failed.');
   }
 
   private escapeHtml(value: string): string {

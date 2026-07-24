@@ -73,6 +73,15 @@
             </div>
         </ng-container>
 
+        <div class="form-group full" *ngIf="!trackingOnly">
+            <label>Output format</label>
+            <select formControlName="downloadFormat">
+                <option value="docx">Word DOCX</option>
+                <option value="pdf">PDF (backend generated)</option>
+            </select>
+            <small>PDF output is generated server-side and saved to company/client/document storage.</small>
+        </div>
+
         <div class="form-group full">
             <label>Notes (optional)</label>
             <textarea rows="3" formControlName="notes"></textarea>

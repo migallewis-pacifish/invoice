@@ -7,6 +7,8 @@ export type DocumentStorageProvider =
 
 export type LegacyDocumentStorageProvider = 'nexus_storage' | 'local';
 
+export type CloudDocumentStorageProvider = 'google_drive' | 'onedrive';
+
 export interface FolderMetadata {
   folderId?: string;
   folderName?: string;
@@ -28,18 +30,28 @@ export interface CompanyDocumentStorageSettings {
 
   googleDrive?: {
     connected: boolean;
+    authorizationUrl?: string;
+    accountEmail?: string;
     rootFolderId?: string;
     rootFolderName?: string;
     rootFolderUrl?: string;
     connectedAt?: any;
+    expiresAt?: any;
+    scopes?: string[];
   };
 
   oneDrive?: {
     connected: boolean;
+    authorizationUrl?: string;
+    accountEmail?: string;
+    tenantId?: string;
+    driveId?: string;
     rootFolderId?: string;
     rootFolderName?: string;
     rootFolderUrl?: string;
     connectedAt?: any;
+    expiresAt?: any;
+    scopes?: string[];
   };
 
   localFolder?: {
@@ -83,3 +95,28 @@ export const DEFAULT_DOCUMENT_STORAGE_SETTINGS: Omit<CompanyDocumentStorageSetti
   oneDrive: { connected: false },
   localFolder: { enabled: false, supported: false, fallbackProvider: 'browser_download' },
 };
+
+
+export interface GeneratedDocumentSaveRequest {
+  companyId: string;
+  clientId?: string;
+  clientName?: string;
+  documentType: 'invoice' | 'letter';
+  documentId?: string;
+  fileName: string;
+  mimeType: string;
+  blob: Blob;
+}
+
+export interface GeneratedDocumentSaveResult {
+  provider: DocumentStorageProvider;
+  fallbackProvider?: 'browser_download';
+  fileName: string;
+  folderId?: string;
+  folderName?: string;
+  webUrl?: string;
+  id?: string;
+  uploaded: boolean;
+  fallback: boolean;
+  error?: string;
+}

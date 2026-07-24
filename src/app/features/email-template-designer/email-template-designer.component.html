@@ -1,0 +1,75 @@
+<ng-template #designerContent>
+  <main class="designer-page">
+    <header class="designer-header">
+      <div class="wizard-steps" aria-label="Email template workflow">
+        <button *ngFor="let step of steps" type="button" [class.active]="currentStep === step.value" (click)="goTo(step.value)">{{ step.label }}</button>
+      </div>
+    </header>
+
+    <section class="starter-panel panel" *ngIf="currentStep === 'choose'">
+      <div class="panel-heading with-border">
+        <div>
+          <h1>Start with a modern email template</h1>
+          <p>Choose one of three editable templates per email type, or start with a blank design.</p>
+        </div>
+      </div>
+      <div class="starter-grid scratch-grid">
+        <article class="starter-card scratch-card">
+          <div class="scratch-icon" aria-hidden="true">＋</div>
+          <p class="eyebrow">Blank canvas</p>
+          <h3>Start from scratch</h3>
+          <p>Build a completely custom email using layouts, content blocks, and your own styling.</p>
+          <button type="button" class="primary" (click)="createNew()">Start from scratch</button>
+        </article>
+      </div>
+      <div class="template-type-group" *ngFor="let type of types">
+        <h2>{{ type.label }}</h2>
+        <div class="starter-grid">
+          <article class="starter-card" *ngFor="let starter of templatesFor(type.value)" [class.selected]="selectedStarterId === starter.id">
+            <div class="starter-accent" [style.background]="starter.accent"></div>
+            <p class="eyebrow">{{ starter.audience }}</p>
+            <h3>{{ starter.name }}</h3>
+            <p>{{ starter.description }}</p>
+            <strong>{{ starter.subject }}</strong>
+            <button type="button" class="primary" (click)="useStarter(starter)">Use and edit</button>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <ng-container *ngIf="currentStep === 'design'">
+      <section class="designer-grid">
+        <app-email-template-palette [sections]="template.sections"></app-email-template-palette>
+        <app-email-template-canvas [(sections)]="template.sections" [(selection)]="selection" (sectionsChange)="changed()"></app-email-template-canvas>
+        <app-email-template-inspector [section]="selectedSection" [column]="selectedColumn" [element]="selectedElement" (changed)="changed()" (duplicate)="duplicateSelected()" (delete)="deleteSelected()"></app-email-template-inspector>
+      </section>
+    </ng-container>
+
+    <section class="preview-step panel" *ngIf="currentStep === 'preview'">
+      <div class="panel-heading with-border">
+        <div><h1>Review your email</h1><p>Confirm the template details and rendered email before saving.</p></div>
+        <div class="header-actions"><button type="button" class="primary" (click)="save()">Save template</button></div>
+      </div>
+      <div class="review-fields">
+        <label>Template name<input [(ngModel)]="template.name" (ngModelChange)="changed()"></label>
+        <label>Email subject<input [(ngModel)]="template.subject" (ngModelChange)="changed()"></label>
+        <label>Template type<select [(ngModel)]="template.type" (ngModelChange)="changed()"><option *ngFor="let type of types" [ngValue]="type.value">{{ type.label }}</option></select></label>
+      </div>
+      <iframe title="Email preview" sandbox="" [class.mobile]="previewWidth === 'mobile'" [srcdoc]="reviewHtml"></iframe>
+      <div class="preview-toggle"><button type="button" class="secondary" (click)="previewWidth='desktop'">Desktop</button><button type="button" class="secondary" (click)="previewWidth='mobile'">Mobile</button></div>
+    </section>
+
+    <section class="output panel" *ngIf="savedJson"><div class="panel-heading with-border"><div><h2>Serializable template definition</h2><p>First-version save output for backend persistence.</p></div></div><pre>{{ savedJson }}</pre></section>
+  </main>
+</ng-template>
+
+<div class="designer-dialog" *ngIf="dialogMode; else routedDesigner">
+  <button type="button" class="dialog-close" aria-label="Close email template designer" (click)="closeDialog()">×</button>
+  <ng-container *ngTemplateOutlet="designerContent"></ng-container>
+</div>
+
+<ng-template #routedDesigner>
+  <app-workspace-shell searchPlaceholder="Search email templates...">
+    <ng-container *ngTemplateOutlet="designerContent"></ng-container>
+  </app-workspace-shell>
+</ng-template>
