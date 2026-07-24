@@ -5,7 +5,7 @@ import { ClientService } from '../../services/client.service';
 import { CommonModule } from '@angular/common';
 import { InvoiceDocxService } from '../../services/invoice-docx.service';
 import { DIALOG_DATA } from '@angular/cdk/dialog';
-import { catchError, finalize, from, map, of, switchMap, take, tap } from 'rxjs';
+import { catchError, finalize, from, map, Observable, of, switchMap, take, tap } from 'rxjs';
 import { Auth } from '@angular/fire/auth';
 import { doc, docData, Firestore, serverTimestamp } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
@@ -14,7 +14,7 @@ import { DialogShellComponent } from '../dialog-shell/dialog-shell.component';
 import { Timestamp } from 'firebase/firestore';
 
 
-type InvoiceDownloadFormat = 'docx';
+type InvoiceDownloadFormat = 'docx' | 'pdf';
 
 export interface InvoicePaymentAdjustment {
   creditAmount?: number;
@@ -260,12 +260,15 @@ export class AddInvoiceDialogComponent {
       shouldIncludeVAT: includeVat
     };
 
-    const generate$ = this.invoiceDocx.generateAndSave(this.companyId, invoiceData);
+    const wantsPdf = formValue.downloadFormat === 'pdf';
+    const generate$: Observable<{ filename: string; generatedFile: any }> = wantsPdf
+      ? this.invoiceDocx.generatePdfViaBackend(this.companyId, this.clientId, invoiceData).pipe(map(result => ({ filename: result.fileName, generatedFile: result })))
+      : this.invoiceDocx.generateAndSave(this.companyId, invoiceData).pipe(map(filename => ({ filename, generatedFile: null as any }))); 
 
     generate$.pipe(
-      switchMap(filename => {
+      switchMap(generated => {
         if (this.viewOnly) {
-          return of(filename);
+          return of(generated);
         }
 
         return from(
@@ -291,19 +294,20 @@ export class AddInvoiceDialogComponent {
             vatRate: 0.15,
             items,
             lineItems: items,
-            filename,
+            filename: generated.filename,
+            generatedFile: generated.generatedFile,
             downloadFormat: formValue.downloadFormat,
             createdAt: serverTimestamp(),
             createdBy: this.auth.currentUser?.uid
           })
-        ).pipe(map(() => filename));
+        ).pipe(map(() => generated));
       }),
-      tap(filename => {
-        this.notifications.success(`Invoice created: ${filename}`);
-        this.dialog.close(filename);
+      tap(generated => {
+        this.notifications.success(`Invoice created: ${generated.filename}`);
+        this.dialog.close(generated.filename);
       }),
       catchError((err) => {
-        const message = 'Failed to generate or save invoice.';
+        const message = err?.message || 'Failed to generate or save invoice.';
         this.error.set(message);
         this.notifications.error(message, err);
         return of(null);

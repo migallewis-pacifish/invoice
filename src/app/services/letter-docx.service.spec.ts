@@ -5,6 +5,9 @@ import { Storage } from '@angular/fire/storage';
 import { ActivityService } from './activity.service';
 import { TemplateService } from './template.service';
 import { LetterDocxService } from './letter-docx.service';
+import { TemplateRendererService } from './template-renderer.service';
+import { DocumentStorageService } from './document-storage.service';
+import { PdfGenerationService } from './pdf-generation.service';
 
 describe('LetterDocxService', () => {
   let service: LetterDocxService;
@@ -16,7 +19,10 @@ describe('LetterDocxService', () => {
         { provide: HttpClient, useValue: {} },
         { provide: Firestore, useValue: {} },
         { provide: ActivityService, useValue: {} },
-        { provide: TemplateService, useValue: { upload: jasmine.createSpy('upload').and.resolveTo({ path: 'p', url: 'u' }) } }
+        { provide: TemplateService, useValue: { upload: jasmine.createSpy('upload').and.resolveTo({ path: 'p', url: 'u' }) } },
+        { provide: TemplateRendererService, useValue: { assertRenderable: jasmine.createSpy('assertRenderable') } },
+        { provide: DocumentStorageService, useValue: { saveGeneratedDocument: jasmine.createSpy('saveGeneratedDocument') } },
+        { provide: PdfGenerationService, useValue: { generate: jasmine.createSpy('generate') } }
       ]
     });
     service = TestBed.inject(LetterDocxService);

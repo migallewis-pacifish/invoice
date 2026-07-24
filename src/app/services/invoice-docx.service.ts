@@ -12,6 +12,7 @@ import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 import { NotificationService } from './notification.service';
 import { DocumentStorageService } from './document-storage.service';
+import { PdfGenerationResult, PdfGenerationService } from './pdf-generation.service';
 
 @Injectable({
   providedIn: 'root'
@@ -29,6 +30,7 @@ export class InvoiceDocxService {
   private templateRenderer = inject(TemplateRendererService);
   private notifications = inject(NotificationService);
   private documentStorage = inject(DocumentStorageService);
+  private pdfGeneration = inject(PdfGenerationService);
 
   calculateInvoiceTotals(items: InvoiceItem[], includeVat = true, currencyCode?: string | null) {
     // compute per-line totals if missing
@@ -152,7 +154,8 @@ export class InvoiceDocxService {
     );
   }
 
-  async generatePdf(
+  /** @deprecated This creates a DOCX and asks the user to export it as PDF. Use generatePdfViaBackend() for real PDF generation. */
+  async generateDocxForManualPdfExport(
     companyId: string,
     data: Omit<InvoiceData, 'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'> & { invoice_number: string; includeVat?: boolean }
   ): Promise<void> {
@@ -174,6 +177,33 @@ export class InvoiceDocxService {
 
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
     window.alert('The invoice was generated from your Word template and downloaded as a .docx file. Please use Word or your browser\'s document viewer to Save/Export it as PDF so the PDF matches the template exactly.');
+  }
+
+  generatePdfViaBackend(
+    companyId: string,
+    clientId: string | undefined,
+    data: Omit<InvoiceData, 'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'> & { invoice_number: string; includeVat?: boolean }
+  ): Observable<PdfGenerationResult> {
+    return from(this.pdfGeneration.generate({
+      companyId,
+      clientId,
+      clientName: data.client_name,
+      documentType: 'invoice',
+      documentId: data.invoice_number,
+      payload: data as unknown as Record<string, unknown>,
+      client: { displayName: data.client_name, email: data.client_email }
+    })).pipe(catchError(err => throwError(() => this.toPdfGenerationError(err))));
+  }
+
+  private toPdfGenerationError(err: any): Error {
+    const reason = err?.details?.reason;
+    const messages: Record<string, string> = {
+      'conversion-failed': 'PDF conversion failed. Please try again or contact support.',
+      'missing-template': 'No compatible template is available for PDF generation.',
+      'unsupported-template-format': 'This template format cannot be generated as a PDF yet.',
+      'insufficient-permissions': 'You do not have permission to generate this PDF.'
+    };
+    return new Error(messages[reason] || err?.message || 'PDF generation failed.');
   }
 
   private escapeHtml(value: string): string {

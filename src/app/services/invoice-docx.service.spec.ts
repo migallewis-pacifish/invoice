@@ -8,6 +8,7 @@ import { TemplateService } from './template.service';
 import { NotificationService } from './notification.service';
 import { of, throwError } from 'rxjs';
 import { DocumentStorageService } from './document-storage.service';
+import { PdfGenerationService } from './pdf-generation.service';
 
 describe('InvoiceDocxService', () => {
   let service: InvoiceDocxService;
@@ -25,7 +26,8 @@ describe('InvoiceDocxService', () => {
         { provide: Storage, useValue: {} },
         { provide: TemplateService, useValue: { getDefaultTemplate: jasmine.createSpy('getDefaultTemplate') } },
         { provide: NotificationService, useValue: notifications },
-        { provide: DocumentStorageService, useValue: documentStorage }
+        { provide: DocumentStorageService, useValue: documentStorage },
+        { provide: PdfGenerationService, useValue: { generate: jasmine.createSpy('generate') } }
       ]
     });
     service = TestBed.inject(InvoiceDocxService);

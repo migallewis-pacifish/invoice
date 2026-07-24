@@ -36,6 +36,15 @@
       <small>Upload a signature image after entering the signer name. The template receives its URL as &#123;signature_url&#125;.</small>
     </div>
 
+    <div class="form-group full">
+      <label>Output format</label>
+      <select formControlName="downloadFormat">
+        <option value="docx">Word DOCX</option>
+        <option value="pdf">PDF (backend generated)</option>
+      </select>
+      <small>PDF output is generated server-side and saved to company/client/document storage.</small>
+    </div>
+
     <div class="actions">
       <button type="submit" class="primary" [disabled]="saving() || uploading() || form.invalid">
         <span *ngIf="!saving()">Generate & Download Letter</span>
