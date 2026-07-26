@@ -9,6 +9,7 @@ export interface PdfGenerationRequest {
   clientName?: string;
   documentType: PdfGenerationDocumentType;
   documentId: string;
+  templateId?: string;
   payload: Record<string, unknown>;
   client?: Record<string, unknown>;
   company?: Record<string, unknown>;

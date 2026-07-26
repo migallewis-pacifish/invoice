@@ -66,10 +66,11 @@ export class InvoiceDocxService {
     data: Omit<
       InvoiceData,
       'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'
-    > & { invoice_number: string; includeVat?: boolean }
+    > & { invoice_number: string; includeVat?: boolean },
+    templateId?: string | null
   ): Observable<string> {
 
-    return this.generateInvoiceDocx(companyId, data).pipe(
+    return this.generateInvoiceDocx(companyId, data, templateId).pipe(
       switchMap(({ blob, company, fileName }) =>
         from(this.documentStorage.saveGeneratedDocument({ companyId, clientName: data.client_name, documentType: 'invoice', documentId: data.invoice_number, fileName, mimeType: blob.type, blob })).pipe(map(() => fileName))
       ),
@@ -86,7 +87,8 @@ export class InvoiceDocxService {
     data: Omit<
       InvoiceData,
       'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'
-    > & { invoice_number: string; includeVat?: boolean }
+    > & { invoice_number: string; includeVat?: boolean },
+    templateId?: string | null
   ): Observable<{ blob: Blob; company: Company; fileName: string }> {
     const companyDoc = doc(this.db, `companies/${companyId}`);
     return docData(companyDoc).pipe(
@@ -96,7 +98,7 @@ export class InvoiceDocxService {
           return throwError(() => new Error('Company not found.'));
         }
         const company = companyRaw as Company;
-        return this.templateService.getDefaultTemplate(companyId, 'invoice').pipe(
+        return this.templateService.getDefaultTemplate(companyId, 'invoice', templateId).pipe(
           take(1),
           switchMap(template => {
             const path = template?.bodyStoragePath || template?.storagePath;
@@ -184,7 +186,8 @@ export class InvoiceDocxService {
   generatePdfViaBackend(
     companyId: string,
     clientId: string | undefined,
-    data: Omit<InvoiceData, 'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'> & { invoice_number: string; includeVat?: boolean }
+    data: Omit<InvoiceData, 'excluding_vat' | 'vat_amount' | 'total' | 'invoice_number' | 'vat_percentage'> & { invoice_number: string; includeVat?: boolean },
+    templateId?: string | null
   ): Observable<PdfGenerationResult> {
     return from(this.pdfGeneration.generate({
       companyId,
@@ -192,6 +195,7 @@ export class InvoiceDocxService {
       clientName: data.client_name,
       documentType: 'invoice',
       documentId: data.invoice_number,
+      templateId: templateId || undefined,
       payload: data as unknown as Record<string, unknown>,
       client: { displayName: data.client_name, email: data.client_email }
     })).pipe(catchError(err => throwError(() => this.toPdfGenerationError(err))));

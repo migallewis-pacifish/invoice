@@ -22,6 +22,7 @@ import { EmailTemplateDesignerComponent } from '../../features/email-template-de
 import { EmailTemplateBuilderService } from '../../features/email-template-designer/services/email-template-builder.service';
 import { EmailTemplatePreviewDataService } from '../../features/email-template-designer/services/email-template-preview-data.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { TemplateCreationWizardComponent } from '../../components/template-creation-wizard/template-creation-wizard.component';
 
 type TemplateType = 'invoice' | 'letter';
 type TemplateTab = 'overview' | 'gallery' | 'emails';
@@ -77,11 +78,11 @@ export class TemplatesComponent {
   private previewData = inject(EmailTemplatePreviewDataService);
   private sanitizer = inject(DomSanitizer);
 
-  protected readonly showUpload = signal(false);
   protected readonly activeTab = signal<TemplateTab>('overview');
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly templates = signal<TemplateCard[]>([]);
+  protected readonly selectedInvoiceTemplate = signal<TemplateCard | null>(null);
   protected readonly filter = signal<'active' | 'archived' | TemplateType>('active');
   protected readonly emailTemplates = signal<CompanyEmailTemplate[]>([]);
   protected readonly designedEmailTemplates = signal<EmailTemplateDefinition[]>([]);
@@ -92,6 +93,7 @@ export class TemplatesComponent {
   protected readonly emailTemplateMessage = signal('');
   protected readonly variables = EMAIL_TEMPLATE_VARIABLES;
   protected readonly variableLabels = EMAIL_TEMPLATE_VARIABLE_LABELS;
+  private handledEditQuery = false;
 
   protected readonly emailTemplateForm = this.fb.nonNullable.group({
     subject: ['', [Validators.required]],
@@ -112,17 +114,12 @@ export class TemplatesComponent {
 
   protected setTab(tab: TemplateTab): void {
     this.activeTab.set(tab);
-    if (tab !== 'gallery') this.showUpload.set(false);
   }
 
   protected openUploadFlow(): void {
+    this.selectedInvoiceTemplate.set(null);
     this.activeTab.set('gallery');
-    this.showUpload.set(true);
-    queueMicrotask(() => document.getElementById('template-upload')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  }
-
-  protected onUploaded(): void {
-    this.showUpload.set(false);
+    this.openCreationWizard();
   }
 
   protected onFilter(): void {
@@ -133,10 +130,26 @@ export class TemplatesComponent {
 
   protected editTemplate(template: TemplateCard): void {
     if (template.type === 'invoice') {
-      this.openUploadFlow();
+      this.activeTab.set('gallery');
+      this.selectedInvoiceTemplate.set(template);
+      this.openInvoiceTemplateDialog(template);
       return;
     }
     document.getElementById('letter-template-upload')?.click();
+  }
+
+  private openInvoiceTemplateDialog(template: TemplateCard | null): void {
+    const ref = this.dialog.open(UploadTemplateComponent, {
+      data: { inDialog: true, existingTemplate: template },
+      width: 'min(94vw, 900px)',
+      maxWidth: '900px',
+      maxHeight: '94vh',
+      backdropClass: 'dlg-backdrop',
+      panelClass: 'invoice-template-dialog-panel'
+    });
+    ref.closed.subscribe(() => {
+      this.selectedInvoiceTemplate.set(null);
+    });
   }
 
   protected async onLetterTemplatePicked(ev: Event): Promise<void> {
@@ -319,13 +332,16 @@ export class TemplatesComponent {
   }
 
   protected newEmailTemplate(): void {
-    this.dialog.open(EmailTemplateDesignerComponent, {
-      data: { dialogMode: true },
-      width: 'min(96vw, 1720px)',
-      maxWidth: '1720px',
-      maxHeight: '96vh',
+    this.openCreationWizard();
+  }
+
+  private openCreationWizard(): void {
+    this.dialog.open(TemplateCreationWizardComponent, {
+      width: 'min(94vw, 1080px)',
+      maxWidth: '1080px',
+      maxHeight: '94vh',
       backdropClass: 'dlg-backdrop',
-      panelClass: 'email-designer-dialog-panel'
+      panelClass: 'template-creation-wizard-panel'
     });
   }
 
@@ -345,6 +361,16 @@ export class TemplatesComponent {
       collectionData(collection(this.db, `companies/${companyId}/templates`), { idField: 'id' }).subscribe({
         next: templates => {
           this.templates.set((templates as CompanyTemplate[]).map(template => this.toTemplateCard(companyId, template)));
+          const editId = this.route.snapshot.queryParamMap.get('edit');
+          if (editId && !this.handledEditQuery) {
+            const selected = this.templates().find(template => template.id === editId && template.type === 'invoice') ?? null;
+            if (selected) {
+              this.handledEditQuery = true;
+              this.activeTab.set('gallery');
+              this.selectedInvoiceTemplate.set(selected);
+              this.openInvoiceTemplateDialog(selected);
+            }
+          }
           this.loading.set(false);
           this.error.set(null);
         },

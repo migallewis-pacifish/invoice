@@ -7,11 +7,13 @@ import { InvoiceDocxService } from '../../services/invoice-docx.service';
 import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { catchError, finalize, from, map, Observable, of, switchMap, take, tap } from 'rxjs';
 import { Auth } from '@angular/fire/auth';
-import { doc, docData, Firestore, serverTimestamp } from '@angular/fire/firestore';
+import { collection, collectionData, doc, docData, Firestore, serverTimestamp } from '@angular/fire/firestore';
 import { CurrencyService } from '../../services/currency.service';
 import { NotificationService } from '../../services/notification.service';
 import { DialogShellComponent } from '../dialog-shell/dialog-shell.component';
 import { Timestamp } from 'firebase/firestore';
+import { CompanyTemplate } from '../../models/invoice.model';
+import { Router } from '@angular/router';
 
 
 type InvoiceDownloadFormat = 'docx' | 'pdf';
@@ -90,11 +92,14 @@ export class AddInvoiceDialogComponent {
   private db = inject(Firestore);
   private currencyService = inject(CurrencyService);
   private notifications = inject(NotificationService);
+  private router = inject(Router);
 
   saving = signal(false);
   error = signal<string | null>(null);
   currency = signal(this.currencyService.defaultCurrency);
   currencySymbol = signal(this.currencyService.symbolFor(this.currency()));
+  invoiceTemplates = signal<CompanyTemplate[]>([]);
+  templatesLoading = signal(false);
 
 
   client: any;
@@ -124,6 +129,7 @@ export class AddInvoiceDialogComponent {
       notes: [this.previousInvoice?.notes || ''],
       servicesProvided: [this.getCopiedServicesProvided(), Validators.required],
       includeVat: [this.getCopiedIncludeVat()],
+      templateId: [this.previousInvoice?.templateId || '', Validators.required],
       downloadFormat: ['docx' as InvoiceDownloadFormat, Validators.required],
       dueDate: [this.getCopiedDueDate()],
       amountPaid: [this.getInitialAmountPaid(), [Validators.required, Validators.min(0)]],
@@ -138,6 +144,24 @@ export class AddInvoiceDialogComponent {
     this.syncAmountPaidWithStatus();
 
     if (this.companyId) {
+      this.templatesLoading.set(true);
+      collectionData(collection(this.db, `companies/${this.companyId}/templates`), { idField: 'id' }).subscribe({
+        next: records => {
+          const templates = (records as CompanyTemplate[])
+            .filter(template => template.type === 'invoice' && !template.archived && (!template.format || template.format === 'docx'))
+            .sort((a, b) => Number(!!b.isDefault) - Number(!!a.isDefault) || (a.name || '').localeCompare(b.name || ''));
+          this.invoiceTemplates.set(templates);
+          const selected = this.form.get('templateId')?.value;
+          if (!templates.some(template => template.id === selected)) {
+            this.form.get('templateId')?.setValue(templates.find(template => template.isDefault)?.id || templates[0]?.id || '', { emitEvent: false });
+          }
+          this.templatesLoading.set(false);
+        },
+        error: () => {
+          this.templatesLoading.set(false);
+          this.error.set('Unable to load invoice templates.');
+        }
+      });
       docData(doc(this.db, `companies/${this.companyId}`)).pipe(take(1)).subscribe((company: any) => {
         const currency = this.currencyService.normalize(company?.currency);
         this.currency.set(currency);
@@ -209,6 +233,12 @@ export class AddInvoiceDialogComponent {
     this.dialog.close(null);
   }
 
+  editSelectedTemplate(): void {
+    const templateId = this.form.get('templateId')?.value;
+    this.dialog.close(null);
+    void this.router.navigate(['/templates'], { queryParams: { tab: 'gallery', edit: templateId || undefined } });
+  }
+
   generateInvoice() {
     if (this.form.invalid || this.saving()) return;
 
@@ -262,8 +292,8 @@ export class AddInvoiceDialogComponent {
 
     const wantsPdf = formValue.downloadFormat === 'pdf';
     const generate$: Observable<{ filename: string; generatedFile: any }> = wantsPdf
-      ? this.invoiceDocx.generatePdfViaBackend(this.companyId, this.clientId, invoiceData).pipe(map(result => ({ filename: result.fileName, generatedFile: result })))
-      : this.invoiceDocx.generateAndSave(this.companyId, invoiceData).pipe(map(filename => ({ filename, generatedFile: null as any }))); 
+      ? this.invoiceDocx.generatePdfViaBackend(this.companyId, this.clientId, invoiceData, formValue.templateId).pipe(map(result => ({ filename: result.fileName, generatedFile: result })))
+      : this.invoiceDocx.generateAndSave(this.companyId, invoiceData, formValue.templateId).pipe(map(filename => ({ filename, generatedFile: null as any })));
 
     generate$.pipe(
       switchMap(generated => {
@@ -297,6 +327,7 @@ export class AddInvoiceDialogComponent {
             filename: generated.filename,
             generatedFile: generated.generatedFile,
             downloadFormat: formValue.downloadFormat,
+            templateId: formValue.templateId || null,
             createdAt: serverTimestamp(),
             createdBy: this.auth.currentUser?.uid
           })

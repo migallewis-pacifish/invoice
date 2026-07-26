@@ -44,3 +44,11 @@ input, textarea, select {
   background: #eef7fb;
   color: #20556a;
 }
+
+.template-picker-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.edit-template { white-space: nowrap; }

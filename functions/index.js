@@ -399,6 +399,7 @@ function validatePdfGenerationRequest(data) {
   if (data.documentType !== 'invoice' && data.documentType !== 'letter') errors.push('documentType must be invoice or letter');
   if (!String(data.documentId || '').trim()) errors.push('documentId is required');
   if (!String(data.clientId || data.clientName || '').trim()) errors.push('clientId or clientName is required');
+  if (data.templateId && !/^[A-Za-z0-9_-]{1,160}$/.test(String(data.templateId))) errors.push('templateId is invalid');
   return errors;
 }
 
@@ -469,9 +470,16 @@ exports.generatePdfDocument = onCall(async request => {
     throw new HttpsError('permission-denied', 'Insufficient permissions to generate documents for this company.', { reason: PDF_GENERATION_ERROR_CODES.INSUFFICIENT_PERMISSIONS });
   }
 
-  const templateSnap = await admin.firestore().collection(`companies/${data.companyId}/templates`).where('type', '==', data.documentType).where('isDefault', '==', true).limit(1).get();
-  if (templateSnap.empty) throw new HttpsError('not-found', `Missing ${data.documentType} template.`, { reason: PDF_GENERATION_ERROR_CODES.MISSING_TEMPLATE });
-  const templateDoc = templateSnap.docs[0];
+  const templates = admin.firestore().collection(`companies/${data.companyId}/templates`);
+  let templateDoc;
+  if (data.templateId) {
+    const selected = await templates.doc(String(data.templateId)).get();
+    if (selected.exists && selected.data()?.type === data.documentType && !selected.data()?.archived) templateDoc = selected;
+  } else {
+    const defaults = await templates.where('type', '==', data.documentType).where('isDefault', '==', true).limit(1).get();
+    templateDoc = defaults.docs[0];
+  }
+  if (!templateDoc) throw new HttpsError('not-found', `Missing ${data.documentType} template.`, { reason: PDF_GENERATION_ERROR_CODES.MISSING_TEMPLATE });
   const template = templateDoc.data() || {};
   const format = template.format || 'docx';
   const templatePath = template.bodyStoragePath || template.storagePath;

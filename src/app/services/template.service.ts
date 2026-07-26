@@ -14,6 +14,8 @@ export interface TemplateUploadOptions {
   format?: CompanyTemplateFormat;
   name?: string;
   requiredVariables?: string[];
+  /** Existing metadata to preserve when replacing a template's source file. */
+  existingTemplate?: CompanyTemplate;
 }
 
 export interface TemplateFileInspection extends TemplateVariableValidationResult {
@@ -56,21 +58,22 @@ export class TemplateService {
     await uploadBytes(r, file, { contentType: file.type || config.contentType });
     const url = await getDownloadURL(r);
     const now = Date.now();
-    const shouldDefault = await this.shouldBecomeDefault(companyId, type);
+    const existing = options.existingTemplate;
+    const shouldDefault = existing?.isDefault ?? await this.shouldBecomeDefault(companyId, type);
     const template: CompanyTemplate = {
       id: templateId,
       companyId,
       type,
-      name: options.name?.trim() || (shouldDefault ? this.defaultName(type) : this.nameFromFile(file.name, type, format)),
+      name: options.name?.trim() || existing?.name || (shouldDefault ? this.defaultName(type) : this.nameFromFile(file.name, type, format)),
       format,
       bodyStoragePath: path,
       storagePath: path,
       fileName: file.name,
       requiredVariables: requiredVariablesForTemplate(type, format),
       isDefault: shouldDefault,
-      archived: false,
+      archived: existing?.archived ?? false,
       updatedAt: now,
-      createdAt: now
+      createdAt: existing?.createdAt ?? now
     };
 
     await this.activityService.track(
@@ -86,9 +89,9 @@ export class TemplateService {
     return { path, url, template };
   }
 
-  getDefaultTemplate(companyId: string, type: CompanyTemplateType): Observable<CompanyTemplate | null> {
+  getDefaultTemplate(companyId: string, type: CompanyTemplateType, templateId?: string | null): Observable<CompanyTemplate | null> {
     return collectionData(collection(this.db, `companies/${companyId}/templates`), { idField: 'id' }).pipe(
-      map((templates: any[]) => selectDefaultTemplate(templates as CompanyTemplate[], type))
+      map((templates: any[]) => selectDefaultTemplate(templates as CompanyTemplate[], type, templateId))
     );
   }
 

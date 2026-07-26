@@ -7,10 +7,11 @@ import { take } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { ActivityService } from '../../services/activity.service';
 import { TemplateService } from '../../services/template.service';
-import { CompanyTemplateFormat, PdfTemplateMapping } from '../../models/invoice.model';
+import { CompanyTemplate, CompanyTemplateFormat, PdfTemplateMapping } from '../../models/invoice.model';
 import { PdfTemplateService } from '../../services/pdf-template.service';
 import { requiredVariablesForTemplate, variableLabel } from '../../models/template-variable-registry.model';
 import { CURRENT_AUTH_USER } from '../../services/company-context.service';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 
 @Component({
   selector: 'app-upload-template',
@@ -21,6 +22,22 @@ import { CURRENT_AUTH_USER } from '../../services/company-context.service';
 })
 export class UploadTemplateComponent {
   @Input() inDialog = false;                         // hide page-only bits when in a dialog
+  @Input() set fixedFormat(value: CompanyTemplateFormat | null | undefined) {
+    this.lockedFormat.set(value ?? null);
+    if (value) this.format.set(value);
+  }
+  @Input() set existingTemplate(value: CompanyTemplate | null | undefined) {
+    this.editingTemplate.set(value ?? null);
+    if (!value) {
+      this.templateName.set('');
+      return;
+    }
+    this.templateName.set(value.name || 'Invoice template');
+    this.templateId.set(value.id);
+    this.templatePath.set(value.bodyStoragePath || value.storagePath);
+    this.format.set(value.format || 'docx');
+    this.loadTemplateUrl(value.bodyStoragePath || value.storagePath);
+  }
   @Output() uploaded = new EventEmitter<string>();   // emits storage path on success
   @Output() cancel = new EventEmitter<void>();
   private authUser$ = inject(CURRENT_AUTH_USER);
@@ -29,6 +46,8 @@ export class UploadTemplateComponent {
   private activityService = inject(ActivityService);
   private templateService = inject(TemplateService);
   private pdfTemplateService = inject(PdfTemplateService);
+  private dialogData = inject<{ inDialog?: boolean; existingTemplate?: CompanyTemplate | null }>(DIALOG_DATA, { optional: true });
+  private dialogRef = inject(DialogRef<string | null>, { optional: true });
 
 
 
@@ -37,6 +56,9 @@ export class UploadTemplateComponent {
   templateId = signal<string | null>(null);
   templatePath = signal<string | null>(null);
   templateUrl = signal<string | null>(null);
+  editingTemplate = signal<CompanyTemplate | null>(null);
+  templateName = signal('');
+  lockedFormat = signal<CompanyTemplateFormat | null>(null);
 
   // File
   file = signal<File | null>(null);
@@ -66,6 +88,10 @@ export class UploadTemplateComponent {
   };
 
   constructor() {
+    if (this.dialogData) {
+      this.inDialog = this.dialogData.inDialog ?? true;
+      this.existingTemplate = this.dialogData.existingTemplate;
+    }
     // Load current user -> company -> template path/url
     this.authUser$.pipe(take(1)).subscribe(async (user) => {
       if (!user) { this.error.set('Not signed in'); return; }
@@ -75,9 +101,10 @@ export class UploadTemplateComponent {
         this.companyId.set(cid);
         if (!cid) return;
         collectionData(collection(this.db, `companies/${cid}/templates`), { idField: 'id' }).subscribe(async (templates: any[]) => {
+          if (this.editingTemplate()) return;
           const c = templates.find(template => template.type === 'invoice' && template.isDefault && !template.archived)
             ?? templates.find(template => template.type === 'invoice' && !template.archived);
-          if (c?.format) this.format.set(c.format);
+          if (c?.format && !this.lockedFormat()) this.format.set(c.format);
           const path = c?.storagePath ?? null;
           this.templateId.set(c?.id ?? null);
           this.templatePath.set(path);
@@ -94,6 +121,18 @@ export class UploadTemplateComponent {
         });
       });
     });
+  }
+
+  private async loadTemplateUrl(path: string | null): Promise<void> {
+    if (!path) {
+      this.templateUrl.set(null);
+      return;
+    }
+    try {
+      this.templateUrl.set(await getDownloadURL(ref(this.storage, path)));
+    } catch {
+      this.templateUrl.set(null);
+    }
   }
 
   onPickClicked(input: HTMLInputElement) {
@@ -153,22 +192,44 @@ export class UploadTemplateComponent {
     this.progress.set(0);
 
     try {
-      const result = await this.templateService.upload(cid, f, 'invoice', undefined, { format: this.format() });
+      const existing = this.editingTemplate();
+      const result = await this.templateService.upload(cid, f, 'invoice', existing?.id, {
+        format: this.format(),
+        name: this.templateName(),
+        existingTemplate: existing || undefined
+      });
       const url = await getDownloadURL(ref(this.storage, result.path));
       this.templateId.set(result.template.id);
       this.templatePath.set(result.path);
       this.templateUrl.set(url);
       this.info.set('Template uploaded successfully.');
+      this.editingTemplate.set(result.template);
+      this.templateName.set(result.template.name);
       if (this.format() === 'pdf-mapped') await this.analyzePdfTemplate(result.template.id, result.path);
       this.file.set(null);
       this.progress.set(100);
       this.uploaded.emit(result.path);
+      this.dialogRef?.close(result.path);
     } catch (e: any) {
       this.error.set(e?.message ?? 'Failed to save template path.');
     } finally {
       this.uploading.set(false);
       this.progress.set(0);
       this.currentTask = null;
+    }
+  }
+
+  async saveName(): Promise<void> {
+    const cid = this.companyId();
+    const template = this.editingTemplate();
+    const name = this.templateName().trim();
+    if (!cid || !template || !name) return;
+    try {
+      await this.templateService.renameTemplate(cid, template.id, name);
+      this.editingTemplate.set({ ...template, name });
+      this.info.set('Template name saved.');
+    } catch (e: any) {
+      this.error.set(e?.message ?? 'Unable to rename template.');
     }
   }
 
@@ -245,10 +306,9 @@ export class UploadTemplateComponent {
       this.uploading.set(false);
       this.progress.set(0);
       this.info.set(null);
-
-      // 🔽 notify dialog wrapper
-      this.cancel.emit();
     }
+    this.cancel.emit();
+    this.dialogRef?.close(null);
   }
 
   async removeTemplate() {

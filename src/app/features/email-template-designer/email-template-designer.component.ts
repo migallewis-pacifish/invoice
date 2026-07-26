@@ -22,7 +22,7 @@ type WizardStep = 'choose' | 'design' | 'preview';
 export class EmailTemplateDesignerComponent implements OnInit {
   private ctx = inject(CompanyContextService); private builder = inject(EmailTemplateBuilderService); private previewData = inject(EmailTemplatePreviewDataService); private router = inject(Router); private route = inject(ActivatedRoute); private definitions = inject(EmailTemplateDefinitionService); private sanitizer = inject(DomSanitizer);
   private readonly dialogRef = inject<DialogRef<string>>(DialogRef, { optional: true });
-  private readonly dialogData = inject(DIALOG_DATA, { optional: true }) as { dialogMode?: boolean } | null;
+  private readonly dialogData = inject(DIALOG_DATA, { optional: true }) as { dialogMode?: boolean; starterId?: string } | null;
   readonly dialogMode = this.dialogData?.dialogMode === true;
   template: EmailTemplateDefinition = { schemaVersion: 1, companyId: '', name: 'New email template', subject: 'Invoice {{invoice.number}} from {{company.name}}', type: 'invoice', sections: [] };
   types: { label: string; value: EmailTemplateType }[] = [{label:'Invoice',value:'invoice'},{label:'Payment reminder',value:'payment-reminder'},{label:'General',value:'general'}];
@@ -40,6 +40,9 @@ export class EmailTemplateDesignerComponent implements OnInit {
         this.template = stored;
         this.currentStep = 'design';
       }
+    } else if (this.dialogData?.starterId) {
+      const starter = this.starterTemplates.find(candidate => candidate.id === this.dialogData?.starterId);
+      if (starter) this.useStarter(starter);
     }
     this.template.companyId = companyId;
     this.regenerate();

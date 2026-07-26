@@ -110,17 +110,7 @@
     </button>
   </section>
 
-  <section id="template-upload" class="upload-panel" *ngIf="showUpload()">
-    <div class="upload-heading">
-      <div>
-        <p class="eyebrow">Upload flow</p>
-        <h2>Upload New Template</h2>
-      </div>
-      <button class="filter-button" type="button" (click)="showUpload.set(false)">Close</button>
-    </div>
-    <input id="letter-template-upload" class="sr-only" type="file" accept=".docx" (change)="onLetterTemplatePicked($event)" />
-    <app-upload-template [inDialog]="true" (uploaded)="onUploaded()" (cancel)="showUpload.set(false)"></app-upload-template>
-  </section>
+  <input id="letter-template-upload" class="sr-only" type="file" accept=".docx" (change)="onLetterTemplatePicked($event)" />
   </ng-container>
 
   <section *ngSwitchCase="'emails'" class="email-template-settings" aria-label="Email templates">
