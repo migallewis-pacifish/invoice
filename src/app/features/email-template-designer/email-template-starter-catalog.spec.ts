@@ -14,4 +14,14 @@ describe('email template starter catalog', () => {
     expect(clone.sections[0].id).toBe(starter.sections[0].id);
     expect(clone as unknown).not.toBe(starter);
   });
+
+  it('offers several starters for invoice, overdue, handoff, and thank-you emails', () => {
+    const templates = createStarterEmailTemplates();
+    const ids = templates.map(template => template.id ?? '');
+
+    expect(ids.filter(id => id.startsWith('invoice-')).length).toBeGreaterThanOrEqual(3);
+    expect(ids.filter(id => id.startsWith('overdue-') || id.startsWith('reminder-overdue')).length).toBeGreaterThanOrEqual(3);
+    expect(ids.filter(id => id.startsWith('handoff-')).length).toBeGreaterThanOrEqual(3);
+    expect(ids.filter(id => id.startsWith('thanks-') || id === 'general-thanks').length).toBeGreaterThanOrEqual(3);
+  });
 });
