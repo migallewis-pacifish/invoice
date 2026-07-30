@@ -55,7 +55,7 @@ export class RegisterService {
     // Check Firestore user profile
     const userSnap = await getDoc(doc(this.db, `users/${user.uid}`));
     if (userSnap.exists() && userSnap.data()?.['companyId']) {
-      await this.router.navigate(['/landing']);
+      await this.router.navigate(['/']);
     } else {
       await this.router.navigate(['/register']);
     }
