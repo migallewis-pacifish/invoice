@@ -29,7 +29,29 @@ export interface SendEmailRequest {
   subject: string;
   messageBody: string;
   attachment?: EmailAttachmentReference;
+  templateSelection?: EmailTemplateSelection;
+  templateVariables?: EmailTemplateVariablePayload;
 }
+
+export interface EmailTemplateSelection {
+  kind: 'simple' | 'designed';
+  templateId?: string;
+}
+
+export interface EmailTemplateVariablePayload {
+  clientName?: string;
+  invoiceNumber?: string;
+  dueDate?: string;
+  total?: string;
+  companyName?: string;
+  paymentReference?: string;
+  outstandingBalance?: string;
+  daysOverdue?: string;
+  company?: Record<string, string>;
+  client?: Record<string, string>;
+  invoice?: Record<string, string>;
+}
+
 
 export interface SendEmailResponse {
   provider: string;
@@ -56,7 +78,8 @@ export function validateSendEmailRequest(request: SendEmailRequest): string[] {
     if (!EMAIL_PATTERN.test(email)) errors.push(`Invalid copy recipient: ${email}.`);
   }
   if (!request.subject?.trim()) errors.push('Subject is required.');
-  if (!request.messageBody?.trim()) errors.push('Message body is required.');
+  if (!request.messageBody?.trim() && request.templateSelection?.kind !== 'designed') errors.push('Message body is required.');
+  if (request.templateSelection?.kind === 'designed' && !request.templateSelection.templateId) errors.push('Designed template ID is required.');
   if (!request.attachment?.storagePath && !request.attachment?.generatedDocumentPayloadRef) {
     errors.push('An attachment storage path or generated document payload reference is required.');
   }
@@ -130,7 +153,7 @@ export class EmailService {
     const variables = await this.buildTemplateVariables(companyId, document, client);
     const rendered = this.emailTemplateService.render(template, variables);
     if (rendered.errors.length) throw new Error(rendered.errors.join(' '));
-    return { ...request, subject: rendered.subject, messageBody: rendered.body };
+    return { ...request, subject: rendered.subject, messageBody: rendered.body, templateSelection: { kind: 'simple' }, templateVariables: this.expandTemplateVariables(variables, document, client) };
   }
 
   defaultRequest(documentType: EmailDocumentType, document: any, companyId: string, clientId: string, recipient = ''): SendEmailRequest {
@@ -152,7 +175,7 @@ export class EmailService {
   }
 
   validateRenderedRequest(request: SendEmailRequest): string[] {
-    return validateRenderedEmail(request.subject, request.messageBody);
+    return request.templateSelection?.kind === 'designed' ? validateRenderedEmail(request.subject, request.messageBody || 'HTML template selected') : validateRenderedEmail(request.subject, request.messageBody);
   }
 
   private templateTypeForReminder(reminderType: InvoiceReminderType): CompanyEmailTemplateType {
@@ -181,6 +204,22 @@ export class EmailService {
       paymentReference: document?.reference || document?.paymentReference || invoiceNumber,
       outstandingBalance: this.formatTemplateTotal(this.invoiceOutstanding(document)),
       daysOverdue: String(this.daysOverdue(document?.dueDate || document?.due_date))
+    };
+  }
+
+  private expandTemplateVariables(variables: EmailTemplateVariables, document: any, client?: any): EmailTemplateVariablePayload {
+    return {
+      ...variables,
+      company: { name: variables.companyName },
+      client: { name: variables.clientName, email: client?.email || '' },
+      invoice: {
+        number: variables.invoiceNumber,
+        dueDate: variables.dueDate,
+        total: variables.total,
+        outstandingBalance: variables.outstandingBalance,
+        daysOverdue: variables.daysOverdue,
+        date: this.formatTemplateDate(document?.date || document?.invoiceDate || document?.createdAt)
+      }
     };
   }
 

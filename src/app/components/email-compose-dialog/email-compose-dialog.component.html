@@ -10,7 +10,27 @@
     <app-form-field label="BCC"><input formControlName="bcc" placeholder="bcc@example.com, optional"></app-form-field>
   </div>
   <app-form-field label="Subject" [required]="true"><input formControlName="subject"></app-form-field>
-  <app-form-field label="Message" [required]="true"><textarea rows="7" formControlName="messageBody"></textarea></app-form-field>
+
+  <section class="template-choice">
+    <strong>Email body template</strong>
+    <label><input type="radio" formControlName="templateKind" value="simple"> Simple text template</label>
+    <label><input type="radio" formControlName="templateKind" value="designed"> Designed HTML template</label>
+    <select formControlName="designedTemplateId" *ngIf="form.value.templateKind === 'designed'">
+      <option value="">Choose a designed template…</option>
+      <option *ngFor="let template of designedTemplates$ | async" [value]="template.id">{{ template.name }}</option>
+    </select>
+  </section>
+
+  <app-form-field label="Message" [required]="form.value.templateKind !== 'designed'">
+    <textarea rows="7" formControlName="messageBody" [readonly]="form.value.templateKind === 'designed'"></textarea>
+  </app-form-field>
+
+  <section class="email-preview" aria-label="Email preview">
+    <strong>Preview</strong>
+    <div class="html-preview" *ngIf="previewHtml(); else textPreview" [innerHTML]="previewHtml()"></div>
+    <ng-template #textPreview><pre>{{ previewText() }}</pre></ng-template>
+    <p class="warning" *ngIf="previewUnresolved().length">Unresolved variables: {{ previewUnresolved().join(', ') }}</p>
+  </section>
 
   <section class="attachment-preview" aria-label="Attachment preview">
     <strong>Attachment</strong>

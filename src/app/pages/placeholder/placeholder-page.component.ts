@@ -68,13 +68,15 @@ import { CompanyEmailSettings, EmailProvider } from '../../models/email-integrat
             </article>
             <article class="provider-card">
               <h3>Google Workspace Drive</h3><span class="status">{{ storage()?.googleDrive?.connected ? 'Connected' : 'Not connected' }}</span>
-              <button class="secondary" type="button">Connect Google Workspace Drive</button>
-              <label>Default Google Drive Folder<input formControlName="googleDriveFolder" placeholder="Select or link a company folder"></label>
+              <button class="secondary" type="button" (click)="connectStorageProvider('google_drive')">Connect Google Workspace Drive</button>
+              <label>Default Google Drive Folder<input formControlName="googleDriveFolder" placeholder="Paste a Drive folder URL, ID, or display name"></label>
+              <label>Google Drive Folder ID<input formControlName="googleDriveFolderId" placeholder="Folder ID used by backend uploads"></label>
             </article>
             <article class="provider-card">
               <h3>Microsoft 365 OneDrive</h3><span class="status">{{ storage()?.oneDrive?.connected ? 'Connected' : 'Not connected' }}</span>
-              <button class="secondary" type="button">Connect OneDrive</button>
-              <label>Default OneDrive Folder<input formControlName="oneDriveFolder" placeholder="Select or link a company folder"></label>
+              <button class="secondary" type="button" (click)="connectStorageProvider('onedrive')">Connect OneDrive</button>
+              <label>Default OneDrive Folder<input formControlName="oneDriveFolder" placeholder="Paste a OneDrive folder URL, ID, or display name"></label>
+              <label>OneDrive Folder ID<input formControlName="oneDriveFolderId" placeholder="Drive item ID used by backend uploads"></label>
             </article>
             <article class="provider-card future-card">
               <h3>Local Folder (future)</h3><span class="status">{{ localFolderSupportMessage }}</span>
@@ -146,7 +148,7 @@ export class PlaceholderPageComponent {
   private route = inject(ActivatedRoute); private fb = inject(FormBuilder); private db = inject(Firestore); private currencyService = inject(CurrencyService); private storageService = inject(DocumentStorageService); private emailService = inject(EmailIntegrationService); private activityService = inject(ActivityService); private companyContext = inject(CompanyContextService);
   sectionName = this.route.snapshot.data['sectionName'] ?? 'this section'; isSettings = this.sectionName === 'Settings'; currencyOptions = this.currencyService.options; companyId = signal<string | null>(null); saving = signal(false); savingStorage = signal(false); savingEmail = signal(false); message = signal(''); storage = signal<CompanyDocumentStorageSettings | null>(null); emailSettings = signal<CompanyEmailSettings | null>(null);
   form = this.fb.nonNullable.group({ currency: [this.currencyService.defaultCurrency] });
-  storageForm = this.fb.nonNullable.group({ defaultProvider: ['browser_download' as DocumentStorageProvider], browserDownloadFolder: [''], googleDriveFolder: [''], oneDriveFolder: [''], localFolderPath: [''] });
+  storageForm = this.fb.nonNullable.group({ defaultProvider: ['browser_download' as DocumentStorageProvider], browserDownloadFolder: [''], googleDriveFolder: [''], googleDriveFolderId: [''], oneDriveFolder: [''], oneDriveFolderId: [''], localFolderPath: [''] });
   emailForm = this.fb.nonNullable.group({ defaultProvider: ['gmail' as EmailProvider], gmailAccountEmail: [''], exchangeAccountEmail: [''], exchangeTenantId: [''], sendgridFromEmail: [''], sendgridFromName: [''] });
   localFolderSupportMessage = this.storageService.localFolderFallbackMessage();
 
@@ -160,7 +162,7 @@ export class PlaceholderPageComponent {
       });
       this.storageService.getCompanySettings(companyId).pipe(take(1)).subscribe(settings => {
         this.storage.set(settings);
-        this.storageForm.patchValue({ defaultProvider: settings.defaultProvider, browserDownloadFolder: settings.browserDownload?.suggestedSubfolder || '', googleDriveFolder: settings.googleDrive?.rootFolderName || settings.googleDrive?.rootFolderUrl || '', oneDriveFolder: settings.oneDrive?.rootFolderName || settings.oneDrive?.rootFolderUrl || '', localFolderPath: settings.localFolder?.rootPath || settings.localFolder?.displayName || '' });
+        this.storageForm.patchValue({ defaultProvider: settings.defaultProvider, browserDownloadFolder: settings.browserDownload?.suggestedSubfolder || '', googleDriveFolder: settings.googleDrive?.rootFolderName || settings.googleDrive?.rootFolderUrl || '', googleDriveFolderId: settings.googleDrive?.rootFolderId || '', oneDriveFolder: settings.oneDrive?.rootFolderName || settings.oneDrive?.rootFolderUrl || '', oneDriveFolderId: settings.oneDrive?.rootFolderId || '', localFolderPath: settings.localFolder?.rootPath || settings.localFolder?.displayName || '' });
       });
       this.emailService.getCompanySettings(companyId).pipe(take(1)).subscribe(settings => {
         this.emailSettings.set(settings);
@@ -171,10 +173,12 @@ export class PlaceholderPageComponent {
 
   async saveCurrency() { const companyId = this.companyId(); if (!companyId) return; this.saving.set(true); this.message.set(''); try { await this.activityService.track(companyId, 'update', `companies/${companyId}`, 'Updated company currency settings.', () => updateDoc(doc(this.db, `companies/${companyId}`), { currency: this.currencyService.normalize(this.form.controls.currency.value) })); this.message.set('Currency settings saved.'); } finally { this.saving.set(false); } }
 
-  async saveDocumentStorage() { const companyId = this.companyId(); if (!companyId) return; const value = this.storageForm.getRawValue(); const selectedFolder = this.folderMetadataFor(value.defaultProvider, value); this.savingStorage.set(true); this.message.set(''); try { await this.storageService.saveCompanySettings(companyId, { defaultProvider: value.defaultProvider, selectedProvider: value.defaultProvider, selectedFolder, browserDownload: { enabled: true, suggestedSubfolder: value.browserDownloadFolder || undefined }, googleDrive: { connected: this.storage()?.googleDrive?.connected || false, rootFolderName: value.googleDriveFolder || undefined }, oneDrive: { connected: this.storage()?.oneDrive?.connected || false, rootFolderName: value.oneDriveFolder || undefined }, localFolder: { enabled: value.defaultProvider === 'local_folder', supported: this.storageService.supportsLocalFolderAccess(), rootPath: value.localFolderPath || undefined, displayName: value.localFolderPath || undefined, fallbackProvider: 'browser_download' } }); this.message.set(value.defaultProvider === 'local_folder' && !this.storageService.supportsLocalFolderAccess() ? 'Local folder APIs are unsupported in this browser. Browser download fallback saved.' : 'Document storage settings saved.'); } finally { this.savingStorage.set(false); } }
+  async saveDocumentStorage() { const companyId = this.companyId(); if (!companyId) return; const value = this.storageForm.getRawValue(); const selectedFolder = this.folderMetadataFor(value.defaultProvider, value); this.savingStorage.set(true); this.message.set(''); try { await this.storageService.saveCompanySettings(companyId, { defaultProvider: value.defaultProvider, selectedProvider: value.defaultProvider, selectedFolder, browserDownload: { enabled: true, suggestedSubfolder: value.browserDownloadFolder || undefined }, googleDrive: { ...this.storage()?.googleDrive, connected: this.storage()?.googleDrive?.connected || false, rootFolderId: value.googleDriveFolderId || undefined, rootFolderName: value.googleDriveFolder || undefined, rootFolderUrl: value.googleDriveFolder?.startsWith('http') ? value.googleDriveFolder : undefined }, oneDrive: { ...this.storage()?.oneDrive, connected: this.storage()?.oneDrive?.connected || false, rootFolderId: value.oneDriveFolderId || undefined, rootFolderName: value.oneDriveFolder || undefined, rootFolderUrl: value.oneDriveFolder?.startsWith('http') ? value.oneDriveFolder : undefined }, localFolder: { enabled: value.defaultProvider === 'local_folder', supported: this.storageService.supportsLocalFolderAccess(), rootPath: value.localFolderPath || undefined, displayName: value.localFolderPath || undefined, fallbackProvider: 'browser_download' } }); this.message.set(value.defaultProvider === 'local_folder' && !this.storageService.supportsLocalFolderAccess() ? 'Local folder APIs are unsupported in this browser. Browser download fallback saved.' : 'Document storage settings saved.'); } finally { this.savingStorage.set(false); } }
 
 
   async saveEmailSettings() { const companyId = this.companyId(); if (!companyId) return; const value = this.emailForm.getRawValue(); this.savingEmail.set(true); this.message.set(''); try { await this.emailService.saveCompanySettings(companyId, { defaultProvider: value.defaultProvider, selectedSender: this.senderFor(value.defaultProvider, value), gmail: { connected: this.emailSettings()?.gmail?.connected || false, accountEmail: value.gmailAccountEmail || undefined }, microsoftExchange: { connected: this.emailSettings()?.microsoftExchange?.connected || false, accountEmail: value.exchangeAccountEmail || undefined, tenantId: value.exchangeTenantId || undefined }, sendgrid: { connected: this.emailSettings()?.sendgrid?.connected || false, apiKeyConfigured: this.emailSettings()?.sendgrid?.apiKeyConfigured || false, fromEmail: value.sendgridFromEmail || undefined, fromName: value.sendgridFromName || undefined } }); this.message.set('Email integration settings saved. Complete provider authorization in the backend connection flow before sending mail.'); } finally { this.savingEmail.set(false); } }
+
+  async connectStorageProvider(provider: 'google_drive' | 'onedrive') { const companyId = this.companyId(); if (!companyId) return; this.message.set(''); try { const url = await this.storageService.startCloudConnection(companyId, provider); this.message.set('Opening secure provider authorization. Tokens are handled by Firebase Functions and are not stored in the browser.'); if (typeof window !== 'undefined') window.open(url, '_blank', 'noopener'); } catch (error: any) { this.message.set(error?.message || 'Unable to start provider connection.'); } }
 
   private senderFor(provider: EmailProvider, value: ReturnType<typeof this.emailForm.getRawValue>) {
     if (provider === 'gmail') return { email: value.gmailAccountEmail || undefined };
@@ -183,8 +187,8 @@ export class PlaceholderPageComponent {
   }
 
   private folderMetadataFor(provider: DocumentStorageProvider, value: ReturnType<typeof this.storageForm.getRawValue>) {
-    if (provider === 'google_drive') return { folderName: value.googleDriveFolder || undefined, folderUrl: value.googleDriveFolder?.startsWith('http') ? value.googleDriveFolder : undefined };
-    if (provider === 'onedrive') return { folderName: value.oneDriveFolder || undefined, folderUrl: value.oneDriveFolder?.startsWith('http') ? value.oneDriveFolder : undefined };
+    if (provider === 'google_drive') return { folderId: value.googleDriveFolderId || undefined, folderName: value.googleDriveFolder || undefined, folderUrl: value.googleDriveFolder?.startsWith('http') ? value.googleDriveFolder : undefined };
+    if (provider === 'onedrive') return { folderId: value.oneDriveFolderId || undefined, folderName: value.oneDriveFolder || undefined, folderUrl: value.oneDriveFolder?.startsWith('http') ? value.oneDriveFolder : undefined };
     if (provider === 'local_folder') return { displayName: value.localFolderPath || undefined, path: value.localFolderPath || undefined };
     if (provider === 'browser_download') return { displayName: value.browserDownloadFolder || 'Browser downloads' };
     return undefined;

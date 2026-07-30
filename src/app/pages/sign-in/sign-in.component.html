@@ -14,14 +14,16 @@
       <h2>Sign In</h2>
 
       <form [formGroup]="form" (ngSubmit)="signInEmail()" novalidate>
-        <label>Email *</label>
-        <input class="control" type="email" formControlName="email" placeholder="you@company.com" />
+        <label for="sign-in-email">Email *</label>
+        <input id="sign-in-email" class="control" type="email" formControlName="email"
+          placeholder="you@company.com" autocomplete="email" inputmode="email" />
         <div class="hint" *ngIf="form.controls.email.touched && form.controls.email.invalid">Enter a valid email.</div>
 
-        <label class="mt">Password *</label>
-        <input class="control" type="password" formControlName="password" placeholder="••••••••" />
+        <label class="mt" for="sign-in-password">Password *</label>
+        <input id="sign-in-password" class="control" type="password" formControlName="password"
+          placeholder="••••••••" autocomplete="current-password" />
         <div class="hint" *ngIf="form.controls.password.touched && form.controls.password.invalid">
-          Minimum 6 characters.
+          Enter your password.
         </div>
 
         <button class="primary mt-lg" type="submit" [disabled]="loading()">
@@ -32,15 +34,15 @@
         <div class="or"><span>OR</span></div>
 
         <div class="providers">
-          <button type="button" class="icon-btn" (click)="signInGoogle()" aria-label="Sign in with Google">
+          <button type="button" class="icon-btn" (click)="signInGoogle()" [disabled]="loading()" aria-label="Sign in with Google">
             <img src="/images/google.svg" alt="" />
           </button>
-          <button type="button" class="icon-btn" (click)="signInMicrosoft()" aria-label="Sign in with Microsoft">
+          <button type="button" class="icon-btn" (click)="signInMicrosoft()" [disabled]="loading()" aria-label="Sign in with Microsoft">
             <img src="/images/microsoft.svg" alt="" />
           </button>
         </div>
 
-        <div class="error" *ngIf="error()">{{ error() }}</div>
+        <div class="error" role="alert" aria-live="polite" *ngIf="error()">{{ error() }}</div>
       </form>
     </div>
   </div>

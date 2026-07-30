@@ -5,7 +5,7 @@ import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
-import { catchError, finalize, from, map, of, switchMap, take, tap } from 'rxjs';
+import { catchError, finalize, from, map, Observable, of, switchMap, take, tap } from 'rxjs';
 import { ClientService } from '../../services/client.service';
 import { LetterDocxService } from '../../services/letter-docx.service';
 import { LetterSignature } from '../../models/letter.model';
@@ -42,7 +42,8 @@ export class AddLetterDialogComponent {
     title: ['', Validators.required],
     message: ['', Validators.required],
     signedBy: [''],
-    signatureId: ['']
+    signatureId: [''],
+    downloadFormat: ['docx']
   });
 
   constructor() {
@@ -99,27 +100,34 @@ export class AddLetterDialogComponent {
     const value = this.form.getRawValue();
     const signature = this.signatures().find(sig => sig.id === value.signatureId) || null;
 
-    this.letterDocx.generateAndSave(this.companyId, {
+    const letterInput = {
       title: value.title || '',
       message: value.message || '',
       client: this.client,
       signedBy: value.signedBy || signature?.name || '',
       signature
-    }).pipe(
-      switchMap(filename => from(this.clientSvc.createLetter(this.clientId, {
+    };
+    const generate$: Observable<{ filename: string; generatedFile: any }> = value.downloadFormat === 'pdf'
+      ? this.letterDocx.generatePdfViaBackend(this.companyId, letterInput).pipe(map(result => ({ filename: result.fileName, generatedFile: result })))
+      : this.letterDocx.generateAndSave(this.companyId, letterInput).pipe(map(filename => ({ filename, generatedFile: null as any }))); 
+
+    generate$.pipe(
+      switchMap(generated => from(this.clientSvc.createLetter(this.clientId, {
         title: value.title,
         message: value.message,
         signedBy: value.signedBy || signature?.name || '',
         signatureId: signature?.id || null,
         signaturePath: signature?.path || null,
-        filename,
+        filename: generated.filename,
+        generatedFile: generated.generatedFile,
+        downloadFormat: value.downloadFormat || 'docx',
         date: new Date().toISOString().slice(0, 10),
         createdAt: Date.now()
-      })).pipe(map(() => filename))),
-      tap(filename => this.dialog.close(filename)),
+      })).pipe(map(() => generated))),
+      tap(generated => this.dialog.close(generated.filename)),
       catchError(err => {
         console.error(err);
-        this.error.set('Failed to generate or save letter.');
+        this.error.set(err?.message || 'Failed to generate or save letter.');
         return of(null);
       }),
       finalize(() => this.saving.set(false))

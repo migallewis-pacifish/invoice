@@ -8,3 +8,9 @@
 .error { color: #b91c1c; margin: 0; }
 footer { display: flex; justify-content: flex-end; gap: .75rem; }
 @media (max-width: 640px) { .copy-row { grid-template-columns: 1fr; } }
+.template-choice, .email-preview { display: grid; gap: .6rem; padding: .85rem 1rem; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; }
+.template-choice label { display: flex; align-items: center; gap: .5rem; font-weight: 600; }
+.template-choice select { border: 1px solid #cbd5e1; border-radius: 12px; padding: .75rem .9rem; font: inherit; }
+.email-preview pre { margin: 0; white-space: pre-wrap; font: inherit; }
+.html-preview { max-height: 280px; overflow: auto; background: #fff; border-radius: 12px; padding: .75rem; }
+.warning { color: #b45309; margin: 0; }

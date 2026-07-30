@@ -135,3 +135,6 @@ PDF export should stay out of scope for now. The current browser flow generates 
 4. Add invoice lifecycle and numbering.
 5. Add reporting/export features.
 6. Revisit server-side PDF conversion only when the DOCX workflow is reliable.
+
+
+Add sign in with microsoft sign in 

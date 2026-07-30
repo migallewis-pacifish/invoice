@@ -65,6 +65,7 @@ export class ClientDetailComponent {
   clientStorageMessage = signal('');
   clientStorageProvider = signal<DocumentStorageProvider | 'company_default'>('company_default');
   clientStorageLocation = signal('');
+  clientStorageFolderId = signal('');
   editingClient = signal(false);
   noteDraft = signal('');
   private openedInvoiceFromNavigation = false;
@@ -413,6 +414,7 @@ private syncClientStorageDraft(data: Client | null) {
   const storage = data?.documentStorage;
   this.clientStorageProvider.set(storage?.inheritCompanyDefault === false && storage.provider ? storage.provider : 'company_default');
   this.clientStorageLocation.set(storage?.folderName || storage?.folderUrl || storage?.localPath || storage?.externalUrl || '');
+  this.clientStorageFolderId.set(storage?.folderId || storage?.folderMetadata?.folderId || '');
 }
 
 async saveClientStorage() {
@@ -421,17 +423,19 @@ async saveClientStorage() {
   if (!companyId || !clientId) return;
   const provider = this.clientStorageProvider();
   const location = this.clientStorageLocation().trim();
+  const folderId = this.clientStorageFolderId().trim();
   this.savingClientStorage.set(true);
   this.clientStorageMessage.set('');
   try {
     await this.documentStorageService.setClientStorage(companyId, clientId, {
       inheritCompanyDefault: provider === 'company_default',
       provider: provider === 'company_default' ? undefined : provider,
+      folderId: folderId || undefined,
       folderName: location || undefined,
       folderUrl: location.startsWith('http') ? location : undefined,
       localPath: provider === 'local_folder' ? location || undefined : undefined,
       externalUrl: provider === 'external_link' ? location || undefined : undefined,
-      folderMetadata: location ? { folderName: location, folderUrl: location.startsWith('http') ? location : undefined } : undefined,
+      folderMetadata: (location || folderId) ? { folderId: folderId || undefined, folderName: location || undefined, folderUrl: location.startsWith('http') ? location : undefined } : undefined,
       fallbackProvider: provider === 'local_folder' && !this.documentStorageService.supportsLocalFolderAccess() ? 'browser_download' : undefined,
     });
     this.clientStorageMessage.set('Client document storage saved.');

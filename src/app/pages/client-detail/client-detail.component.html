@@ -140,6 +140,10 @@
             Client folder / link
             <input [ngModel]="clientStorageLocation()" (ngModelChange)="clientStorageLocation.set($event)" placeholder="Folder name, folder URL, local metadata, or external link">
           </label>
+          <label>
+            Cloud folder ID
+            <input [ngModel]="clientStorageFolderId()" (ngModelChange)="clientStorageFolderId.set($event)" placeholder="Drive folder ID or OneDrive item ID">
+          </label>
           <button class="primary" type="button" (click)="saveClientStorage()" [disabled]="savingClientStorage()">
             {{ savingClientStorage() ? 'Saving…' : 'Save Client Storage' }}
           </button>

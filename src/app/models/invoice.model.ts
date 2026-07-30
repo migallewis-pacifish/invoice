@@ -144,13 +144,76 @@ export interface RegisterWizardPayload {
   extraUserEmail?: string;   // optional, max 1 additional user
 }
 
+export type CompanyTemplateFormat = 'docx' | 'freemarker-html' | 'pdf-mapped';
+
+export type PdfTemplateRegionType = 'text' | 'table' | 'total' | 'date' | 'editable';
+
+export interface PdfTemplateBoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface PdfTemplateMappingRegion {
+  id: string;
+  pageNumber: number;
+  boundingBox: PdfTemplateBoundingBox;
+  variableKey: string;
+  regionType: PdfTemplateRegionType;
+  formattingHints?: {
+    fontSize?: number;
+    fontFamily?: string;
+    align?: 'left' | 'center' | 'right';
+    currency?: string;
+    dateFormat?: string;
+    multiline?: boolean;
+  };
+  confidence: number;
+}
+
+export interface PdfTemplateMapping {
+  id: string;
+  companyId: string;
+  templateId: string;
+  sourcePdfPath: string;
+  pageCount: number;
+  regions: PdfTemplateMappingRegion[];
+  requiredVariables: string[];
+  renderEndpoint?: string;
+  generatedStoragePath?: string;
+  outputMetadata?: { pageCount: number; contentType: 'application/pdf'; bytes: number; renderedAt: number };
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+export interface CompanyTemplatePreviewMetadata {
+  storagePath?: string;
+  imageStoragePath?: string;
+  thumbnailStoragePath?: string;
+  updatedAt?: number;
+}
+
 export interface CompanyTemplate {
   id: string;
   companyId: string;
   type: 'invoice' | 'letter';
   name: string;
+  /**
+   * Template renderer format. Older records omitted this field and are treated as DOCX.
+   */
+  format?: CompanyTemplateFormat;
+  /**
+   * Primary template body location. Defaults to storagePath for legacy DOCX templates.
+   */
+  bodyStoragePath?: string;
+  /**
+   * Legacy storage location used by existing DOCX templates. Kept for compatibility.
+   */
   storagePath: string;
   fileName?: string;
+  preview?: CompanyTemplatePreviewMetadata;
+  requiredVariables?: string[];
   isDefault?: boolean;
   archived?: boolean;
   createdAt?: number;

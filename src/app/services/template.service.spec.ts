@@ -33,9 +33,13 @@ describe('TemplateService', () => {
     const file = new File(['not a docx'], 'invoice.txt', { type: 'text/plain' });
 
     await expectAsync(service.upload('company-a', file))
-      .toBeRejectedWithError('Template must be a .docx file.');
+      .toBeRejectedWithError('Word DOCX templates must use .docx files.');
   });
 
+
+  it('selects legacy templates that only have storagePath', () => {
+    expect(selectDefaultTemplate([template('invoice-legacy', 'invoice', false)], 'invoice')?.id).toBe('invoice-legacy');
+  });
 
   it('selects configured default templates before flag fallback', () => {
     const templates = [

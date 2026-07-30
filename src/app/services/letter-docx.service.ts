@@ -10,6 +10,10 @@ import { Company } from '../models/invoice.model';
 import { LetterData, LetterSignature } from '../models/letter.model';
 import { ActivityService } from './activity.service';
 import { TemplateService } from './template.service';
+import { TemplateRendererService } from './template-renderer.service';
+import { DocumentStorageService } from './document-storage.service';
+import { PdfGenerationResult, PdfGenerationService } from './pdf-generation.service';
+import { requiredVariablesForTemplate, variableLabel } from '../models/template-variable-registry.model';
 
 @Injectable({ providedIn: 'root' })
 export class LetterDocxService {
@@ -18,6 +22,9 @@ export class LetterDocxService {
   private db = inject(Firestore);
   private activityService = inject(ActivityService);
   private templateService = inject(TemplateService);
+  private templateRenderer = inject(TemplateRendererService);
+  private documentStorage = inject(DocumentStorageService);
+  private pdfGeneration = inject(PdfGenerationService);
 
   uploadTemplate(companyId: string, file: File): Promise<{ path: string; url: string }> {
     return this.templateService.upload(companyId, file, 'letter').then(result => ({
@@ -62,15 +69,50 @@ export class LetterDocxService {
     signature?: LetterSignature | null;
   }): Observable<string> {
     return this.generateLetterDocx(companyId, input).pipe(
-      map(({ blob, fileName }) => {
-        this.downloadInBrowser(blob, input.client?.displayName || 'client', fileName);
-        return fileName;
-      }),
+      switchMap(({ blob, fileName }) =>
+        from(this.documentStorage.saveGeneratedDocument({ companyId, clientId: input.client?.id, clientName: input.client?.displayName || 'client', documentType: 'letter', documentId: input.title, fileName, mimeType: blob.type, blob })).pipe(map(() => fileName))
+      ),
       catchError(err => {
         console.error('Letter generation error:', err);
         return throwError(() => new Error('Failed to generate letter document.'));
       })
     );
+  }
+
+
+
+  generatePdfViaBackend(companyId: string, input: {
+    title: string;
+    message: string;
+    client: any;
+    signedBy?: string;
+    signature?: LetterSignature | null;
+  }): Observable<PdfGenerationResult> {
+    return from(this.pdfGeneration.generate({
+      companyId,
+      clientId: input.client?.id,
+      clientName: input.client?.displayName || 'client',
+      documentType: 'letter',
+      documentId: input.title,
+      payload: {
+        title: input.title,
+        message: input.message,
+        signedBy: input.signedBy || input.signature?.name || '',
+        signaturePath: input.signature?.path || null
+      },
+      client: input.client || {}
+    })).pipe(catchError(err => throwError(() => this.toPdfGenerationError(err))));
+  }
+
+  private toPdfGenerationError(err: any): Error {
+    const reason = err?.details?.reason;
+    const messages: Record<string, string> = {
+      'conversion-failed': 'PDF conversion failed. Please try again or contact support.',
+      'missing-template': 'No compatible letter template is available for PDF generation.',
+      'unsupported-template-format': 'This letter template format cannot be generated as a PDF yet.',
+      'insufficient-permissions': 'You do not have permission to generate this PDF.'
+    };
+    return new Error(messages[reason] || err?.message || 'PDF generation failed.');
   }
 
   private generateLetterDocx(companyId: string, input: {
@@ -89,8 +131,14 @@ export class LetterDocxService {
         return this.templateService.getDefaultTemplate(companyId, 'letter').pipe(
           take(1),
           switchMap(template => {
-            if (!template?.storagePath) return throwError(() => new Error('No letter template uploaded for company.'));
-            return from(getDownloadURL(ref(this.storage, template.storagePath))).pipe(map(url => ({ url, company })));
+            const path = template?.bodyStoragePath || template?.storagePath;
+            if (!template || !path) return throwError(() => new Error('No letter template uploaded for company.'));
+            try {
+              this.templateRenderer.assertRenderable(template, 'letter');
+            } catch (error) {
+              return throwError(() => error);
+            }
+            return from(getDownloadURL(ref(this.storage, path))).pipe(map(url => ({ url, company })));
           })
         );
       }),
@@ -99,6 +147,7 @@ export class LetterDocxService {
         const data = this.buildTemplateData(company, input);
         const zip = new PizZip(arrayBuffer as ArrayBuffer);
         const docx = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+        this.assertRequiredTemplateData(data, 'letter');
         docx.setData(data);
         docx.render();
         const blob = docx.getZip().generate({
@@ -108,6 +157,12 @@ export class LetterDocxService {
         return { blob, fileName: `${this.slug(input.title)}-${data.letter_date}.docx` };
       })
     );
+  }
+
+
+  private assertRequiredTemplateData(data: any, type: 'letter'): void {
+    const missing = requiredVariablesForTemplate(type, 'docx').filter(key => data[key] === undefined || data[key] === null || data[key] === '');
+    if (missing.length) throw new Error(`Missing required letter data for template variables: ${missing.map(variableLabel).join(', ')}.`);
   }
 
   private buildTemplateData(company: Company, input: { title: string; message: string; client: any; signedBy?: string; signature?: LetterSignature | null }): LetterData {

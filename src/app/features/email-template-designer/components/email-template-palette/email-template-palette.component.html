@@ -1,0 +1,31 @@
+<section class="designer-panel" aria-label="Element palette">
+  <h2>Palette</h2>
+
+  <div
+    cdkDropList
+    id="email-template-layout-palette"
+    class="palette-list"
+    [cdkDropListData]="layouts"
+    [cdkDropListConnectedTo]="['email-template-section-canvas']"
+    [cdkDropListSortingDisabled]="true">
+    <h3>Sections</h3>
+    <button class="palette-item" type="button" cdkDrag [cdkDragData]="item" *ngFor="let item of layouts">
+      <span>{{ item.label }}</span>
+      <small>{{ item.description }}</small>
+    </button>
+  </div>
+
+  <div
+    cdkDropList
+    id="email-template-element-palette"
+    class="palette-list"
+    [cdkDropListData]="elements"
+    [cdkDropListConnectedTo]="columnDropListIds()"
+    [cdkDropListSortingDisabled]="true">
+    <h3>Content</h3>
+    <button class="palette-item" type="button" cdkDrag [cdkDragData]="item" *ngFor="let item of elements">
+      {{ item.label }}
+    </button>
+  </div>
+
+</section>

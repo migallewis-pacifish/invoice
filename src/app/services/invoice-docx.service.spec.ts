@@ -6,14 +6,18 @@ import { Storage } from '@angular/fire/storage';
 import { InvoiceDocxService } from './invoice-docx.service';
 import { TemplateService } from './template.service';
 import { NotificationService } from './notification.service';
-import { throwError } from 'rxjs';
+import { of, throwError } from 'rxjs';
+import { DocumentStorageService } from './document-storage.service';
+import { PdfGenerationService } from './pdf-generation.service';
 
 describe('InvoiceDocxService', () => {
   let service: InvoiceDocxService;
   let notifications: jasmine.SpyObj<NotificationService>;
+  let documentStorage: jasmine.SpyObj<DocumentStorageService>;
 
   beforeEach(() => {
     notifications = jasmine.createSpyObj<NotificationService>('NotificationService', ['error', 'success']);
+    documentStorage = jasmine.createSpyObj<DocumentStorageService>('DocumentStorageService', ['saveGeneratedDocument']);
 
     TestBed.configureTestingModule({
       providers: [
@@ -21,7 +25,9 @@ describe('InvoiceDocxService', () => {
         { provide: Firestore, useValue: {} },
         { provide: Storage, useValue: {} },
         { provide: TemplateService, useValue: { getDefaultTemplate: jasmine.createSpy('getDefaultTemplate') } },
-        { provide: NotificationService, useValue: notifications }
+        { provide: NotificationService, useValue: notifications },
+        { provide: DocumentStorageService, useValue: documentStorage },
+        { provide: PdfGenerationService, useValue: { generate: jasmine.createSpy('generate') } }
       ]
     });
     service = TestBed.inject(InvoiceDocxService);
@@ -82,6 +88,21 @@ describe('InvoiceDocxService', () => {
         );
         done();
       }
+    });
+  });
+
+
+  it('routes generated invoice documents through document storage service', (done) => {
+    const blob = new Blob(['docx'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    spyOn<any>(service, 'generateInvoiceDocx').and.returnValue(of({ blob, company: {} as any, fileName: 'INV-002.docx' }));
+    documentStorage.saveGeneratedDocument.and.resolveTo({ provider: 'google_drive', fileName: 'INV-002.docx', uploaded: true, fallback: false });
+
+    service.generateAndSave('company-a', {
+      invoice_number: 'INV-002', invoice_date: '2026-07-23', client_name: 'Client B', client_building: '', client_street: '', client_suburb: '', client_city: '', client_postal_code: '', client_contact_no: '', services_rendered: '', client_email: '', notes: '', reference: '', items: []
+    }).subscribe(result => {
+      expect(result).toBe('INV-002.docx');
+      expect(documentStorage.saveGeneratedDocument).toHaveBeenCalledWith(jasmine.objectContaining({ companyId: 'company-a', clientName: 'Client B', documentType: 'invoice', documentId: 'INV-002', fileName: 'INV-002.docx', blob }));
+      done();
     });
   });
 
