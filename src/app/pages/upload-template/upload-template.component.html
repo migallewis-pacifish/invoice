@@ -2,20 +2,20 @@
   <div class="card">
     <div class="head">
       <div>
-        <h2 *ngIf="inDialog">{{ editingTemplate() ? 'Edit Invoice Template' : 'Create Invoice Template' }}</h2>
-        <p class="muted">Upload or replace an invoice template in the format your renderer should use.</p>
+        <h2 *ngIf="inDialog">{{ editingTemplate() ? 'Edit ' : 'Create ' }}{{ documentType | titlecase }} Template</h2>
+        <p class="muted">Upload or replace a {{ documentType }} template in the format your renderer should use.</p>
       </div>
       <button class="ghost" routerLink="/landing" *ngIf="!inDialog">Back to Dashboard</button>
       <button class="ghost" type="button" *ngIf="inDialog" (click)="cancelUpload()">Close</button>
     </div>
 
     <div class="form-field">
-      <label for="invoice-template-name"><strong>Template name</strong></label>
+      <label for="document-template-name"><strong>Template name</strong></label>
       <div class="name-row">
-        <input id="invoice-template-name" type="text" [ngModel]="templateName()" (ngModelChange)="templateName.set($event)" placeholder="e.g. Standard invoice">
+        <input id="document-template-name" type="text" [ngModel]="templateName()" (ngModelChange)="templateName.set($event)" [placeholder]="'e.g. Standard ' + documentType">
         <button *ngIf="editingTemplate()" type="button" class="ghost" (click)="saveName()" [disabled]="!templateName().trim()">Save name</button>
       </div>
-      <span class="muted tiny">{{ editingTemplate() ? 'Replace the DOCX below while keeping this template available in existing invoice records.' : 'Give the new invoice template a recognisable name.' }}</span>
+      <span class="muted tiny">{{ editingTemplate() ? 'Replace the file below while keeping this template available in existing records.' : 'Give the new ' + documentType + ' template a recognisable name.' }}</span>
     </div>
 
     <div class="format-picker" aria-label="Template format" *ngIf="!lockedFormat()">
@@ -54,7 +54,7 @@
           <button class="pick" (click)="onPickClicked(fileInput)" [disabled]="uploading()">Choose file</button>
           <input #fileInput type="file" [accept]="acceptList()" (change)="onFilePicked($event)" hidden>
         </div>
-        <div class="muted tiny">Max {{ maxSizeMB }}MB • Required variables: {{ requiredVariables[format()].join(', ') || 'Configured later' }}</div>
+        <div class="muted tiny">Max {{ maxSizeMB }}MB • Required variables: {{ requiredVariablesForFormat(format()).join(', ') || 'Configured later' }}</div>
       </div>
     </div>
 

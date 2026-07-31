@@ -8,11 +8,13 @@
 .steps span { display:flex; align-items:center; gap:7px; padding:8px 12px; border-radius:999px; background:#eef2f7; color:#64748b; font-weight:700; }
 .steps span.active { background:#e8f1ff; color:#1d4ed8; }
 .steps small { font-weight:600; }
-.type-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+.type-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
+.format-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 .type-card { display:grid; text-align:left; gap:10px; padding:24px; min-height:190px; border:1px solid var(--border); border-radius:16px; background:#fff; cursor:pointer; }
 .type-card.selected { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.13); }
 .type-icon { display:grid; place-items:center; width:48px; height:48px; border-radius:12px; color:#fff; background:#2563eb; font-size:22px; font-weight:800; }
 .type-icon.code { background:#7c3aed; font-size:15px; }
+.type-icon.letter { background:#0f766e; }
 .type-card strong { font-size:18px; }
 .type-card small { color:var(--muted); line-height:1.5; }
 .starter-step { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
