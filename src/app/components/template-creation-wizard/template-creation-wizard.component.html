@@ -2,35 +2,54 @@
   <header class="wizard-header">
     <div>
       <p class="eyebrow">New template</p>
-      <h1 id="template-wizard-title">{{ step() === 'type' ? 'Select template type' : (format() === 'docx' ? 'Upload Word template' : 'Select a FreeMarker template') }}</h1>
-      <p>{{ step() === 'type' ? 'Choose how this template should be created.' : (format() === 'docx' ? 'Upload a DOCX containing the required invoice variables.' : 'Choose a starting design to customise in the email editor.') }}</p>
+      <h1 id="template-wizard-title">{{ step() === 'type' ? 'What kind of template is this?' : (step() === 'format' ? 'Choose a template format' : (creationType() === 'email' ? 'Select an email template' : 'Upload ' + creationType() + ' template')) }}</h1>
+      <p>{{ step() === 'type' ? 'Choose whether the new template is for invoices, letters, or emails.' : (step() === 'format' ? 'Choose Word DOCX or FreeMarker/HTML for this ' + creationType() + ' template.' : (creationType() === 'email' ? 'Choose a starting design to customise in the email editor.' : 'Upload the ' + (format() === 'docx' ? 'DOCX' : 'HTML') + ' file containing the required ' + creationType() + ' variables.')) }}</p>
     </div>
     <button type="button" class="close" aria-label="Close template wizard" (click)="close()">×</button>
   </header>
 
   <nav class="steps" aria-label="Template creation steps">
     <span class="active">1 <small>Type</small></span>
-    <span [class.active]="step() === 'configure'">2 <small>{{ format() === 'freemarker' ? 'Select template' : 'Upload' }}</small></span>
+    <span *ngIf="creationType() !== 'email'" [class.active]="step() === 'format'">2 <small>Format</small></span>
+    <span [class.active]="step() === 'configure'">{{ creationType() === 'email' ? 2 : 3 }} <small>{{ creationType() === 'email' ? 'Select template' : 'Upload' }}</small></span>
   </nav>
 
   <div *ngIf="step() === 'type'" class="type-grid">
-    <button type="button" class="type-card" [class.selected]="format() === 'docx'" (click)="selectFormat('docx')">
-      <span class="type-icon" aria-hidden="true">W</span>
-      <strong>Word DOCX</strong>
-      <small>Upload a Word invoice layout with document variables.</small>
+    <button type="button" class="type-card" [class.selected]="creationType() === 'invoice'" (click)="selectType('invoice')">
+      <span class="type-icon" aria-hidden="true">🧾</span>
+      <strong>Invoice</strong>
+      <small>Upload a Word layout for generated invoices.</small>
     </button>
-    <button type="button" class="type-card" [class.selected]="format() === 'freemarker'" (click)="selectFormat('freemarker')">
-      <span class="type-icon code" aria-hidden="true">&lt;/&gt;</span>
-      <strong>FreeMarker email</strong>
+    <button type="button" class="type-card" [class.selected]="creationType() === 'letter'" (click)="selectType('letter')">
+      <span class="type-icon letter" aria-hidden="true">✉</span>
+      <strong>Letter</strong>
+      <small>Upload a Word layout for generated letters.</small>
+    </button>
+    <button type="button" class="type-card" [class.selected]="creationType() === 'email'" (click)="selectType('email')">
+      <span class="type-icon code" aria-hidden="true">&#64;</span>
+      <strong>Email</strong>
       <small>Choose a reusable email design and customise its content.</small>
     </button>
   </div>
 
-  <div *ngIf="step() === 'configure' && format() === 'docx'" class="upload-step">
-    <app-upload-template [inDialog]="true" fixedFormat="docx" (uploaded)="close($event)" (cancel)="close()"></app-upload-template>
+  <div *ngIf="step() === 'format'" class="type-grid format-grid">
+    <button type="button" class="type-card" [class.selected]="format() === 'docx'" (click)="selectFormat('docx')">
+      <span class="type-icon" aria-hidden="true">W</span>
+      <strong>Word DOCX</strong>
+      <small>Use a Microsoft Word document containing template variables.</small>
+    </button>
+    <button type="button" class="type-card" [class.selected]="format() === 'freemarker-html'" (click)="selectFormat('freemarker-html')">
+      <span class="type-icon code" aria-hidden="true">&lt;/&gt;</span>
+      <strong>FreeMarker / HTML</strong>
+      <small>Use an HTML template containing FreeMarker or double-brace variables.</small>
+    </button>
   </div>
 
-  <div *ngIf="step() === 'configure' && format() === 'freemarker'" class="starter-step">
+  <div *ngIf="step() === 'configure' && creationType() !== 'email'" class="upload-step">
+    <app-upload-template [inDialog]="true" [documentType]="documentType()" [fixedFormat]="format()" (uploaded)="close($event)" (cancel)="close()"></app-upload-template>
+  </div>
+
+  <div *ngIf="step() === 'configure' && creationType() === 'email'" class="starter-step">
     <button type="button" class="starter-card blank" (click)="startBlank()">
       <span class="plus">＋</span><strong>Blank design</strong><small>Start from scratch in the email editor.</small>
     </button>
@@ -40,11 +59,11 @@
     </button>
   </div>
 
-  <footer class="wizard-actions" *ngIf="step() === 'type'">
-    <button type="button" class="secondary" (click)="close()">Cancel</button>
-    <button type="button" class="primary" [disabled]="!format()" (click)="next()">Next</button>
+  <footer class="wizard-actions" *ngIf="step() === 'type' || step() === 'format'">
+    <button type="button" class="secondary" (click)="step() === 'type' ? close() : back()">{{ step() === 'type' ? 'Cancel' : '← Back to type' }}</button>
+    <button type="button" class="primary" [disabled]="step() === 'type' ? !creationType() : !format()" (click)="next()">Next</button>
   </footer>
   <footer class="wizard-actions back-actions" *ngIf="step() === 'configure'">
-    <button type="button" class="secondary" (click)="back()">← Back to type</button>
+    <button type="button" class="secondary" (click)="back()">← Back to {{ creationType() === 'email' ? 'type' : 'format' }}</button>
   </footer>
 </section>

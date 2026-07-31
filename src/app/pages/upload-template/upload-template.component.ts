@@ -6,7 +6,7 @@ import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 import { take } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { ActivityService } from '../../services/activity.service';
-import { TemplateService } from '../../services/template.service';
+import { CompanyTemplateType, TemplateService } from '../../services/template.service';
 import { CompanyTemplate, CompanyTemplateFormat, PdfTemplateMapping } from '../../models/invoice.model';
 import { PdfTemplateService } from '../../services/pdf-template.service';
 import { requiredVariablesForTemplate, variableLabel } from '../../models/template-variable-registry.model';
@@ -22,6 +22,7 @@ import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 })
 export class UploadTemplateComponent {
   @Input() inDialog = false;                         // hide page-only bits when in a dialog
+  @Input() documentType: CompanyTemplateType = 'invoice';
   @Input() set fixedFormat(value: CompanyTemplateFormat | null | undefined) {
     this.lockedFormat.set(value ?? null);
     if (value) this.format.set(value);
@@ -81,11 +82,9 @@ export class UploadTemplateComponent {
     { value: 'pdf-mapped', label: 'PDF-mapped', description: 'Upload Canva or design-tool PDFs and map regions to invoice variables.', ext: '.pdf' }
   ];
   format = signal<CompanyTemplateFormat>('docx');
-  readonly requiredVariables: Record<CompanyTemplateFormat, string[]> = {
-    docx: requiredVariablesForTemplate('invoice', 'docx').map(variableLabel),
-    'freemarker-html': requiredVariablesForTemplate('invoice', 'freemarker-html').map(variableLabel),
-    'pdf-mapped': requiredVariablesForTemplate('invoice', 'pdf-mapped').map(variableLabel)
-  };
+  requiredVariablesForFormat(format: CompanyTemplateFormat): string[] {
+    return requiredVariablesForTemplate(this.documentType, format).map(variableLabel);
+  }
 
   constructor() {
     if (this.dialogData) {
@@ -102,8 +101,8 @@ export class UploadTemplateComponent {
         if (!cid) return;
         collectionData(collection(this.db, `companies/${cid}/templates`), { idField: 'id' }).subscribe(async (templates: any[]) => {
           if (this.editingTemplate()) return;
-          const c = templates.find(template => template.type === 'invoice' && template.isDefault && !template.archived)
-            ?? templates.find(template => template.type === 'invoice' && !template.archived);
+          const c = templates.find(template => template.type === this.documentType && template.isDefault && !template.archived)
+            ?? templates.find(template => template.type === this.documentType && !template.archived);
           if (c?.format && !this.lockedFormat()) this.format.set(c.format);
           const path = c?.storagePath ?? null;
           this.templateId.set(c?.id ?? null);
@@ -171,7 +170,7 @@ export class UploadTemplateComponent {
       this.file.set(null);
       return;
     }
-    const inspection = await this.templateService.inspectTemplateFile(f, this.format(), 'invoice');
+    const inspection = await this.templateService.inspectTemplateFile(f, this.format(), this.documentType);
     if (inspection.errors.length) {
       this.error.set(inspection.errors.join(' '));
       this.file.set(null);
@@ -193,7 +192,7 @@ export class UploadTemplateComponent {
 
     try {
       const existing = this.editingTemplate();
-      const result = await this.templateService.upload(cid, f, 'invoice', existing?.id, {
+      const result = await this.templateService.upload(cid, f, this.documentType, existing?.id, {
         format: this.format(),
         name: this.templateName(),
         existingTemplate: existing || undefined
