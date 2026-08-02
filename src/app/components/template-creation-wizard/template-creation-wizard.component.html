@@ -2,8 +2,8 @@
   <header class="wizard-header">
     <div>
       <p class="eyebrow">New template</p>
-      <h1 id="template-wizard-title">{{ step() === 'type' ? 'What kind of template is this?' : (step() === 'format' ? 'Choose a template format' : (creationType() === 'email' ? 'Select an email template' : 'Upload ' + creationType() + ' template')) }}</h1>
-      <p>{{ step() === 'type' ? 'Choose whether the new template is for invoices, letters, or emails.' : (step() === 'format' ? 'Choose Word DOCX or FreeMarker/HTML for this ' + creationType() + ' template.' : (creationType() === 'email' ? 'Choose a starting design to customise in the email editor.' : 'Upload the ' + (format() === 'docx' ? 'DOCX' : 'HTML') + ' file containing the required ' + creationType() + ' variables.')) }}</p>
+      <h1 id="template-wizard-title">{{ step() === 'type' ? 'What kind of template is this?' : (step() === 'format' ? 'Choose a template format' : (creationType() === 'email' ? 'Select an email template' : (format() === 'freemarker-html' ? 'Select a template' : 'Upload ' + creationType() + ' template'))) }}</h1>
+      <p>{{ step() === 'type' ? 'Choose whether the new template is for invoices, letters, or emails.' : (step() === 'format' ? 'Choose Word DOCX or FreeMarker/HTML for this ' + creationType() + ' template.' : (creationType() === 'email' ? 'Choose a starting design to customise in the email editor.' : (format() === 'freemarker-html' ? 'Choose one of the ready-made designs and preview it before adding it.' : 'Upload the DOCX file containing the required ' + creationType() + ' variables.'))) }}</p>
     </div>
     <button type="button" class="close" aria-label="Close template wizard" (click)="close()">×</button>
   </header>
@@ -11,7 +11,7 @@
   <nav class="steps" aria-label="Template creation steps">
     <span class="active">1 <small>Type</small></span>
     <span *ngIf="creationType() !== 'email'" [class.active]="step() === 'format'">2 <small>Format</small></span>
-    <span [class.active]="step() === 'configure'">{{ creationType() === 'email' ? 2 : 3 }} <small>{{ creationType() === 'email' ? 'Select template' : 'Upload' }}</small></span>
+    <span [class.active]="step() === 'configure'">{{ creationType() === 'email' ? 2 : 3 }} <small>{{ creationType() === 'email' || format() === 'freemarker-html' ? 'Select template' : 'Upload' }}</small></span>
   </nav>
 
   <div *ngIf="step() === 'type'" class="type-grid">
@@ -45,8 +45,29 @@
     </button>
   </div>
 
-  <div *ngIf="step() === 'configure' && creationType() !== 'email'" class="upload-step">
+  <div *ngIf="step() === 'configure' && creationType() !== 'email' && format() === 'docx'" class="upload-step">
     <app-upload-template [inDialog]="true" [documentType]="documentType()" [fixedFormat]="format()" (uploaded)="close($event)" (cancel)="close()"></app-upload-template>
+  </div>
+
+  <div *ngIf="step() === 'configure' && creationType() !== 'email' && format() === 'freemarker-html'" class="freemarker-step">
+    <ng-container *ngIf="creationType() === 'invoice'; else noFreemarkerTemplates">
+      <div class="freemarker-gallery" aria-label="Available FreeMarker templates">
+        <button type="button" class="freemarker-card" *ngFor="let starter of freemarkerStarters"
+          [class.selected]="selectedFreemarker()?.id === starter.id" (click)="selectFreemarker(starter)">
+          <span class="template-swatch" [style.background]="starter.accent"></span>
+          <strong>{{ starter.name }}</strong><small>{{ starter.description }}</small>
+        </button>
+      </div>
+      <section class="template-preview-panel" *ngIf="selectedFreemarker() as selected">
+        <div class="preview-heading"><div><small>Preview</small><h2>{{ selected.name }}</h2></div>
+          <button type="button" class="primary" [disabled]="freemarkerBusy()" (click)="useSelectedFreemarker()">{{ freemarkerBusy() ? 'Adding…' : 'Use this template' }}</button>
+        </div>
+        <iframe *ngIf="freemarkerPreview() as preview" [src]="preview" [title]="selected.name + ' template preview'" sandbox=""></iframe>
+        <div class="preview-loading" *ngIf="!freemarkerPreview() && !freemarkerError()">Loading preview…</div>
+      </section>
+      <p class="template-error" role="alert" *ngIf="freemarkerError()">{{ freemarkerError() }}</p>
+    </ng-container>
+    <ng-template #noFreemarkerTemplates><div class="empty-catalog"><strong>No ready-made letter templates yet</strong><span>Choose Word DOCX to upload a letter template.</span></div></ng-template>
   </div>
 
   <div *ngIf="step() === 'configure' && creationType() === 'email'" class="starter-step">

@@ -36,6 +36,19 @@ describe('TemplateService', () => {
       .toBeRejectedWithError('Word DOCX templates must use .docx files.');
   });
 
+  it('accepts FreeMarker built-ins and ignores line-item loop aliases', async () => {
+    const file = new File([
+      '<h1>${invoice.number?html}</h1>',
+      '<#list invoice.items as item><span>${item.description?html}</span></#list>',
+      '<strong>${invoice.total?html}</strong>'
+    ], 'invoice.html', { type: 'text/html' });
+
+    const inspection = await service.inspectTemplateFile(file, 'freemarker-html', 'invoice');
+
+    expect(inspection.errors).toEqual([]);
+    expect(inspection.variables).toEqual(['invoice.number', 'invoice.total']);
+  });
+
 
   it('selects legacy templates that only have storagePath', () => {
     expect(selectDefaultTemplate([template('invoice-legacy', 'invoice', false)], 'invoice')?.id).toBe('invoice-legacy');
