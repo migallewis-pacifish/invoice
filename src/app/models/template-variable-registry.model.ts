@@ -25,6 +25,9 @@ export const TEMPLATE_VARIABLES: TemplateVariableDefinition[] = [
   { group: 'Company', path: 'company.name', label: 'Company name', docxKey: 'company_name', legacyEmailKey: 'companyName' },
   { group: 'Company', path: 'company.email', label: 'Company email', docxKey: 'company_email' },
   { group: 'Company', path: 'company.phone', label: 'Company phone', docxKey: 'company_tel' },
+  { group: 'Company', path: 'company.logoUrl', label: 'Company logo URL' },
+  { group: 'Company', path: 'company.website', label: 'Company website' },
+  { group: 'Company', path: 'company.taxNumber', label: 'Company tax number' },
   { group: 'Company', path: 'company.address', label: 'Company address' },
   { group: 'Company', path: 'company.registrationNumber', label: 'Company registration number', docxKey: 'company_reg_no' },
   { group: 'Company', path: 'company.street', label: 'Company street', docxKey: 'company_street' },
@@ -35,6 +38,7 @@ export const TEMPLATE_VARIABLES: TemplateVariableDefinition[] = [
   { group: 'Client', path: 'client.name', label: 'Client name', docxKey: 'client_name', legacyEmailKey: 'clientName' },
   { group: 'Client', path: 'client.email', label: 'Client email', docxKey: 'client_email' },
   { group: 'Client', path: 'client.phone', label: 'Client phone', docxKey: 'client_contact_no' },
+  { group: 'Client', path: 'client.address', label: 'Client address' },
   { group: 'Client', path: 'client.street', label: 'Client street', docxKey: 'client_street' },
   { group: 'Client', path: 'client.suburb', label: 'Client suburb', docxKey: 'client_suburb' },
   { group: 'Client', path: 'client.city', label: 'Client city', docxKey: 'client_city' },
@@ -50,6 +54,11 @@ export const TEMPLATE_VARIABLES: TemplateVariableDefinition[] = [
   { group: 'Invoice', path: 'invoice.total', label: 'Invoice total', docxKey: 'total', legacyEmailKey: 'total' },
   { group: 'Invoice', path: 'invoice.notes', label: 'Invoice notes', docxKey: 'notes' },
   { group: 'Payment', path: 'payment.reference', label: 'Payment reference', docxKey: 'reference', legacyEmailKey: 'paymentReference' },
+  { group: 'Payment', path: 'payment.accountHolder', label: 'Payment account holder' },
+  { group: 'Payment', path: 'payment.accountNumber', label: 'Payment account number' },
+  { group: 'Payment', path: 'payment.accountType', label: 'Payment account type' },
+  { group: 'Payment', path: 'payment.bankName', label: 'Payment bank name' },
+  { group: 'Payment', path: 'payment.branchCode', label: 'Payment branch code' },
   { group: 'Payment', path: 'payment.outstandingBalance', label: 'Outstanding balance', legacyEmailKey: 'outstandingBalance' },
   { group: 'Payment', path: 'payment.daysOverdue', label: 'Days overdue', legacyEmailKey: 'daysOverdue' },
   { group: 'Letter', path: 'letter.title', label: 'Letter title', docxKey: 'letter_title' },
@@ -57,7 +66,12 @@ export const TEMPLATE_VARIABLES: TemplateVariableDefinition[] = [
   { group: 'Letter', path: 'letter.date', label: 'Letter date', docxKey: 'letter_date' },
   { group: 'Letter', path: 'letter.signedBy', label: 'Signed by', docxKey: 'signed_by' },
   { group: 'Letter', path: 'letter.signatureUrl', label: 'Signature URL', docxKey: 'signature_url' },
-  { group: 'Custom', path: 'custom.notes', label: 'Custom notes' }
+  { group: 'Custom', path: 'custom.notes', label: 'Custom notes' },
+  { group: 'Custom', path: 'signature.name', label: 'Signature name' },
+  { group: 'Custom', path: 'signature.imageUrl', label: 'Signature image URL' },
+  { group: 'Custom', path: 'theme.sidebarColor1', label: 'Primary sidebar colour' },
+  { group: 'Custom', path: 'theme.sidebarColor2', label: 'Secondary sidebar colour' },
+  { group: 'Custom', path: 'theme.sidebarColor3', label: 'Tertiary sidebar colour' }
 ];
 
 export const LEGACY_EMAIL_VARIABLE_MAP: Record<LegacyEmailTemplateVariable, string> = TEMPLATE_VARIABLES.reduce((map, variable) => {

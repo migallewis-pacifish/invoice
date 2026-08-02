@@ -206,9 +206,13 @@ export class TemplateService {
 
   private extractTextTokens(text: string): string[] {
     const handlebars = [...text.matchAll(/{{\s*([a-zA-Z0-9_.]+)\s*}}/g)].map(match => match[1]);
-    const freemarker = [...text.matchAll(/\$\{\s*([a-zA-Z0-9_.]+)\s*}/g)].map(match => match[1]);
+    // FreeMarker expressions commonly append built-ins such as `?html`; capture
+    // the data path before those modifiers rather than rejecting valid templates.
+    const freemarker = [...text.matchAll(/\$\{\s*([a-zA-Z0-9_.]+)(?:[^}]*)}/g)].map(match => match[1]);
     const docx = [...text.matchAll(/{\s*([a-zA-Z0-9_.]+)\s*}/g)].map(match => match[1]);
-    return Array.from(new Set([...handlebars, ...freemarker, ...docx]));
+    // `item` is the local alias declared by an invoice line-item loop, not a
+    // root template-data variable that should be checked against the registry.
+    return Array.from(new Set([...handlebars, ...freemarker, ...docx])).filter(token => !token.startsWith('item.'));
   }
 
   private newTemplateId(type: CompanyTemplateType) {
