@@ -15,14 +15,39 @@ export class DocumentTemplatePreviewService {
   };
 
   buildHtml(source: string): string {
-    return source
+    return this.renderConditionals(source)
       .replace(/\$\{\(theme\.sidebarColor[123]\)!'([^']+)'}/g, '$1')
       .replace(/<#--[\s\S]*?-->/g, '')
       .replace(/<#[^>]*>/g, '')
-      .replace(/<\/#(?:if|list)>/g, '')
+      .replace(/<\/#list>/g, '')
       .replace(/\$\{([^}]+)}/g, (_match, expression: string) => {
         const path = Object.keys(this.sampleValues).find(key => expression.includes(key));
         return path ? this.sampleValues[path] : '';
       });
+  }
+
+  private renderConditionals(source: string): string {
+    const directive = /<#if\s+([^>]+)>|<\/#if>/g;
+    const activeConditions: boolean[] = [];
+    let output = '';
+    let cursor = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = directive.exec(source))) {
+      if (activeConditions.every(Boolean)) output += source.slice(cursor, match.index);
+      if (match[1] !== undefined) activeConditions.push(this.evaluateCondition(match[1]));
+      else activeConditions.pop();
+      cursor = directive.lastIndex;
+    }
+    if (activeConditions.every(Boolean)) output += source.slice(cursor);
+    return output;
+  }
+
+  private evaluateCondition(expression: string): boolean {
+    return expression.split('||').some(orPart => orPart.split('&&').every(andPart => {
+      const match = andPart.trim().match(/^\(?\s*([a-zA-Z0-9_.]+)\s*\)?\?has_content$/);
+      if (!match) return false;
+      return !!this.sampleValues[match[1]]?.trim();
+    }));
   }
 }
