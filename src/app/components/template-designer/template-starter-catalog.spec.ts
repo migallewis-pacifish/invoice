@@ -1,14 +1,14 @@
-import { cloneStarterEmailTemplate, createStarterEmailTemplates } from './email-template-starter-catalog';
+import { cloneStarterTemplate, createStarterTemplates } from './template-starter-catalog';
 
-describe('email template starter catalog', () => {
+describe('template starter catalog', () => {
   it('includes a starter for every assignment scenario', () => {
-    const scenarios = createStarterEmailTemplates().map(template => template.scenario);
+    const scenarios = createStarterTemplates().map(template => template.scenario);
     expect(new Set(scenarios)).toEqual(new Set(['invoice-sending', 'before-due-reminder', 'due-today-reminder', 'overdue-reminder', 'overdue-notice', 'letter-sending', 'general-email']));
   });
 
   it('clones starter templates without preserving starter ids', () => {
-    const starter = createStarterEmailTemplates()[0];
-    const clone = cloneStarterEmailTemplate(starter, 'company-a');
+    const starter = createStarterTemplates()[0];
+    const clone = cloneStarterTemplate(starter, 'company-a');
     expect(clone.companyId).toBe('company-a');
     expect(clone.id).toBeUndefined();
     expect(clone.sections[0].id).toBe(starter.sections[0].id);
@@ -16,7 +16,7 @@ describe('email template starter catalog', () => {
   });
 
   it('offers several starters for invoice, overdue, handoff, and thank-you emails', () => {
-    const templates = createStarterEmailTemplates();
+    const templates = createStarterTemplates();
     const ids = templates.map(template => template.id ?? '');
 
     expect(ids.filter(id => id.startsWith('invoice-')).length).toBeGreaterThanOrEqual(3);

@@ -33,3 +33,12 @@ export interface EmailVariableElement extends EmailElementBase { type: 'variable
 export type EmailElement = EmailTextElement | EmailImageElement | EmailSpacerElement | EmailVariableElement;
 export interface EmailPaletteItem { kind: 'layout' | 'element'; label: string; description?: string; columnWidths?: number[]; elementType?: EmailElementType; variablePath?: string; }
 export interface EmailVariableDefinition { group: 'Company' | 'Client' | 'Invoice' | 'Letter' | 'Payment' | 'Custom'; path: string; label: string; token: string; }
+
+/** Generic designer API. Email-prefixed names remain available for stored-data compatibility. */
+export type TemplateType = EmailTemplateType;
+export type TemplateScenario = EmailTemplateScenario;
+export type TemplateDefinition = EmailTemplateDefinition;
+export type TemplateSelection = EmailSelection;
+export type TemplateSection = EmailSection;
+export type TemplateColumn = EmailColumn;
+export type TemplateElement = EmailElement;

@@ -1,7 +1,7 @@
 <ng-template #designerContent>
   <main class="designer-page">
     <header class="designer-header">
-      <div class="wizard-steps" aria-label="Email template workflow">
+      <div class="wizard-steps" aria-label="Template design workflow">
         <button *ngFor="let step of steps" type="button" [class.active]="currentStep === step.value" (click)="goTo(step.value)">{{ step.label }}</button>
       </div>
     </header>
@@ -47,12 +47,12 @@
 
     <section class="preview-step panel" *ngIf="currentStep === 'preview'">
       <div class="panel-heading with-border">
-        <div><h1>Review your email</h1><p>Confirm the template details and rendered email before saving.</p></div>
+        <div><h1>Review your template</h1><p>Confirm the template details and rendered output before saving.</p></div>
         <div class="header-actions"><button type="button" class="primary" (click)="save()">Save template</button></div>
       </div>
       <div class="review-fields">
         <label>Template name<input [(ngModel)]="template.name" (ngModelChange)="changed()"></label>
-        <label>Email subject<input [(ngModel)]="template.subject" (ngModelChange)="changed()"></label>
+        <label>Subject / title<input [(ngModel)]="template.subject" (ngModelChange)="changed()"></label>
         <label>Template type<select [(ngModel)]="template.type" (ngModelChange)="changed()"><option *ngFor="let type of types" [ngValue]="type.value">{{ type.label }}</option></select></label>
       </div>
       <iframe title="Email preview" sandbox="" [class.mobile]="previewWidth === 'mobile'" [srcdoc]="reviewHtml"></iframe>
@@ -64,7 +64,7 @@
 </ng-template>
 
 <div class="designer-dialog" *ngIf="dialogMode; else routedDesigner">
-  <button type="button" class="dialog-close" aria-label="Close email template designer" (click)="closeDialog()">×</button>
+  <button type="button" class="dialog-close" aria-label="Close template designer" (click)="closeDialog()">×</button>
   <ng-container *ngTemplateOutlet="designerContent"></ng-container>
 </div>
 
