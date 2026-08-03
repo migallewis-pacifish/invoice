@@ -79,6 +79,9 @@
         <button type="button" class="starter-card" *ngFor="let starter of starters" [class.selected]="selectedEmailStarter()?.id === starter.id" (click)="selectEmailStarter(starter)">
           <span class="accent" [style.background]="starter.accent"></span><small>{{ starter.audience }}</small><strong>{{ starter.name }}</strong><span>{{ starter.description }}</span>
         </button>
+        <app-template-colour-selector *ngIf="selectedEmailStarter() as selected"
+          [colors]="emailPaletteFor(selected)" title="Template colours"
+          (colorsChange)="updateEmailPalette($event)"></app-template-colour-selector>
       </div>
       <section template-preview class="template-preview-panel" *ngIf="selectedEmailStarter() as selected">
         <div class="preview-heading"><div><small>Preview</small><h2>{{ selected.name }}</h2><p>{{ selected.subject }}</p></div><button type="button" class="primary" (click)="useSelectedEmailStarter()">Use this design</button></div>

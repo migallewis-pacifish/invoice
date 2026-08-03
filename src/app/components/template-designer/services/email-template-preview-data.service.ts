@@ -6,7 +6,8 @@ export class EmailTemplatePreviewDataService {
   readonly sampleData: Record<string, Record<string, string>> = {
     company: { name: 'Nexus Studio Ltd', email: 'accounts@nexus.example', phone: '+1 (555) 014-2200', address: '100 Market Street, San Francisco, CA' },
     client: { name: 'Acme Corporation', email: 'finance@acme.example' },
-    invoice: { number: 'INV-2026-1042', date: 'July 19, 2026', dueDate: 'August 18, 2026', subtotal: '', vat: '', total: '' }
+    invoice: { number: 'INV-2026-1042', date: 'July 19, 2026', dueDate: 'August 18, 2026', subtotal: '', vat: '', total: '' },
+    message: { body: 'Here is a concise update with the key information and next steps for your review.' }
   };
   constructor() { this.useCurrency(this.currencyService.defaultCurrency); }
   useCurrency(currency: string | null | undefined): void {

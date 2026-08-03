@@ -8,7 +8,7 @@ import { TemplateService } from '../../services/template.service';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { firstValueFrom, take } from 'rxjs';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { createStarterEmailTemplates, StarterTemplate } from '../template-designer/template-starter-catalog';
+import { applyStarterPalette, createStarterEmailTemplates, StarterTemplate } from '../template-designer/template-starter-catalog';
 import { TemplateDesignerComponent } from '../template-designer/template-designer.component';
 import { TemplateColourSelectorComponent, TemplatePalette } from '../template-colour-selector/template-colour-selector.component';
 import { TemplateSelectionLayoutComponent } from '../template-selection-layout/template-selection-layout.component';
@@ -114,6 +114,9 @@ export class TemplateCreationWizardComponent implements OnDestroy {
   readonly freemarkerError = signal<string | null>(null);
   readonly selectedEmailStarter = signal<StarterTemplate | null>(null);
   readonly emailStarterPreview = signal('');
+  readonly emailPalettes = signal<Record<string, TemplatePalette>>(Object.fromEntries(
+    this.starters.map(starter => [starter.id, [...starter.palette] as TemplatePalette])
+  ));
   readonly starterPalettes = signal<Record<string, TemplatePalette>>(Object.fromEntries(
     Object.entries(STARTER_PALETTES).map(([id, config]) => [id, [...config.defaults] as TemplatePalette])
   ));
@@ -173,9 +176,28 @@ export class TemplateCreationWizardComponent implements OnDestroy {
     void this.selectFreemarker(selected);
   }
 
-  selectEmailStarter(starter: StarterTemplate): void {
+  async selectEmailStarter(starter: StarterTemplate): Promise<void> {
     this.selectedEmailStarter.set(starter);
-    this.emailStarterPreview.set(this.emailBuilder.buildHtml({ ...starter, companyId: 'preview' }, value => this.emailPreviewData.renderTokens(value)));
+    try {
+      const response = await fetch(starter.sourcePath);
+      if (!response.ok) throw new Error('Template not found');
+      const source = this.applyEmailPalette(await response.text(), this.emailPaletteFor(starter));
+      this.emailStarterPreview.set(this.emailPreviewData.renderTokens(source.replace(/\$\{\s*([a-zA-Z0-9_.]+)(?:\?html)?\s*}/g, '{{$1}}')));
+    } catch {
+      const themed = applyStarterPalette(starter, this.emailPaletteFor(starter));
+      this.emailStarterPreview.set(this.emailBuilder.buildHtml({ ...themed, companyId: 'preview' }, value => this.emailPreviewData.renderTokens(value)));
+    }
+  }
+
+  emailPaletteFor(starter: StarterTemplate): TemplatePalette {
+    return this.emailPalettes()[starter.id!] ?? starter.palette;
+  }
+
+  updateEmailPalette(colors: TemplatePalette): void {
+    const selected = this.selectedEmailStarter();
+    if (!selected?.id) return;
+    this.emailPalettes.update(palettes => ({ ...palettes, [selected.id!]: colors }));
+    void this.selectEmailStarter(selected);
   }
 
   useSelectedEmailStarter(): void {
@@ -254,7 +276,8 @@ export class TemplateCreationWizardComponent implements OnDestroy {
 
   chooseStarter(starter: StarterTemplate): void {
     this.dialogRef.close(null);
-    queueMicrotask(() => this.openDesigner(starter.id));
+    const themed = applyStarterPalette(starter, this.emailPaletteFor(starter));
+    queueMicrotask(() => this.openDesigner(starter.id, themed));
   }
 
   startBlank(): void {
@@ -262,14 +285,22 @@ export class TemplateCreationWizardComponent implements OnDestroy {
     queueMicrotask(() => this.openDesigner());
   }
 
-  private openDesigner(starterId?: string): void {
+  private openDesigner(starterId?: string, starter?: StarterTemplate): void {
     this.dialog.open(TemplateDesignerComponent, {
-      data: { dialogMode: true, starterId },
+      data: { dialogMode: true, starterId, starter },
       width: 'min(96vw, 1720px)',
       maxWidth: '1720px',
       maxHeight: '96vh',
       backdropClass: 'dlg-backdrop',
       panelClass: 'email-designer-dialog-panel'
     });
+  }
+
+
+  private applyEmailPalette(source: string, palette: TemplatePalette): string {
+    return source
+      .replace(/\$\{\(theme\.primary\)!'[^']+'}/g, palette[0])
+      .replace(/\$\{\(theme\.secondary\)!'[^']+'}/g, palette[1])
+      .replace(/\$\{\(theme\.accent\)!'[^']+'}/g, palette[2]);
   }
 }
