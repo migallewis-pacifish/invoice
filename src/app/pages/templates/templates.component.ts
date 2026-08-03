@@ -47,6 +47,8 @@ interface GalleryCardBase {
   badge: string;
   detail: string;
   defaults: string[];
+  archived: boolean;
+  viewAction: 'view' | 'download';
 }
 
 type GalleryCard =
@@ -139,6 +141,8 @@ export class TemplatesComponent {
         badge: template.type,
         detail: `${template.sections.length} section${template.sections.length === 1 ? '' : 's'}`,
         defaults: (template.defaultForScenarios ?? []).map(scenario => this.scenarioLabel(scenario)),
+        archived: !!template.archived,
+        viewAction: 'view',
         source: template
       }));
     }
@@ -150,6 +154,8 @@ export class TemplatesComponent {
       badge: this.formatLabels[template.format || 'docx'] || template.format || 'Custom Word document',
       detail: '',
       defaults: [],
+      archived: !!template.archived,
+      viewAction: normalizeTemplateFormat(template) === 'docx' ? 'download' : 'view',
       source: template
     }));
   });
@@ -205,6 +211,19 @@ export class TemplatesComponent {
   protected openGalleryMenu(template: GalleryCard): void {
     if (template.kind === 'email') void this.openEmailMoreMenu(template.source);
     else void this.openMoreMenu(template.source);
+  }
+
+  protected async archiveGalleryTemplate(template: GalleryCard): Promise<void> {
+    try {
+      if (template.kind === 'email') {
+        await this.archiveDesignedEmailTemplate(template.source);
+        return;
+      }
+      const companyId = await this.companyContext.requireCompanyIdOnce();
+      await this.templateService.archiveTemplate(companyId, template.source.id, !template.source.archived);
+    } catch (e: any) {
+      this.error.set(e?.message ?? 'Unable to update template archive status.');
+    }
   }
 
   protected editTemplate(template: TemplateCard): void {

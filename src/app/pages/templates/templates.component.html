@@ -61,9 +61,10 @@
           </div>
 
           <div class="template-actions">
-            <button class="edit-button" type="button" (click)="editGalleryTemplate(template)">Edit</button>
+            <button class="square-button" type="button" aria-label="Edit template" title="Edit" (click)="editGalleryTemplate(template)"><span class="app-icon" aria-hidden="true">✎</span></button>
             <button class="square-button" type="button" aria-label="Duplicate template" (click)="duplicateGalleryTemplate(template)"><span class="app-icon" aria-hidden="true">⧉</span></button>
-            <button class="square-button" type="button" [attr.aria-label]="template.kind === 'email' ? 'Preview email template' : 'View or download template'" (click)="viewGalleryTemplate(template)"><span class="app-icon" aria-hidden="true">{{ template.kind === 'email' ? '👁' : '⬇️' }}</span></button>
+            <button class="square-button" type="button" [attr.aria-label]="template.viewAction === 'download' ? 'Download Word document' : 'View template'" [title]="template.viewAction === 'download' ? 'Download' : 'View'" (click)="viewGalleryTemplate(template)"><span class="app-icon" aria-hidden="true">{{ template.viewAction === 'download' ? '⬇️' : '👁' }}</span></button>
+            <button class="square-button" type="button" [attr.aria-label]="template.archived ? 'Restore template' : 'Archive template'" [title]="template.archived ? 'Restore' : 'Archive'" (click)="archiveGalleryTemplate(template)"><span class="app-icon" aria-hidden="true">{{ template.archived ? '↩' : '▣' }}</span></button>
           </div>
         </article>
 

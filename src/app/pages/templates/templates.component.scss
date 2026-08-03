@@ -50,5 +50,6 @@
 .email-paper span:first-child { width:48%; height:12px; margin:0 0 22px; background:var(--primary); }
 .email-paper span:nth-child(3) { width:82%; }
 .template-card .template-content small { display:block; margin-top:10px; color:var(--muted); }
+.template-card .template-actions { grid-template-columns:repeat(4,38px); justify-content:end; }
 
 .default-list{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.6rem;color:#64748b;font-size:.85rem}.default-list span{border-radius:999px;background:#e0f2fe;color:#075985;padding:.15rem .5rem}.email-preview-modal{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:1rem;background:rgba(15,23,42,.56)}.email-preview-panel{width:min(900px,96vw);max-height:92vh;overflow:auto;background:#fff;padding:1.5rem;}.email-preview-frame{margin-top:1rem;border:1px solid #e2e8f0;overflow:auto;background:#f8fafc}
