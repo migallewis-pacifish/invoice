@@ -407,15 +407,22 @@ function buildTemplateVariables(data) {
   const payload = data.payload || {};
   const client = data.client || {};
   const company = data.company || {};
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  const subtotalNumber = items.reduce((sum, item) => sum + (Number(item.amount ?? item.total ?? (Number(item.rate) * Number(item.hours))) || 0), 0);
+  const includeVat = payload.includeVat ?? payload.shouldIncludeVAT ?? false;
+  const vatNumber = includeVat ? subtotalNumber * 0.15 : 0;
+  const money = value => `R ${Number(value || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   return {
     invoice: {
       number: payload.invoice_number || payload.invoiceNumber || data.documentId,
       date: payload.invoice_date || payload.date || new Date().toISOString().slice(0, 10),
       dueDate: payload.dueDate || '',
-      items: payload.items || [],
-      subtotal: payload.excluding_vat || payload.subtotal || '',
-      vat: payload.vat_amount || payload.vat || '',
-      total: payload.total || '',
+      items: items.map(item => ({ ...item, amount: money(item.amount ?? item.total ?? (Number(item.rate) * Number(item.hours))), rate: money(item.rate) })),
+      subtotal: payload.excluding_vat || payload.subtotal || money(subtotalNumber),
+      vatPercentage: includeVat ? '15' : '0',
+      vat: payload.vat_amount || payload.vat || money(vatNumber),
+      total: payload.total || money(subtotalNumber + vatNumber),
+      notes: payload.notes || '',
     },
     letter: {
       title: payload.title || data.documentId,
@@ -425,13 +432,73 @@ function buildTemplateVariables(data) {
     client: {
       name: payload.client_name || client.displayName || data.clientName || '',
       email: payload.client_email || client.email || '',
+      address: payload.client_address || [payload.client_street, payload.client_suburb, payload.client_city, payload.client_postal_code].filter(Boolean).join(', '),
+      street: payload.client_street || '', suburb: payload.client_suburb || '', city: payload.client_city || '', postalCode: payload.client_postal_code || '',
     },
     company: {
       name: company.name || '',
       email: company.email || '',
+      phone: company.phone || '', address: company.address || '', website: company.website || '', logoUrl: company.logoUrl || '',
+      registrationNumber: company.registrationNumber || '', taxNumber: company.taxNumber || '',
     },
+    payment: company.payment || company.bankDetails || { reference: payload.reference || payload.invoice_number || data.documentId },
+    signature: company.signature || {},
     custom: { notes: payload.notes || '' },
   };
+}
+
+function escapeTemplateHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+}
+
+function renderDocumentConditionals(source, variables) {
+  const directive = /<#if\s+([^>]+)>|<\/#if>/g;
+  const active = [];
+  let output = '', cursor = 0, match;
+  while ((match = directive.exec(source))) {
+    if (active.every(Boolean)) output += source.slice(cursor, match.index);
+    if (match[1] !== undefined) {
+      const result = match[1].split('||').some(part => part.split('&&').every(term => {
+        const found = term.trim().match(/^\(?\s*([a-zA-Z0-9_.]+)\s*\)?\?has_content$/);
+        const value = found ? lookupVariable(variables, found[1]) : undefined;
+        return value !== undefined && value !== null && value !== '';
+      }));
+      active.push(result);
+    } else active.pop();
+    cursor = directive.lastIndex;
+  }
+  if (active.every(Boolean)) output += source.slice(cursor);
+  return output;
+}
+
+function renderDocumentTemplate(source, variables) {
+  const renderExpressions = (text, scope = variables) => String(text).replace(/\$\{([^}]+)}/g, (_, expression) => {
+    const fallback = expression.match(/!\s*'([^']*)'/)?.[1] ?? '';
+    const path = expression.match(/[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_]+)+/)?.[0];
+    const value = path ? lookupVariable(scope, path) : undefined;
+    const resolved = value === undefined || value === null || value === '' ? fallback : value;
+    return expression.includes('?html') ? escapeTemplateHtml(resolved) : String(resolved);
+  });
+  let html = renderDocumentConditionals(String(source || ''), variables);
+  html = html.replace(/<#list\s+([a-zA-Z0-9_.]+)\s+as\s+([a-zA-Z0-9_]+)>([\s\S]*?)<\/#list>/g, (_, path, alias, body) => {
+    const list = lookupVariable(variables, path);
+    return Array.isArray(list) ? list.map(item => renderExpressions(body, { ...variables, [alias]: item })).join('') : '';
+  });
+  return renderExpressions(html.replace(/<#--[\s\S]*?-->/g, ''));
+}
+
+async function htmlToPdfBuffer(html) {
+  const chromium = require('@sparticuz/chromium');
+  const puppeteer = require('puppeteer-core');
+  const browser = await puppeteer.launch({ args: chromium.args, defaultViewport: chromium.defaultViewport, executablePath: await chromium.executablePath(), headless: chromium.headless });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.emulateMediaType('screen');
+    return Buffer.from(await page.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true }));
+  } finally {
+    await browser.close();
+  }
 }
 
 function minimalPdfBuffer(title, lines = []) {
@@ -459,7 +526,7 @@ async function getDownloadUrlForStoragePath(storagePath) {
   return url;
 }
 
-exports.generatePdfDocument = onCall(async request => {
+exports.generatePdfDocument = onCall({ memory: '1GiB', timeoutSeconds: 120 }, async request => {
   if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required to generate PDFs.');
   const data = request.data || {};
   const errors = validatePdfGenerationRequest(data);
@@ -484,8 +551,12 @@ exports.generatePdfDocument = onCall(async request => {
   const format = template.format || 'docx';
   const templatePath = template.bodyStoragePath || template.storagePath;
   if (!templatePath) throw new HttpsError('not-found', `Missing ${data.documentType} template file.`, { reason: PDF_GENERATION_ERROR_CODES.MISSING_TEMPLATE });
-  if (format !== 'docx' && format !== 'pdf-mapped') throw new HttpsError('failed-precondition', `PDF generation does not support ${format} templates.`, { reason: PDF_GENERATION_ERROR_CODES.UNSUPPORTED_TEMPLATE_FORMAT });
+  if (!['docx', 'pdf-mapped', 'freemarker-html'].includes(format)) throw new HttpsError('failed-precondition', `PDF generation does not support ${format} templates.`, { reason: PDF_GENERATION_ERROR_CODES.UNSUPPORTED_TEMPLATE_FORMAT });
 
+  if (!data.company || !Object.keys(data.company).length) {
+    const companySnap = await admin.firestore().doc(`companies/${data.companyId}`).get();
+    data.company = companySnap.data() || {};
+  }
   const variables = buildTemplateVariables(data);
   let provider = 'docx-to-pdf-backend';
   let pageCount = 1;
@@ -500,7 +571,14 @@ exports.generatePdfDocument = onCall(async request => {
       pageCount = mapping.pageCount || 1;
     }
 
-    const pdf = minimalPdfBuffer(`${data.documentType} ${data.documentId}`, [`template=${templateDoc.id}`, `provider=${provider}`]);
+    let pdf;
+    if (format === 'freemarker-html') {
+      provider = 'freemarker-html-chromium';
+      const [source] = await admin.storage().bucket().file(templatePath).download();
+      pdf = await htmlToPdfBuffer(renderDocumentTemplate(source.toString('utf8'), variables));
+    } else {
+      pdf = minimalPdfBuffer(`${data.documentType} ${data.documentId}`, [`template=${templateDoc.id}`, `provider=${provider}`]);
+    }
     const clientSegment = sanitizePathSegment(data.clientId || data.clientName, 'client');
     const documentSegment = sanitizePathSegment(data.documentId, data.documentType);
     const fileName = `${documentSegment}.pdf`;
@@ -515,4 +593,4 @@ exports.generatePdfDocument = onCall(async request => {
   }
 });
 
-module.exports._test = { validatePayload, renderFreeMarkerTemplate, htmlToText, normalizeEmailList, buildEmailContent, isCompanyMember, validatePdfAnalysisRequest, buildPdfMapping, validatePdfVariables, generatedPdfMetadata, validatePdfGenerationRequest, sanitizePathSegment, minimalPdfBuffer };
+module.exports._test = { validatePayload, renderFreeMarkerTemplate, renderDocumentTemplate, htmlToText, normalizeEmailList, buildEmailContent, isCompanyMember, validatePdfAnalysisRequest, buildPdfMapping, validatePdfVariables, generatedPdfMetadata, validatePdfGenerationRequest, sanitizePathSegment, minimalPdfBuffer };

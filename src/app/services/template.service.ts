@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { Storage, ref, uploadBytes, getDownloadURL, getBlob, deleteObject } from '@angular/fire/storage';
 import { Firestore, collection, collectionData, deleteDoc, doc, getDocs, setDoc, updateDoc } from '@angular/fire/firestore';
 import { firstValueFrom, map, Observable } from 'rxjs';
-import { CompanyTemplate, CompanyTemplateFormat } from '../models/invoice.model';
+import { CompanyTemplate, CompanyTemplateFormat, CompanyTemplateTheme } from '../models/invoice.model';
 import PizZip from 'pizzip';
 import { requiredVariablesForTemplate, validateTemplateVariables, TemplateVariableValidationResult } from '../models/template-variable-registry.model';
 import { normalizeTemplateFormat } from './template-renderer.service';
@@ -16,6 +16,9 @@ export interface TemplateUploadOptions {
   requiredVariables?: string[];
   /** Existing metadata to preserve when replacing a template's source file. */
   existingTemplate?: CompanyTemplate;
+  sourceKind?: 'ready-made' | 'custom';
+  starterTemplateId?: string;
+  theme?: CompanyTemplateTheme;
 }
 
 export interface TemplateFileInspection extends TemplateVariableValidationResult {
@@ -55,10 +58,20 @@ export class TemplateService {
       ? `companies/${companyId}/pdf-templates/${templateId}/source.pdf`
       : `companies/${companyId}/templates/${templateId}${config.ext}`;
     const r = ref(this.storage, path);
-    await uploadBytes(r, file, { contentType: file.type || config.contentType });
+    const existing = options.existingTemplate;
+    const sourceKind = options.sourceKind ?? existing?.sourceKind ?? 'custom';
+    const starterTemplateId = options.starterTemplateId ?? existing?.starterTemplateId;
+    const theme = options.theme ?? existing?.theme;
+    await uploadBytes(r, file, {
+      contentType: file.type || config.contentType,
+      customMetadata: {
+        sourceKind,
+        ...(starterTemplateId ? { starterTemplateId } : {}),
+        ...(theme ? { theme: JSON.stringify(theme) } : {})
+      }
+    });
     const url = await getDownloadURL(r);
     const now = Date.now();
-    const existing = options.existingTemplate;
     const shouldDefault = existing?.isDefault ?? await this.shouldBecomeDefault(companyId, type);
     const template: CompanyTemplate = {
       id: templateId,
@@ -70,6 +83,9 @@ export class TemplateService {
       storagePath: path,
       fileName: file.name,
       requiredVariables: requiredVariablesForTemplate(type, format),
+      sourceKind,
+      ...(starterTemplateId ? { starterTemplateId } : {}),
+      ...(theme ? { theme } : {}),
       isDefault: shouldDefault,
       archived: existing?.archived ?? false,
       updatedAt: now,
@@ -164,6 +180,12 @@ export class TemplateService {
   async getDownloadUrl(path: string) {
     if (!path) throw new Error('Template path is required.');
     return getDownloadURL(ref(this.storage, path));
+  }
+
+  async getTemplateSource(path: string): Promise<string> {
+    if (!path) throw new Error('Template storage path is required.');
+    const blob = await getBlob(ref(this.storage, path));
+    return blob.text();
   }
 
   private async shouldBecomeDefault(companyId: string, type: CompanyTemplateType): Promise<boolean> {

@@ -3,8 +3,13 @@
   "private": true,
   "engines": { "node": "20" },
   "main": "index.js",
+  "scripts": {
+    "test": "node template-rendering.test.cjs"
+  },
   "dependencies": {
+    "@sparticuz/chromium": "^143.0.4",
     "firebase-admin": "^12.7.0",
-    "firebase-functions": "^6.4.0"
+    "firebase-functions": "^6.4.0",
+    "puppeteer-core": "^24.35.0"
   }
 }

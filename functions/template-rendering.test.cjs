@@ -61,5 +61,14 @@ const { _test } = require('./index.js');
   assert.strictEqual(meta.pageCount, 2);
   assert.strictEqual(meta.bytes, 4);
 
+  const documentHtml = _test.renderDocumentTemplate(
+    `<style>.total{color:red}</style><#if (company.logoUrl)?has_content><img src="\${company.logoUrl?html}"></#if><#list invoice.items as item><p>\${item.description?html}: \${item.amount?html}</p></#list><strong>\${invoice.total?html}</strong>`,
+    { company: { logoUrl: '' }, invoice: { items: [{ description: '<Design>', amount: 'R 100.00' }], total: 'R 100.00' } }
+  );
+  assert(documentHtml.includes('<style>.total{color:red}</style>'));
+  assert(!documentHtml.includes('<img'));
+  assert(documentHtml.includes('&lt;Design&gt;: R 100.00'));
+  assert(documentHtml.includes('<strong>R 100.00</strong>'));
+
   console.log('template rendering tests passed');
 })();

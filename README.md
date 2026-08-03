@@ -1,5 +1,16 @@
 # Invoice
 
+## Deploying Firebase Functions
+
+Firebase Functions deploy through the **Deploy Firebase Functions** GitHub Actions workflow.
+
+- On demand: open **Actions → Deploy Firebase Functions → Run workflow** and choose the branch to deploy.
+- Automatic: a push to `main` deploys only when `functions/**`, `firebase.json`, or `.firebaserc` changed.
+- Every deployment installs the locked Functions dependencies and runs the renderer tests first.
+- The workflow uses the existing `FIREBASE_SERVICE_ACCOUNT_INVOICE_SIMPLE_336` repository secret and deploys to `invoice-simple-336`.
+
+Hosting workflows remain separate and do not deploy Functions.
+
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.2.20.
 
 ## Development server

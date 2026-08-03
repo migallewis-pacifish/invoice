@@ -24,7 +24,7 @@ export class TemplateDesignerComponent implements OnInit {
   private readonly dialogRef = inject<DialogRef<string>>(DialogRef, { optional: true });
   private readonly dialogData = inject(DIALOG_DATA, { optional: true }) as { dialogMode?: boolean; starterId?: string; starter?: StarterTemplate } | null;
   readonly dialogMode = this.dialogData?.dialogMode === true;
-  template: TemplateDefinition = { schemaVersion: 1, companyId: '', name: 'New template', subject: 'Update from {{company.name}}', type: 'general', sections: [] };
+  template: TemplateDefinition = { schemaVersion: 1, companyId: '', name: 'New template', subject: 'Update from {{company.name}}', type: 'general', sections: [], sourceKind: 'custom' };
   types: { label: string; value: TemplateType }[] = [{label:'Email',value:'general'},{label:'Invoice',value:'invoice'},{label:'Letter',value:'letter'},{label:'Payment reminder',value:'payment-reminder'}];
   steps: { label: string; value: WizardStep }[] = [{ label: 'Select template', value: 'choose' }, { label: 'Design', value: 'design' }, { label: 'Review', value: 'preview' }];
   currentStep: WizardStep = 'choose'; selectedStarterId = ''; selection: TemplateSelection = null; previewWidth:'desktop'|'mobile'='desktop'; generatedHtml=''; reviewHtml: SafeHtml = ''; savedJson='';
@@ -65,7 +65,7 @@ export class TemplateDesignerComponent implements OnInit {
   }
   closeDialog(){ this.dialogRef?.close(); }
   goTo(step: WizardStep){ this.currentStep = step; if(step === 'preview') this.regenerate(true); }
-  createNew(){ this.template = { schemaVersion: 1, companyId: this.template.companyId, name: 'New template', subject: 'Update from {{company.name}}', type: 'general', sections: [] }; this.selectedStarterId=''; this.selection=null; this.savedJson=''; this.currentStep='design'; this.regenerate(); }
+  createNew(){ this.template = { schemaVersion: 1, companyId: this.template.companyId, name: 'New template', subject: 'Update from {{company.name}}', type: 'general', sections: [], sourceKind: 'custom' }; this.selectedStarterId=''; this.selection=null; this.savedJson=''; this.currentStep='design'; this.regenerate(); }
   useStarter(starter: StarterTemplate){ this.template = cloneStarterTemplate(starter, this.template.companyId); this.selectedStarterId = starter.id ?? ''; this.selection=null; this.savedJson=''; this.currentStep='design'; this.regenerate(); }
   duplicateSelected(){ const sel=this.selection; if(sel?.kind==='section'){ const i=this.template.sections.findIndex(s=>s.id===sel.sectionId); this.template.sections.splice(i+1,0,this.builder.duplicateSection(this.template.sections[i])); } else if(sel?.kind==='element'){ const c=this.template.sections.find(s=>s.id===sel.sectionId)?.columns.find(c=>c.id===sel.columnId); const i=c?.elements.findIndex(e=>e.id===sel.elementId) ?? -1; if(c && i>-1) c.elements.splice(i+1,0,this.builder.duplicateElement(c.elements[i])); } this.regenerate(); }
   deleteSelected(){ const sel=this.selection; if(sel?.kind==='section') this.template.sections=this.template.sections.filter(s=>s.id!==sel.sectionId); else if(sel?.kind==='element'){ const c=this.template.sections.find(s=>s.id===sel.sectionId)?.columns.find(c=>c.id===sel.columnId); if(c) c.elements=c.elements.filter(e=>e.id!==sel.elementId); } this.selection=null; this.regenerate(); }

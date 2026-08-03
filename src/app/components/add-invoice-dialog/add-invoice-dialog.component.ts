@@ -14,9 +14,8 @@ import { DialogShellComponent } from '../dialog-shell/dialog-shell.component';
 import { Timestamp } from 'firebase/firestore';
 import { CompanyTemplate } from '../../models/invoice.model';
 import { Router } from '@angular/router';
+import { normalizeTemplateFormat } from '../../services/template-renderer.service';
 
-
-type InvoiceDownloadFormat = 'docx' | 'pdf';
 
 export interface InvoicePaymentAdjustment {
   creditAmount?: number;
@@ -130,7 +129,6 @@ export class AddInvoiceDialogComponent {
       servicesProvided: [this.getCopiedServicesProvided(), Validators.required],
       includeVat: [this.getCopiedIncludeVat()],
       templateId: [this.previousInvoice?.templateId || '', Validators.required],
-      downloadFormat: ['docx' as InvoiceDownloadFormat, Validators.required],
       dueDate: [this.getCopiedDueDate()],
       amountPaid: [this.getInitialAmountPaid(), [Validators.required, Validators.min(0)]],
       creditAmount: [this.getInitialCreditAmount(), [Validators.min(0)]],
@@ -148,7 +146,7 @@ export class AddInvoiceDialogComponent {
       collectionData(collection(this.db, `companies/${this.companyId}/templates`), { idField: 'id' }).subscribe({
         next: records => {
           const templates = (records as CompanyTemplate[])
-            .filter(template => template.type === 'invoice' && !template.archived && (!template.format || template.format === 'docx'))
+            .filter(template => template.type === 'invoice' && !template.archived && !!(template.bodyStoragePath || template.storagePath))
             .sort((a, b) => Number(!!b.isDefault) - Number(!!a.isDefault) || (a.name || '').localeCompare(b.name || ''));
           this.invoiceTemplates.set(templates);
           const selected = this.form.get('templateId')?.value;
@@ -171,7 +169,7 @@ export class AddInvoiceDialogComponent {
 
     if (this.viewOnly || this.trackingOnly) {
       this.form.disable({ emitEvent: false });
-
+      this.form.get('templateId')?.enable({ emitEvent: false });
       if (this.trackingOnly) {
         this.form.get('dueDate')?.enable({ emitEvent: false });
         this.form.get('amountPaid')?.enable({ emitEvent: false });
@@ -183,6 +181,13 @@ export class AddInvoiceDialogComponent {
   }
 
   get items() { return this.form.get('items') as FormArray; }
+
+  templateFormatLabel(template: CompanyTemplate): string {
+    const format = normalizeTemplateFormat(template);
+    if (format === 'freemarker-html') return 'Ready-made design';
+    if (format === 'pdf-mapped') return 'Mapped PDF';
+    return 'Custom Word document';
+  }
 
   get dialogTitle(): string {
     if (this.trackingOnly) return 'Update Invoice Payment';
@@ -231,12 +236,6 @@ export class AddInvoiceDialogComponent {
 
   close() {
     this.dialog.close(null);
-  }
-
-  editSelectedTemplate(): void {
-    const templateId = this.form.get('templateId')?.value;
-    this.dialog.close(null);
-    void this.router.navigate(['/templates'], { queryParams: { tab: 'gallery', edit: templateId || undefined } });
   }
 
   generateInvoice() {
@@ -290,7 +289,9 @@ export class AddInvoiceDialogComponent {
       shouldIncludeVAT: includeVat
     };
 
-    const wantsPdf = formValue.downloadFormat === 'pdf';
+    const selectedTemplate = this.invoiceTemplates().find(template => template.id === formValue.templateId);
+    const generatedFormat = normalizeTemplateFormat(selectedTemplate) === 'docx' ? 'docx' : 'pdf';
+    const wantsPdf = generatedFormat === 'pdf';
     const generate$: Observable<{ filename: string; generatedFile: any }> = wantsPdf
       ? this.invoiceDocx.generatePdfViaBackend(this.companyId, this.clientId, invoiceData, formValue.templateId).pipe(map(result => ({ filename: result.fileName, generatedFile: result })))
       : this.invoiceDocx.generateAndSave(this.companyId, invoiceData, formValue.templateId).pipe(map(filename => ({ filename, generatedFile: null as any })));
@@ -326,7 +327,7 @@ export class AddInvoiceDialogComponent {
             lineItems: items,
             filename: generated.filename,
             generatedFile: generated.generatedFile,
-            downloadFormat: formValue.downloadFormat,
+            downloadFormat: generatedFormat,
             templateId: formValue.templateId || null,
             createdAt: serverTimestamp(),
             createdBy: this.auth.currentUser?.uid

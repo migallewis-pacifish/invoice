@@ -78,7 +78,12 @@ export class EmailTemplateDefinitionService {
     const variables = extractDesignerTemplateVariables(freemarkerHtml);
     await uploadBytes(ref(this.storage, freemarkerStoragePath), new Blob([freemarkerHtml], { type: 'text/x-freemarker' }), {
       contentType: 'text/x-freemarker',
-      customMetadata: { templateType: template.type }
+      customMetadata: {
+        templateType: template.type,
+        sourceKind: template.sourceKind ?? 'custom',
+        ...(template.starterTemplateId ? { starterTemplateId: template.starterTemplateId } : {}),
+        ...(template.theme ? { theme: JSON.stringify(template.theme) } : {})
+      }
     });
     await setDoc(doc(this.db, `${this.collectionPath(companyId)}/${id}`), {
       ...template,

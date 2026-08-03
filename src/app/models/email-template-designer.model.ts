@@ -17,6 +17,9 @@ export interface EmailTemplateDefinition {
   archived?: boolean;
   freemarkerStoragePath?: string;
   variables?: string[];
+  sourceKind?: 'ready-made' | 'custom';
+  starterTemplateId?: string;
+  theme?: { primary: string; secondary: string; accent: string };
   createdAt?: unknown;
   updatedAt?: unknown;
 }
