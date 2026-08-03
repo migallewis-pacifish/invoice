@@ -16,7 +16,7 @@ describe('template starter catalog', () => {
   });
 
   it('offers several starters for invoice, overdue, handoff, and thank-you emails', () => {
-    const templates = createStarterEmailTemplates();
+    const templates = createStarterTemplates();
     const ids = templates.map(template => template.id ?? '');
 
     expect(ids.filter(id => id.startsWith('invoice-')).length).toBeGreaterThanOrEqual(3);
