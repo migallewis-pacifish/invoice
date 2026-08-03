@@ -1,27 +1,19 @@
-import { cloneStarterTemplate, createStarterTemplates } from './template-starter-catalog';
+import { applyStarterPalette, createStarterTemplates } from './template-starter-catalog';
 
-describe('template starter catalog', () => {
-  it('includes a starter for every assignment scenario', () => {
-    const scenarios = createStarterTemplates().map(template => template.scenario);
-    expect(new Set(scenarios)).toEqual(new Set(['invoice-sending', 'before-due-reminder', 'due-today-reminder', 'overdue-reminder', 'overdue-notice', 'letter-sending', 'general-email']));
+describe('email starter catalog', () => {
+  it('maps every selection to a FreeMarker email template', () => {
+    const starters = createStarterTemplates();
+
+    expect(starters.length).toBe(6);
+    expect(starters.every(starter => starter.sourcePath === `/templates/email/${starter.id}.ftl`)).toBeTrue();
   });
 
-  it('clones starter templates without preserving starter ids', () => {
+  it('applies user colours without mutating the catalog template', () => {
     const starter = createStarterTemplates()[0];
-    const clone = cloneStarterTemplate(starter, 'company-a');
-    expect(clone.companyId).toBe('company-a');
-    expect(clone.id).toBeUndefined();
-    expect(clone.sections[0].id).toBe(starter.sections[0].id);
-    expect(clone as unknown).not.toBe(starter);
-  });
+    const themed = applyStarterPalette(starter, ['#111111', '#222222', '#333333']);
 
-  it('offers several starters for invoice, overdue, handoff, and thank-you emails', () => {
-    const templates = createStarterTemplates();
-    const ids = templates.map(template => template.id ?? '');
-
-    expect(ids.filter(id => id.startsWith('invoice-')).length).toBeGreaterThanOrEqual(3);
-    expect(ids.filter(id => id.startsWith('overdue-') || id.startsWith('reminder-overdue')).length).toBeGreaterThanOrEqual(3);
-    expect(ids.filter(id => id.startsWith('handoff-')).length).toBeGreaterThanOrEqual(3);
-    expect(ids.filter(id => id.startsWith('thanks-') || id === 'general-thanks').length).toBeGreaterThanOrEqual(3);
+    expect(themed.palette).toEqual(['#111111', '#222222', '#333333']);
+    expect(themed.sections[0].styles.backgroundColor).toBe('#111111');
+    expect(starter.sections[0].styles.backgroundColor).toBe(starter.palette[0]);
   });
 });
