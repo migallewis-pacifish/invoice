@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnDestroy, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, signal } from '@angular/core';
 import { DIALOG_DATA, Dialog, DialogRef } from '@angular/cdk/dialog';
 import { UploadTemplateComponent } from '../../pages/upload-template/upload-template.component';
 import { CompanyTemplateFormat } from '../../models/invoice.model';
@@ -32,6 +32,7 @@ export interface FreemarkerStarterTemplate {
 }
 
 const FREEMARKER_STARTER_IDS = ['azure-ledger', 'midnight-teal', 'sage-studio', 'coral-sidebar', 'monochrome-grid', 'violet-gradient', 'tricolour-sidebar'];
+const FREEMARKER_LETTER_STARTER_IDS = ['classic-formal', 'modern-sidebar', 'editorial-centred', 'compact-business', 'window-envelope', 'executive-banner'];
 
 interface StarterPaletteConfig {
   defaults: TemplatePalette;
@@ -45,22 +46,42 @@ const STARTER_PALETTES: Record<string, StarterPaletteConfig> = {
   'coral-sidebar': { defaults: ['#18324b', '#ff6b5d', '#ff9c93'], sourceColors: [['#18324b'], ['#ff6b5d', '#ff6255'], ['#ff9c93', '#ff8b80']] },
   'monochrome-grid': { defaults: ['#111111', '#555555', '#dddddd'], sourceColors: [['#111'], ['#555'], ['#ddd']] },
   'violet-gradient': { defaults: ['#302561', '#5b3cc4', '#8b5cf6'], sourceColors: [['#302561', '#292344'], ['#5b3cc4', '#5135aa'], ['#8b5cf6', '#9f7aea']] },
-  'tricolour-sidebar': { defaults: ['#3a666d', '#2a7a87', '#71c2a7'], sourceColors: [[], [], []] }
+  'tricolour-sidebar': { defaults: ['#3a666d', '#2a7a87', '#71c2a7'], sourceColors: [[], [], []] },
+  'classic-formal': letterPalette(),
+  'modern-sidebar': letterPalette(),
+  'editorial-centred': letterPalette(),
+  'compact-business': letterPalette(),
+  'window-envelope': letterPalette(),
+  'executive-banner': letterPalette()
 };
 
 export const FREEMARKER_INVOICE_TEMPLATES: FreemarkerStarterTemplate[] = [
-  starter('azure-ledger', 'Azure Ledger', 'A crisp blue header with a classic ledger layout.', '#3478d4'),
-  starter('midnight-teal', 'Midnight Teal', 'A dark, polished invoice with teal highlights.', '#1b9c96'),
-  starter('sage-studio', 'Sage Studio', 'A calm editorial design with soft green details.', '#779b78'),
-  starter('coral-sidebar', 'Coral Sidebar', 'A warm, modern layout with a bold side panel.', '#ed765f'),
-  starter('monochrome-grid', 'Monochrome Grid', 'A minimal black-and-white professional layout.', '#202020'),
-  starter('violet-gradient', 'Violet Gradient', 'A vibrant contemporary invoice with violet accents.', '#7357d9'),
-  starter('tricolour-sidebar', 'Tricolour Sidebar', 'A structured sidebar design with a custom three-colour gradient.', 'linear-gradient(#3a666d, #2a7a87, #71c2a7)')
+  starter('invoice', 'azure-ledger', 'Azure Ledger', 'A crisp blue header with a classic ledger layout.', '#3478d4'),
+  starter('invoice', 'midnight-teal', 'Midnight Teal', 'A dark, polished invoice with teal highlights.', '#1b9c96'),
+  starter('invoice', 'sage-studio', 'Sage Studio', 'A calm editorial design with soft green details.', '#779b78'),
+  starter('invoice', 'coral-sidebar', 'Coral Sidebar', 'A warm, modern layout with a bold side panel.', '#ed765f'),
+  starter('invoice', 'monochrome-grid', 'Monochrome Grid', 'A minimal black-and-white professional layout.', '#202020'),
+  starter('invoice', 'violet-gradient', 'Violet Gradient', 'A vibrant contemporary invoice with violet accents.', '#7357d9'),
+  starter('invoice', 'tricolour-sidebar', 'Tricolour Sidebar', 'A structured sidebar design with a custom three-colour gradient.', 'linear-gradient(#3a666d, #2a7a87, #71c2a7)')
 ];
 
-function starter(id: string, name: string, description: string, accent: string): FreemarkerStarterTemplate {
-  const index = FREEMARKER_STARTER_IDS.indexOf(id) + 1;
-  return { id, name, description, accent, path: `/templates/invoices/${String(index).padStart(2, '0')}-${id}.ftl` };
+export const FREEMARKER_LETTER_TEMPLATES: FreemarkerStarterTemplate[] = [
+  starter('letter', 'classic-formal', 'Classic Formal', 'A traditional letter with a formal address block.', '#20242a'),
+  starter('letter', 'modern-sidebar', 'Modern Sidebar', 'A narrow sender rail leaves a clear reading column.', '#252a31'),
+  starter('letter', 'editorial-centred', 'Editorial Centred', 'A spacious centred masthead and editorial body.', '#686f78'),
+  starter('letter', 'compact-business', 'Compact Business', 'A structured metadata grid for concise correspondence.', '#1f2933'),
+  starter('letter', 'window-envelope', 'Window Envelope', 'A recipient-first layout designed for window envelopes.', '#6e7781'),
+  starter('letter', 'executive-banner', 'Executive Banner', 'A prominent masthead with a split executive header.', '#252930')
+];
+
+function starter(type: 'invoice' | 'letter', id: string, name: string, description: string, accent: string): FreemarkerStarterTemplate {
+  const ids = type === 'invoice' ? FREEMARKER_STARTER_IDS : FREEMARKER_LETTER_STARTER_IDS;
+  const index = ids.indexOf(id) + 1;
+  return { id, name, description, accent, path: `/templates/${type}s/${String(index).padStart(2, '0')}-${id}.ftl` };
+}
+
+function letterPalette(): StarterPaletteConfig {
+  return { defaults: ['#252a31', '#747b84', '#f0f1f2'], sourceColors: [['#20242a', '#252a31', '#282828', '#1f2933', '#24292f', '#252930'], ['#686f78', '#747b84', '#777', '#69727d', '#6e7781', '#737a84'], ['#eceef0', '#f0f1f2', '#eeeeec', '#edf0f2', '#f0f2f4', '#eef0f2']] };
 }
 
 @Component({
@@ -86,7 +107,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
   readonly creationType = signal<TemplateCreationType | null>(this.dialogData?.initialType ?? null);
   readonly format = signal<TemplateCreationFormat | null>(null);
   readonly starters = createStarterEmailTemplates();
-  readonly freemarkerStarters = FREEMARKER_INVOICE_TEMPLATES;
+  readonly freemarkerStarters = computed(() => this.creationType() === 'letter' ? FREEMARKER_LETTER_TEMPLATES : FREEMARKER_INVOICE_TEMPLATES);
   readonly selectedFreemarker = signal<FreemarkerStarterTemplate | null>(null);
   readonly freemarkerPreview = signal<SafeResourceUrl | null>(null);
   readonly freemarkerBusy = signal(false);
@@ -134,7 +155,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
     try {
       const source = this.customizeStarterSource(await this.fetchStarter(starter), starter);
       const preview = source
-        .replace(/\$\{\(theme\.sidebarColor([123])\)!'[^']+'}/g, (_match, index) => this.paletteFor(starter)[Number(index) - 1] ?? '#2a7a87')
+        .replace(/\$\{\(theme\.sidebarColor([123])(?:\)!|!)'[^']+'(?:\))?(?:\?html)?}/g, (_match, index) => this.paletteFor(starter)[Number(index) - 1] ?? '#2a7a87')
         .replace(/<#[^>]*>/g, '')
         .replace(/<\/#(?:if|list)>/g, '')
         .replace(/\$\{[^}]+}/g, 'Sample');
@@ -178,7 +199,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
       if (!profile?.companyId) throw new Error('No company is linked to your account.');
       const source = this.customizeStarterSource(await this.fetchStarter(starter), starter);
       const file = new File([source], `${starter.id}.html`, { type: 'text/html' });
-      const result = await this.templateService.upload(profile.companyId, file, 'invoice', undefined, {
+      const result = await this.templateService.upload(profile.companyId, file, this.documentType(), undefined, {
         format: 'freemarker-html',
         name: starter.name
       });
@@ -204,7 +225,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
     const palette = this.paletteFor(starter);
     if (starter.id === 'tricolour-sidebar') {
       return source.replace(
-        /\$\{\(theme\.sidebarColor([123])\)!'[^']+'}/g,
+        /\$\{\(theme\.sidebarColor([123])(?:\)!|!)'[^']+'(?:\))?(?:\?html)?}/g,
         (expression, index) => expression.replace(/'[^']+'/, `'${palette[Number(index) - 1] ?? '#2a7a87'}'`)
       );
     }

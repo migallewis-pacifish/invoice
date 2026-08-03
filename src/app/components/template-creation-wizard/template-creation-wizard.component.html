@@ -50,10 +50,9 @@
   </div>
 
   <div *ngIf="step() === 'configure' && creationType() !== 'email' && format() === 'freemarker-html'">
-    <ng-container *ngIf="creationType() === 'invoice'; else noFreemarkerTemplates">
       <app-template-selection-layout>
       <div template-options class="freemarker-gallery" aria-label="Available ready-made templates">
-        <button type="button" class="freemarker-card" *ngFor="let starter of freemarkerStarters"
+        <button type="button" class="freemarker-card" *ngFor="let starter of freemarkerStarters()"
           [class.selected]="selectedFreemarker()?.id === starter.id" (click)="selectFreemarker(starter)">
           <span class="template-swatch" [style.background]="starter.accent"></span>
           <strong>{{ starter.name }}</strong><small>{{ starter.description }}</small>
@@ -71,13 +70,6 @@
       </section>
       <p template-message class="template-error" role="alert" *ngIf="freemarkerError()">{{ freemarkerError() }}</p>
       </app-template-selection-layout>
-    </ng-container>
-    <ng-template #noFreemarkerTemplates>
-      <app-template-selection-layout>
-        <div template-options class="empty-catalog"><strong>No ready-made letter designs yet</strong><span>New designs will appear here.</span></div>
-        <section template-preview class="template-preview-panel preview-placeholder"><strong>No preview available</strong><span>Choose Custom Word document to upload your own letter layout.</span></section>
-      </app-template-selection-layout>
-    </ng-template>
   </div>
 
   <div *ngIf="step() === 'configure' && creationType() === 'email'">
