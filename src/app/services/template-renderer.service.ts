@@ -20,8 +20,8 @@ export function normalizeTemplateFormat(template?: Pick<CompanyTemplate, 'format
 @Injectable({ providedIn: 'root' })
 export class TemplateRendererService {
   readonly renderers: TemplateRendererDescriptor[] = [
-    { format: 'docx', label: 'Word DOCX', renderableTargets: ['invoice', 'letter'], available: true },
-    { format: 'freemarker-html', label: 'Designed FreeMarker/HTML', renderableTargets: ['invoice', 'letter'], available: false },
+    { format: 'docx', label: 'Custom Word document', renderableTargets: ['invoice', 'letter'], available: true },
+    { format: 'freemarker-html', label: 'Ready-made design', renderableTargets: ['invoice', 'letter'], available: false },
     { format: 'pdf-mapped', label: 'PDF-mapped', renderableTargets: ['invoice', 'letter'], available: false }
   ];
 

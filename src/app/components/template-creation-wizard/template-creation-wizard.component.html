@@ -2,16 +2,16 @@
   <header class="wizard-header">
     <div>
       <p class="eyebrow">New template</p>
-      <h1 id="template-wizard-title">{{ step() === 'type' ? 'What kind of template is this?' : (step() === 'format' ? 'Choose a template format' : (creationType() === 'email' ? 'Select an email template' : (format() === 'freemarker-html' ? 'Select a template' : 'Upload ' + creationType() + ' template'))) }}</h1>
-      <p>{{ step() === 'type' ? 'Choose whether the new template is for invoices, letters, or emails.' : (step() === 'format' ? 'Choose Word DOCX or FreeMarker/HTML for this ' + creationType() + ' template.' : (creationType() === 'email' ? 'Choose a starting design to customise in the email editor.' : (format() === 'freemarker-html' ? 'Choose one of the ready-made designs and preview it before adding it.' : 'Upload the DOCX file containing the required ' + creationType() + ' variables.'))) }}</p>
+      <h1 id="template-wizard-title">{{ step() === 'type' ? 'What kind of template is this?' : (step() === 'format' ? 'How would you like to create it?' : (creationType() === 'email' ? 'Select an email design' : (format() === 'freemarker-html' ? 'Select a ready-made design' : 'Upload a custom Word document'))) }}</h1>
+      <p>{{ step() === 'type' ? 'Choose whether the new template is for invoices, letters, or emails.' : (step() === 'format' ? 'Start with an existing design or upload your own Microsoft Word document.' : (creationType() === 'email' ? 'Choose an existing design to customise in the email editor.' : (format() === 'freemarker-html' ? 'Choose a professionally designed template, preview it, and customise its colours.' : 'Upload your custom Microsoft Word (.docx) layout for this ' + creationType() + '.'))) }}</p>
     </div>
     <button type="button" class="close" aria-label="Close template wizard" (click)="close()">×</button>
   </header>
 
   <nav class="steps" aria-label="Template creation steps">
-    <span class="active">1 <small>Type</small></span>
-    <span *ngIf="creationType() !== 'email'" [class.active]="step() === 'format'">2 <small>Format</small></span>
-    <span [class.active]="step() === 'configure'">{{ creationType() === 'email' ? 2 : 3 }} <small>{{ creationType() === 'email' || format() === 'freemarker-html' ? 'Select template' : 'Upload' }}</small></span>
+    <span *ngIf="!typeLocked" class="active">1 <small>Type</small></span>
+    <span *ngIf="creationType() !== 'email'" [class.active]="step() === 'format'">{{ typeLocked ? 1 : 2 }} <small>Starting point</small></span>
+    <span [class.active]="step() === 'configure'">{{ typeLocked ? (creationType() === 'email' ? 1 : 2) : (creationType() === 'email' ? 2 : 3) }} <small>{{ creationType() === 'email' || format() === 'freemarker-html' ? 'Select template' : 'Upload' }}</small></span>
   </nav>
 
   <div *ngIf="step() === 'type'" class="type-grid">
@@ -35,13 +35,13 @@
   <div *ngIf="step() === 'format'" class="type-grid format-grid">
     <button type="button" class="type-card" [class.selected]="format() === 'docx'" (click)="selectFormat('docx')">
       <span class="type-icon" aria-hidden="true">W</span>
-      <strong>Word DOCX</strong>
-      <small>Use a Microsoft Word document containing template variables.</small>
+      <strong>Custom Word document</strong>
+      <small>Upload your own Microsoft Word (.docx) layout and branding.</small>
     </button>
     <button type="button" class="type-card" [class.selected]="format() === 'freemarker-html'" (click)="selectFormat('freemarker-html')">
       <span class="type-icon code" aria-hidden="true">&lt;/&gt;</span>
-      <strong>FreeMarker / HTML</strong>
-      <small>Use an HTML template containing FreeMarker or double-brace variables.</small>
+      <strong>Ready-made design</strong>
+      <small>Choose an existing professional design and customise its colours.</small>
     </button>
   </div>
 
@@ -49,10 +49,10 @@
     <app-upload-template [inDialog]="true" [documentType]="documentType()" [fixedFormat]="format()" (uploaded)="close($event)" (cancel)="close()"></app-upload-template>
   </div>
 
-  <div *ngIf="step() === 'configure' && creationType() !== 'email' && format() === 'freemarker-html'" class="freemarker-step">
-    <ng-container *ngIf="creationType() === 'invoice'; else noFreemarkerTemplates">
-      <div class="freemarker-gallery" aria-label="Available FreeMarker templates">
-        <button type="button" class="freemarker-card" *ngFor="let starter of freemarkerStarters"
+  <div *ngIf="step() === 'configure' && creationType() !== 'email' && format() === 'freemarker-html'">
+      <app-template-selection-layout>
+      <div template-options class="freemarker-gallery" aria-label="Available ready-made templates">
+        <button type="button" class="freemarker-card" *ngFor="let starter of freemarkerStarters()"
           [class.selected]="selectedFreemarker()?.id === starter.id" (click)="selectFreemarker(starter)">
           <span class="template-swatch" [style.background]="starter.accent"></span>
           <strong>{{ starter.name }}</strong><small>{{ starter.description }}</small>
@@ -61,33 +61,41 @@
           [colors]="paletteFor(selected)" [title]="selected.id === 'tricolour-sidebar' ? 'Sidebar gradient' : 'Template colours'"
           (colorsChange)="updateStarterPalette($event)"></app-template-colour-selector>
       </div>
-      <section class="template-preview-panel" *ngIf="selectedFreemarker() as selected">
+      <section template-preview class="template-preview-panel" *ngIf="selectedFreemarker() as selected">
         <div class="preview-heading"><div><small>Preview</small><h2>{{ selected.name }}</h2></div>
           <button type="button" class="primary" [disabled]="freemarkerBusy()" (click)="useSelectedFreemarker()">{{ freemarkerBusy() ? 'Adding…' : 'Use this template' }}</button>
         </div>
         <iframe *ngIf="freemarkerPreview() as preview" [src]="preview" [title]="selected.name + ' template preview'" sandbox=""></iframe>
         <div class="preview-loading" *ngIf="!freemarkerPreview() && !freemarkerError()">Loading preview…</div>
       </section>
-      <p class="template-error" role="alert" *ngIf="freemarkerError()">{{ freemarkerError() }}</p>
-    </ng-container>
-    <ng-template #noFreemarkerTemplates><div class="empty-catalog"><strong>No ready-made letter templates yet</strong><span>Choose Word DOCX to upload a letter template.</span></div></ng-template>
+      <p template-message class="template-error" role="alert" *ngIf="freemarkerError()">{{ freemarkerError() }}</p>
+      </app-template-selection-layout>
   </div>
 
-  <div *ngIf="step() === 'configure' && creationType() === 'email'" class="starter-step">
-    <button type="button" class="starter-card blank" (click)="startBlank()">
-      <span class="plus">＋</span><strong>Blank design</strong><small>Start from scratch in the email editor.</small>
-    </button>
-    <button type="button" class="starter-card" *ngFor="let starter of starters" (click)="chooseStarter(starter)">
-      <span class="accent" [style.background]="starter.accent"></span>
-      <small>{{ starter.audience }}</small><strong>{{ starter.name }}</strong><span>{{ starter.description }}</span>
-    </button>
+  <div *ngIf="step() === 'configure' && creationType() === 'email'">
+    <app-template-selection-layout>
+      <div template-options class="email-starter-list" aria-label="Available email designs">
+        <button type="button" class="starter-card blank" (click)="startBlank()"><span class="plus">＋</span><strong>Blank design</strong><small>Start from scratch in the email editor.</small></button>
+        <button type="button" class="starter-card" *ngFor="let starter of starters" [class.selected]="selectedEmailStarter()?.id === starter.id" (click)="selectEmailStarter(starter)">
+          <span class="accent" [style.background]="starter.accent"></span><small>{{ starter.audience }}</small><strong>{{ starter.name }}</strong><span>{{ starter.description }}</span>
+        </button>
+        <app-template-colour-selector *ngIf="selectedEmailStarter() as selected"
+          [colors]="emailPaletteFor(selected)" title="Template colours"
+          (colorsChange)="updateEmailPalette($event)"></app-template-colour-selector>
+      </div>
+      <section template-preview class="template-preview-panel" *ngIf="selectedEmailStarter() as selected">
+        <div class="preview-heading"><div><small>Preview</small><h2>{{ selected.name }}</h2><p>{{ selected.subject }}</p></div><button type="button" class="primary" (click)="useSelectedEmailStarter()">Use this design</button></div>
+        <iframe [srcdoc]="emailStarterPreview()" [title]="selected.name + ' email preview'" sandbox=""></iframe>
+      </section>
+      <section template-preview class="template-preview-panel preview-placeholder" *ngIf="!selectedEmailStarter()"><strong>Select an email design</strong><span>Choose a design on the left to preview it here.</span></section>
+    </app-template-selection-layout>
   </div>
 
   <footer class="wizard-actions" *ngIf="step() === 'type' || step() === 'format'">
-    <button type="button" class="secondary" (click)="step() === 'type' ? close() : back()">{{ step() === 'type' ? 'Cancel' : '← Back to type' }}</button>
+    <button type="button" class="secondary" (click)="step() === 'type' ? close() : back()">{{ step() === 'type' || typeLocked ? 'Cancel' : '← Back to type' }}</button>
     <button type="button" class="primary" [disabled]="step() === 'type' ? !creationType() : !format()" (click)="next()">Next</button>
   </footer>
   <footer class="wizard-actions back-actions" *ngIf="step() === 'configure'">
-    <button type="button" class="secondary" (click)="back()">← Back to {{ creationType() === 'email' ? 'type' : 'format' }}</button>
+    <button type="button" class="secondary" (click)="back()">{{ creationType() === 'email' && typeLocked ? 'Cancel' : '← Back to ' + (creationType() === 'email' ? 'type' : 'format') }}</button>
   </footer>
 </section>

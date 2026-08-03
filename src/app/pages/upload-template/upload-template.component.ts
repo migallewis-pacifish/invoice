@@ -77,8 +77,8 @@ export class UploadTemplateComponent {
   // Config
   readonly maxSizeMB = 5;
   readonly formatOptions: { value: CompanyTemplateFormat; label: string; description: string; ext: string }[] = [
-    { value: 'docx', label: 'Word DOCX', description: 'Current Word template renderer.', ext: '.docx' },
-    { value: 'freemarker-html', label: 'Designed FreeMarker/HTML', description: 'HTML body using {{variable}} or ${variable} placeholders.', ext: '.html' },
+    { value: 'docx', label: 'Custom Word document', description: 'Upload your own Microsoft Word (.docx) layout.', ext: '.docx' },
+    { value: 'freemarker-html', label: 'Ready-made design', description: 'Use an existing professionally designed template.', ext: '.html' },
     { value: 'pdf-mapped', label: 'PDF-mapped', description: 'Upload Canva or design-tool PDFs and map regions to invoice variables.', ext: '.pdf' }
   ];
   format = signal<CompanyTemplateFormat>('docx');
@@ -241,7 +241,7 @@ export class UploadTemplateComponent {
   }
 
   formatLabel(): string {
-    return this.formatOptions.find(option => option.value === this.format())?.label || 'Word DOCX';
+    return this.formatOptions.find(option => option.value === this.format())?.label || 'Custom Word document';
   }
 
   acceptList(): string {

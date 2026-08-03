@@ -22,7 +22,7 @@ type WizardStep = 'choose' | 'design' | 'preview';
 export class TemplateDesignerComponent implements OnInit {
   private ctx = inject(CompanyContextService); private builder = inject(EmailTemplateBuilderService); private previewData = inject(EmailTemplatePreviewDataService); private router = inject(Router); private route = inject(ActivatedRoute); private definitions = inject(EmailTemplateDefinitionService); private sanitizer = inject(DomSanitizer);
   private readonly dialogRef = inject<DialogRef<string>>(DialogRef, { optional: true });
-  private readonly dialogData = inject(DIALOG_DATA, { optional: true }) as { dialogMode?: boolean; starterId?: string } | null;
+  private readonly dialogData = inject(DIALOG_DATA, { optional: true }) as { dialogMode?: boolean; starterId?: string; starter?: StarterTemplate } | null;
   readonly dialogMode = this.dialogData?.dialogMode === true;
   template: TemplateDefinition = { schemaVersion: 1, companyId: '', name: 'New template', subject: 'Update from {{company.name}}', type: 'general', sections: [] };
   types: { label: string; value: TemplateType }[] = [{label:'Email',value:'general'},{label:'Invoice',value:'invoice'},{label:'Letter',value:'letter'},{label:'Payment reminder',value:'payment-reminder'}];
@@ -41,7 +41,7 @@ export class TemplateDesignerComponent implements OnInit {
         this.currentStep = 'design';
       }
     } else if (this.dialogData?.starterId) {
-      const starter = this.starterTemplates.find(candidate => candidate.id === this.dialogData?.starterId);
+      const starter = this.dialogData.starter ?? this.starterTemplates.find(candidate => candidate.id === this.dialogData?.starterId);
       if (starter) this.useStarter(starter);
     }
     this.template.companyId = companyId;

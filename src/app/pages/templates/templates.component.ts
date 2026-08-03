@@ -21,10 +21,11 @@ import { Dialog } from '@angular/cdk/dialog';
 import { EmailTemplateBuilderService } from '../../components/template-designer/services/email-template-builder.service';
 import { EmailTemplatePreviewDataService } from '../../components/template-designer/services/email-template-preview-data.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { TemplateCreationWizardComponent } from '../../components/template-creation-wizard/template-creation-wizard.component';
+import { TemplateCreationType, TemplateCreationWizardComponent } from '../../components/template-creation-wizard/template-creation-wizard.component';
 
 type TemplateType = 'invoice' | 'letter';
-type TemplateTab = 'overview' | 'gallery' | 'emails';
+type TemplateTab = 'overview' | 'invoices' | 'letters' | 'emails';
+type TemplateStatusFilter = 'active' | 'archived';
 
 export interface TemplateDocument extends CompanyTemplate {
   category?: string;
@@ -38,6 +39,21 @@ export interface TemplateDocument extends CompanyTemplate {
 export interface TemplateCard extends TemplateDocument {
   accent: 'invoice' | 'letter' | 'professional';
 }
+
+interface GalleryCardBase {
+  id: string;
+  name: string;
+  description: string;
+  badge: string;
+  detail: string;
+  defaults: string[];
+  archived: boolean;
+  viewAction: 'view' | 'download';
+}
+
+type GalleryCard =
+  | (GalleryCardBase & { kind: 'invoice' | 'letter'; source: TemplateCard })
+  | (GalleryCardBase & { kind: 'email'; source: EmailTemplateDefinition });
 
 
 export type TemplateFilter = 'active' | 'archived' | TemplateType;
@@ -82,11 +98,13 @@ export class TemplatesComponent {
   protected readonly error = signal<string | null>(null);
   protected readonly templates = signal<TemplateCard[]>([]);
   protected readonly selectedInvoiceTemplate = signal<TemplateCard | null>(null);
-  protected readonly filter = signal<'active' | 'archived' | TemplateType>('active');
+  protected readonly statusFilter = signal<TemplateStatusFilter>('active');
   protected readonly emailTemplates = signal<CompanyEmailTemplate[]>([]);
   protected readonly designedEmailTemplates = signal<EmailTemplateDefinition[]>([]);
   protected readonly previewEmailTemplate = signal<EmailTemplateDefinition | null>(null);
   protected readonly previewEmailHtml = signal<SafeHtml>('');
+  protected readonly previewDocumentTemplate = signal<GalleryCard | null>(null);
+  protected readonly previewDocumentHtml = signal('');
   protected readonly scenarios = EMAIL_TEMPLATE_SCENARIOS;
   protected readonly selectedEmailTemplate = signal<CompanyEmailTemplate | null>(null);
   protected readonly emailTemplateMessage = signal('');
@@ -100,15 +118,53 @@ export class TemplatesComponent {
   });
 
   constructor() {
-    if (this.route.snapshot.queryParamMap.get('tab') === 'emails') this.activeTab.set('emails');
+    const requestedTab = this.route.snapshot.queryParamMap.get('tab');
+    if (requestedTab === 'emails' || requestedTab === 'letters' || requestedTab === 'invoices') this.activeTab.set(requestedTab);
+    if (requestedTab === 'gallery') this.activeTab.set('invoices');
     this.loadCompanyTemplates();
   }
 
-  protected readonly activeTemplates = computed(() => filterTemplates(this.templates(), this.filter()));
+  protected readonly documentTemplates = computed(() => {
+    const type: TemplateType = this.activeTab() === 'letters' ? 'letter' : 'invoice';
+    const archived = this.statusFilter() === 'archived';
+    return this.templates().filter(template => template.type === type && !!template.archived === archived);
+  });
+  protected readonly filteredEmailTemplates = computed(() => {
+    const archived = this.statusFilter() === 'archived';
+    return this.designedEmailTemplates().filter(template => !!template.archived === archived);
+  });
+  protected readonly galleryCards = computed<GalleryCard[]>(() => {
+    if (this.activeTab() === 'emails') {
+      return this.filteredEmailTemplates().map(template => ({
+        kind: 'email',
+        id: template.id ?? template.name,
+        name: template.name,
+        description: template.subject,
+        badge: template.type,
+        detail: `${template.sections.length} section${template.sections.length === 1 ? '' : 's'}`,
+        defaults: (template.defaultForScenarios ?? []).map(scenario => this.scenarioLabel(scenario)),
+        archived: !!template.archived,
+        viewAction: 'view',
+        source: template
+      }));
+    }
+    return this.documentTemplates().map(template => ({
+      kind: template.type,
+      id: template.id,
+      name: template.name,
+      description: template.description ?? template.fileName ?? template.name,
+      badge: this.formatLabels[template.format || 'docx'] || template.format || 'Custom Word document',
+      detail: '',
+      defaults: [],
+      archived: !!template.archived,
+      viewAction: normalizeTemplateFormat(template) === 'docx' ? 'download' : 'view',
+      source: template
+    }));
+  });
   protected readonly invoiceTemplateCount = computed(() => this.templates().filter(template => template.type === 'invoice' && !template.archived).length);
   protected readonly letterTemplateCount = computed(() => this.templates().filter(template => template.type === 'letter' && !template.archived).length);
   protected readonly emailTemplateCount = computed(() => this.designedEmailTemplates().filter(template => !template.archived).length);
-  protected readonly formatLabels: Record<string, string> = { docx: 'Word DOCX', 'freemarker-html': 'FreeMarker/HTML', 'pdf-mapped': 'PDF-mapped' };
+  protected readonly formatLabels: Record<string, string> = { docx: 'Custom Word document', 'freemarker-html': 'Ready-made design', 'pdf-mapped': 'Mapped PDF' };
   protected readonly totalTemplateCount = computed(() => this.templates().filter(template => template.active && !template.archived).length + this.emailTemplateCount());
 
   protected setTab(tab: TemplateTab): void {
@@ -117,19 +173,105 @@ export class TemplatesComponent {
 
   protected openUploadFlow(): void {
     this.selectedInvoiceTemplate.set(null);
-    this.activeTab.set('gallery');
-    this.openCreationWizard();
+    this.openCreationWizard(this.activeTab() === 'letters' ? 'letter' : 'invoice');
   }
 
-  protected onFilter(): void {
-    const options: TemplateFilter[] = ['active', 'invoice', 'letter', 'archived'];
-    const current = this.filter();
-    this.filter.set(options[(options.indexOf(current) + 1) % options.length]);
+  protected toggleStatusFilter(): void {
+    this.statusFilter.update(current => current === 'active' ? 'archived' : 'active');
+  }
+
+  protected galleryTypeLabel(): string {
+    return this.activeTab() === 'emails' ? 'Email' : this.activeTab() === 'letters' ? 'Letter' : 'Invoice';
+  }
+
+  protected galleryAddDescription(): string {
+    return this.activeTab() === 'emails'
+      ? 'Choose a ready-made design or start from scratch.'
+      : 'Upload a custom Word document or choose a ready-made design.';
+  }
+
+  protected addGalleryTemplate(): void {
+    if (this.activeTab() === 'emails') this.newEmailTemplate();
+    else this.openUploadFlow();
+  }
+
+  protected editGalleryTemplate(template: GalleryCard): void {
+    if (template.kind === 'email') this.editDesignedEmailTemplate(template.source);
+    else this.editTemplate(template.source);
+  }
+
+  protected duplicateGalleryTemplate(template: GalleryCard): void {
+    if (template.kind === 'email') void this.duplicateDesignedEmailTemplate(template.source);
+    else void this.duplicateTemplate(template.source);
+  }
+
+  protected viewGalleryTemplate(template: GalleryCard): void {
+    if (template.kind === 'email') this.previewDesignedEmailTemplate(template.source);
+    else if (template.viewAction === 'download') void this.viewTemplate(template.source);
+    else void this.previewDocument(template);
+  }
+
+  protected openGalleryMenu(template: GalleryCard): void {
+    if (template.kind === 'email') void this.openEmailMoreMenu(template.source);
+    else void this.openMoreMenu(template.source);
+  }
+
+  protected async archiveGalleryTemplate(template: GalleryCard): Promise<void> {
+    try {
+      if (template.kind === 'email') {
+        await this.archiveDesignedEmailTemplate(template.source);
+        return;
+      }
+      const companyId = await this.companyContext.requireCompanyIdOnce();
+      await this.templateService.archiveTemplate(companyId, template.source.id, !template.source.archived);
+    } catch (e: any) {
+      this.error.set(e?.message ?? 'Unable to update template archive status.');
+    }
+  }
+
+  protected closeDocumentPreview(): void {
+    this.previewDocumentTemplate.set(null);
+    this.previewDocumentHtml.set('');
+  }
+
+  private async previewDocument(template: GalleryCard & { kind: 'invoice' | 'letter' }): Promise<void> {
+    try {
+      const url = await this.templateService.getDownloadUrl(template.source.bodyStoragePath || template.source.storagePath);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Unable to load the template preview.');
+      this.previewDocumentHtml.set(this.renderDocumentPreview(await response.text()));
+      this.previewDocumentTemplate.set(template);
+    } catch (e: any) {
+      this.error.set(e?.message ?? 'Unable to preview template.');
+    }
+  }
+
+  private renderDocumentPreview(source: string): string {
+    const sampleValues: Record<string, string> = {
+      'company.name': 'Nexus Studio Ltd', 'company.address': '100 Market Street, Johannesburg', 'company.email': 'accounts@nexus.example',
+      'company.phone': '+27 11 555 0100', 'company.website': 'www.nexus.example', 'company.registrationNumber': '2026/123456/07', 'company.taxNumber': '4123456789',
+      'client.name': 'Acme Corporation', 'client.address': '42 Client Avenue, Sandton', 'client.street': '42 Client Avenue', 'client.suburb': 'Sandton',
+      'client.city': 'Johannesburg', 'client.postalCode': '2196', 'client.email': 'finance@acme.example',
+      'invoice.number': 'INV-2026-1042', 'invoice.date': '3 August 2026', 'invoice.dueDate': '2 September 2026',
+      'invoice.subtotal': 'R 4,800.00', 'invoice.vatPercentage': '15', 'invoice.vat': 'R 720.00', 'invoice.total': 'R 5,520.00', 'invoice.notes': 'Thank you for your business.',
+      'item.description': 'Professional services', 'item.hours': '8', 'item.rate': 'R 600.00', 'item.amount': 'R 4,800.00',
+      'payment.reference': 'INV-2026-1042', 'payment.bankName': 'Example Bank', 'payment.accountHolder': 'Nexus Studio Ltd',
+      'payment.accountType': 'Business', 'payment.accountNumber': '1234567890', 'payment.branchCode': '123456', 'signature.name': 'Alex Morgan'
+    };
+    return source
+      .replace(/\$\{\(theme\.sidebarColor[123]\)!'([^']+)'}/g, '$1')
+      .replace(/<#--[\s\S]*?-->/g, '')
+      .replace(/<#[^>]*>/g, '')
+      .replace(/<\/#(?:if|list)>/g, '')
+      .replace(/\$\{([^}]+)}/g, (_match, expression: string) => {
+        const path = Object.keys(sampleValues).find(key => expression.includes(key));
+        return path ? sampleValues[path] : '';
+      });
   }
 
   protected editTemplate(template: TemplateCard): void {
     if (template.type === 'invoice') {
-      this.activeTab.set('gallery');
+      this.activeTab.set('invoices');
       this.selectedInvoiceTemplate.set(template);
       this.openInvoiceTemplateDialog(template);
       return;
@@ -331,11 +473,12 @@ export class TemplatesComponent {
   }
 
   protected newEmailTemplate(): void {
-    this.openCreationWizard();
+    this.openCreationWizard('email');
   }
 
-  private openCreationWizard(): void {
+  private openCreationWizard(initialType: TemplateCreationType): void {
     this.dialog.open(TemplateCreationWizardComponent, {
+      data: { initialType },
       width: 'min(97vw, 1440px)',
       maxWidth: '1440px',
       maxHeight: '97vh',
@@ -365,7 +508,7 @@ export class TemplatesComponent {
             const selected = this.templates().find(template => template.id === editId && template.type === 'invoice') ?? null;
             if (selected) {
               this.handledEditQuery = true;
-              this.activeTab.set('gallery');
+              this.activeTab.set('invoices');
               this.selectedInvoiceTemplate.set(selected);
               this.openInvoiceTemplateDialog(selected);
             }
