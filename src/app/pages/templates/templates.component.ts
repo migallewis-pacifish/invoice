@@ -103,6 +103,8 @@ export class TemplatesComponent {
   protected readonly designedEmailTemplates = signal<EmailTemplateDefinition[]>([]);
   protected readonly previewEmailTemplate = signal<EmailTemplateDefinition | null>(null);
   protected readonly previewEmailHtml = signal<SafeHtml>('');
+  protected readonly previewDocumentTemplate = signal<GalleryCard | null>(null);
+  protected readonly previewDocumentHtml = signal('');
   protected readonly scenarios = EMAIL_TEMPLATE_SCENARIOS;
   protected readonly selectedEmailTemplate = signal<CompanyEmailTemplate | null>(null);
   protected readonly emailTemplateMessage = signal('');
@@ -205,7 +207,8 @@ export class TemplatesComponent {
 
   protected viewGalleryTemplate(template: GalleryCard): void {
     if (template.kind === 'email') this.previewDesignedEmailTemplate(template.source);
-    else void this.viewTemplate(template.source);
+    else if (template.viewAction === 'download') void this.viewTemplate(template.source);
+    else void this.previewDocument(template);
   }
 
   protected openGalleryMenu(template: GalleryCard): void {
@@ -224,6 +227,46 @@ export class TemplatesComponent {
     } catch (e: any) {
       this.error.set(e?.message ?? 'Unable to update template archive status.');
     }
+  }
+
+  protected closeDocumentPreview(): void {
+    this.previewDocumentTemplate.set(null);
+    this.previewDocumentHtml.set('');
+  }
+
+  private async previewDocument(template: GalleryCard & { kind: 'invoice' | 'letter' }): Promise<void> {
+    try {
+      const url = await this.templateService.getDownloadUrl(template.source.bodyStoragePath || template.source.storagePath);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Unable to load the template preview.');
+      this.previewDocumentHtml.set(this.renderDocumentPreview(await response.text()));
+      this.previewDocumentTemplate.set(template);
+    } catch (e: any) {
+      this.error.set(e?.message ?? 'Unable to preview template.');
+    }
+  }
+
+  private renderDocumentPreview(source: string): string {
+    const sampleValues: Record<string, string> = {
+      'company.name': 'Nexus Studio Ltd', 'company.address': '100 Market Street, Johannesburg', 'company.email': 'accounts@nexus.example',
+      'company.phone': '+27 11 555 0100', 'company.website': 'www.nexus.example', 'company.registrationNumber': '2026/123456/07', 'company.taxNumber': '4123456789',
+      'client.name': 'Acme Corporation', 'client.address': '42 Client Avenue, Sandton', 'client.street': '42 Client Avenue', 'client.suburb': 'Sandton',
+      'client.city': 'Johannesburg', 'client.postalCode': '2196', 'client.email': 'finance@acme.example',
+      'invoice.number': 'INV-2026-1042', 'invoice.date': '3 August 2026', 'invoice.dueDate': '2 September 2026',
+      'invoice.subtotal': 'R 4,800.00', 'invoice.vatPercentage': '15', 'invoice.vat': 'R 720.00', 'invoice.total': 'R 5,520.00', 'invoice.notes': 'Thank you for your business.',
+      'item.description': 'Professional services', 'item.hours': '8', 'item.rate': 'R 600.00', 'item.amount': 'R 4,800.00',
+      'payment.reference': 'INV-2026-1042', 'payment.bankName': 'Example Bank', 'payment.accountHolder': 'Nexus Studio Ltd',
+      'payment.accountType': 'Business', 'payment.accountNumber': '1234567890', 'payment.branchCode': '123456', 'signature.name': 'Alex Morgan'
+    };
+    return source
+      .replace(/\$\{\(theme\.sidebarColor[123]\)!'([^']+)'}/g, '$1')
+      .replace(/<#--[\s\S]*?-->/g, '')
+      .replace(/<#[^>]*>/g, '')
+      .replace(/<\/#(?:if|list)>/g, '')
+      .replace(/\$\{([^}]+)}/g, (_match, expression: string) => {
+        const path = Object.keys(sampleValues).find(key => expression.includes(key));
+        return path ? sampleValues[path] : '';
+      });
   }
 
   protected editTemplate(template: TemplateCard): void {

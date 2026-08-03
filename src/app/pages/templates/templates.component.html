@@ -74,4 +74,5 @@
   </ng-template>
 
   <div class="email-preview-modal" *ngIf="previewEmailTemplate() as preview"><div class="email-preview-panel"><button class="filter-button" type="button" (click)="closeEmailPreview()">Close preview</button><h3>{{ preview.name }}</h3><p class="muted">{{ preview.subject }}</p><div class="email-preview-frame" [innerHTML]="previewEmailHtml()"></div></div></div>
+  <div class="email-preview-modal" *ngIf="previewDocumentTemplate() as preview"><div class="email-preview-panel document-preview-panel"><button class="filter-button" type="button" (click)="closeDocumentPreview()">Close preview</button><h3>{{ preview.name }}</h3><p class="muted">Previewed with sample invoice data and the template's selected colours.</p><iframe class="document-preview-frame" title="Document template preview" sandbox="" [srcdoc]="previewDocumentHtml()"></iframe></div></div>
 </app-workspace-shell>
