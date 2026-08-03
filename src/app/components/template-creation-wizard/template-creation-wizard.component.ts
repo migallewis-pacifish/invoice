@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnDestroy, signal } from '@angular/core';
-import { Dialog, DialogRef } from '@angular/cdk/dialog';
+import { DIALOG_DATA, Dialog, DialogRef } from '@angular/cdk/dialog';
 import { UploadTemplateComponent } from '../../pages/upload-template/upload-template.component';
 import { CompanyTemplateFormat } from '../../models/invoice.model';
 import { CURRENT_AUTH_USER } from '../../services/company-context.service';
@@ -15,6 +15,10 @@ import { TemplateColourSelectorComponent, TemplatePalette } from '../template-co
 export type TemplateCreationType = 'invoice' | 'letter' | 'email';
 export type TemplateCreationFormat = Extract<CompanyTemplateFormat, 'docx' | 'freemarker-html'>;
 type WizardStep = 'type' | 'format' | 'configure';
+
+export interface TemplateCreationWizardData {
+  initialType?: TemplateCreationType;
+}
 
 export interface FreemarkerStarterTemplate {
   id: string;
@@ -70,9 +74,11 @@ export class TemplateCreationWizardComponent implements OnDestroy {
   private readonly db = inject(Firestore);
   private readonly templateService = inject(TemplateService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly dialogData = inject<TemplateCreationWizardData>(DIALOG_DATA, { optional: true });
 
-  readonly step = signal<WizardStep>('type');
-  readonly creationType = signal<TemplateCreationType | null>(null);
+  readonly typeLocked = !!this.dialogData?.initialType;
+  readonly step = signal<WizardStep>(this.dialogData?.initialType === 'email' ? 'configure' : (this.typeLocked ? 'format' : 'type'));
+  readonly creationType = signal<TemplateCreationType | null>(this.dialogData?.initialType ?? null);
   readonly format = signal<TemplateCreationFormat | null>(null);
   readonly starters = createStarterEmailTemplates();
   readonly freemarkerStarters = FREEMARKER_INVOICE_TEMPLATES;
@@ -105,6 +111,10 @@ export class TemplateCreationWizardComponent implements OnDestroy {
   back(): void {
     if (this.step() === 'configure' && this.creationType() !== 'email') {
       this.step.set('format');
+      return;
+    }
+    if (this.typeLocked) {
+      this.close();
       return;
     }
     this.step.set('type');

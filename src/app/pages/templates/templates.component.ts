@@ -21,10 +21,11 @@ import { Dialog } from '@angular/cdk/dialog';
 import { EmailTemplateBuilderService } from '../../components/template-designer/services/email-template-builder.service';
 import { EmailTemplatePreviewDataService } from '../../components/template-designer/services/email-template-preview-data.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { TemplateCreationWizardComponent } from '../../components/template-creation-wizard/template-creation-wizard.component';
+import { TemplateCreationType, TemplateCreationWizardComponent } from '../../components/template-creation-wizard/template-creation-wizard.component';
 
 type TemplateType = 'invoice' | 'letter';
-type TemplateTab = 'overview' | 'gallery' | 'emails';
+type TemplateTab = 'overview' | 'invoices' | 'letters' | 'emails';
+type TemplateStatusFilter = 'active' | 'archived';
 
 export interface TemplateDocument extends CompanyTemplate {
   category?: string;
@@ -82,7 +83,7 @@ export class TemplatesComponent {
   protected readonly error = signal<string | null>(null);
   protected readonly templates = signal<TemplateCard[]>([]);
   protected readonly selectedInvoiceTemplate = signal<TemplateCard | null>(null);
-  protected readonly filter = signal<'active' | 'archived' | TemplateType>('active');
+  protected readonly statusFilter = signal<TemplateStatusFilter>('active');
   protected readonly emailTemplates = signal<CompanyEmailTemplate[]>([]);
   protected readonly designedEmailTemplates = signal<EmailTemplateDefinition[]>([]);
   protected readonly previewEmailTemplate = signal<EmailTemplateDefinition | null>(null);
@@ -100,11 +101,21 @@ export class TemplatesComponent {
   });
 
   constructor() {
-    if (this.route.snapshot.queryParamMap.get('tab') === 'emails') this.activeTab.set('emails');
+    const requestedTab = this.route.snapshot.queryParamMap.get('tab');
+    if (requestedTab === 'emails' || requestedTab === 'letters' || requestedTab === 'invoices') this.activeTab.set(requestedTab);
+    if (requestedTab === 'gallery') this.activeTab.set('invoices');
     this.loadCompanyTemplates();
   }
 
-  protected readonly activeTemplates = computed(() => filterTemplates(this.templates(), this.filter()));
+  protected readonly documentTemplates = computed(() => {
+    const type: TemplateType = this.activeTab() === 'letters' ? 'letter' : 'invoice';
+    const archived = this.statusFilter() === 'archived';
+    return this.templates().filter(template => template.type === type && !!template.archived === archived);
+  });
+  protected readonly filteredEmailTemplates = computed(() => {
+    const archived = this.statusFilter() === 'archived';
+    return this.designedEmailTemplates().filter(template => !!template.archived === archived);
+  });
   protected readonly invoiceTemplateCount = computed(() => this.templates().filter(template => template.type === 'invoice' && !template.archived).length);
   protected readonly letterTemplateCount = computed(() => this.templates().filter(template => template.type === 'letter' && !template.archived).length);
   protected readonly emailTemplateCount = computed(() => this.designedEmailTemplates().filter(template => !template.archived).length);
@@ -117,19 +128,16 @@ export class TemplatesComponent {
 
   protected openUploadFlow(): void {
     this.selectedInvoiceTemplate.set(null);
-    this.activeTab.set('gallery');
-    this.openCreationWizard();
+    this.openCreationWizard(this.activeTab() === 'letters' ? 'letter' : 'invoice');
   }
 
-  protected onFilter(): void {
-    const options: TemplateFilter[] = ['active', 'invoice', 'letter', 'archived'];
-    const current = this.filter();
-    this.filter.set(options[(options.indexOf(current) + 1) % options.length]);
+  protected toggleStatusFilter(): void {
+    this.statusFilter.update(current => current === 'active' ? 'archived' : 'active');
   }
 
   protected editTemplate(template: TemplateCard): void {
     if (template.type === 'invoice') {
-      this.activeTab.set('gallery');
+      this.activeTab.set('invoices');
       this.selectedInvoiceTemplate.set(template);
       this.openInvoiceTemplateDialog(template);
       return;
@@ -331,11 +339,12 @@ export class TemplatesComponent {
   }
 
   protected newEmailTemplate(): void {
-    this.openCreationWizard();
+    this.openCreationWizard('email');
   }
 
-  private openCreationWizard(): void {
+  private openCreationWizard(initialType: TemplateCreationType): void {
     this.dialog.open(TemplateCreationWizardComponent, {
+      data: { initialType },
       width: 'min(97vw, 1440px)',
       maxWidth: '1440px',
       maxHeight: '97vh',
@@ -365,7 +374,7 @@ export class TemplatesComponent {
             const selected = this.templates().find(template => template.id === editId && template.type === 'invoice') ?? null;
             if (selected) {
               this.handledEditQuery = true;
-              this.activeTab.set('gallery');
+              this.activeTab.set('invoices');
               this.selectedInvoiceTemplate.set(selected);
               this.openInvoiceTemplateDialog(selected);
             }

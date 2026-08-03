@@ -9,9 +9,9 @@
   </header>
 
   <nav class="steps" aria-label="Template creation steps">
-    <span class="active">1 <small>Type</small></span>
-    <span *ngIf="creationType() !== 'email'" [class.active]="step() === 'format'">2 <small>Format</small></span>
-    <span [class.active]="step() === 'configure'">{{ creationType() === 'email' ? 2 : 3 }} <small>{{ creationType() === 'email' || format() === 'freemarker-html' ? 'Select template' : 'Upload' }}</small></span>
+    <span *ngIf="!typeLocked" class="active">1 <small>Type</small></span>
+    <span *ngIf="creationType() !== 'email'" [class.active]="step() === 'format'">{{ typeLocked ? 1 : 2 }} <small>Format</small></span>
+    <span [class.active]="step() === 'configure'">{{ typeLocked ? (creationType() === 'email' ? 1 : 2) : (creationType() === 'email' ? 2 : 3) }} <small>{{ creationType() === 'email' || format() === 'freemarker-html' ? 'Select template' : 'Upload' }}</small></span>
   </nav>
 
   <div *ngIf="step() === 'type'" class="type-grid">
@@ -84,10 +84,10 @@
   </div>
 
   <footer class="wizard-actions" *ngIf="step() === 'type' || step() === 'format'">
-    <button type="button" class="secondary" (click)="step() === 'type' ? close() : back()">{{ step() === 'type' ? 'Cancel' : '← Back to type' }}</button>
+    <button type="button" class="secondary" (click)="step() === 'type' ? close() : back()">{{ step() === 'type' || typeLocked ? 'Cancel' : '← Back to type' }}</button>
     <button type="button" class="primary" [disabled]="step() === 'type' ? !creationType() : !format()" (click)="next()">Next</button>
   </footer>
   <footer class="wizard-actions back-actions" *ngIf="step() === 'configure'">
-    <button type="button" class="secondary" (click)="back()">← Back to {{ creationType() === 'email' ? 'type' : 'format' }}</button>
+    <button type="button" class="secondary" (click)="back()">{{ creationType() === 'email' && typeLocked ? 'Cancel' : '← Back to ' + (creationType() === 'email' ? 'type' : 'format') }}</button>
   </footer>
 </section>
