@@ -17,8 +17,6 @@ import { Router } from '@angular/router';
 import { normalizeTemplateFormat } from '../../services/template-renderer.service';
 
 
-type InvoiceDownloadFormat = 'docx' | 'pdf';
-
 export interface InvoicePaymentAdjustment {
   creditAmount?: number;
   refundAmount?: number;
@@ -131,7 +129,6 @@ export class AddInvoiceDialogComponent {
       servicesProvided: [this.getCopiedServicesProvided(), Validators.required],
       includeVat: [this.getCopiedIncludeVat()],
       templateId: [this.previousInvoice?.templateId || '', Validators.required],
-      downloadFormat: ['docx' as InvoiceDownloadFormat, Validators.required],
       dueDate: [this.getCopiedDueDate()],
       amountPaid: [this.getInitialAmountPaid(), [Validators.required, Validators.min(0)]],
       creditAmount: [this.getInitialCreditAmount(), [Validators.min(0)]],
@@ -292,7 +289,9 @@ export class AddInvoiceDialogComponent {
       shouldIncludeVAT: includeVat
     };
 
-    const wantsPdf = formValue.downloadFormat === 'pdf';
+    const selectedTemplate = this.invoiceTemplates().find(template => template.id === formValue.templateId);
+    const generatedFormat = normalizeTemplateFormat(selectedTemplate) === 'docx' ? 'docx' : 'pdf';
+    const wantsPdf = generatedFormat === 'pdf';
     const generate$: Observable<{ filename: string; generatedFile: any }> = wantsPdf
       ? this.invoiceDocx.generatePdfViaBackend(this.companyId, this.clientId, invoiceData, formValue.templateId).pipe(map(result => ({ filename: result.fileName, generatedFile: result })))
       : this.invoiceDocx.generateAndSave(this.companyId, invoiceData, formValue.templateId).pipe(map(filename => ({ filename, generatedFile: null as any })));
@@ -328,7 +327,7 @@ export class AddInvoiceDialogComponent {
             lineItems: items,
             filename: generated.filename,
             generatedFile: generated.generatedFile,
-            downloadFormat: formValue.downloadFormat,
+            downloadFormat: generatedFormat,
             templateId: formValue.templateId || null,
             createdAt: serverTimestamp(),
             createdBy: this.auth.currentUser?.uid

@@ -86,15 +86,6 @@
             <small *ngIf="!templatesLoading() && invoiceTemplates().length === 0">No invoice template exists yet. Open Templates to create one.</small>
         </div>
 
-        <div class="form-group full" *ngIf="!trackingOnly">
-            <label>Output format</label>
-            <select formControlName="downloadFormat">
-                <option value="docx">Microsoft Word document</option>
-                <option value="pdf">PDF (backend generated)</option>
-            </select>
-            <small>PDF output is generated server-side and saved to company/client/document storage.</small>
-        </div>
-
         <div class="form-group full">
             <label>Notes (optional)</label>
             <textarea rows="3" formControlName="notes"></textarea>
