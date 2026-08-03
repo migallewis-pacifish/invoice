@@ -2,14 +2,14 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnDestroy, signal } from '@angular/core';
 import { Dialog, DialogRef } from '@angular/cdk/dialog';
 import { UploadTemplateComponent } from '../../pages/upload-template/upload-template.component';
-import { createStarterEmailTemplates, StarterEmailTemplate } from '../../features/email-template-designer/email-template-starter-catalog';
-import { EmailTemplateDesignerComponent } from '../../features/email-template-designer/email-template-designer.component';
 import { CompanyTemplateFormat } from '../../models/invoice.model';
 import { CURRENT_AUTH_USER } from '../../services/company-context.service';
 import { TemplateService } from '../../services/template.service';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { firstValueFrom, take } from 'rxjs';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { createStarterEmailTemplates, StarterTemplate } from '../template-designer/template-starter-catalog';
+import { TemplateDesignerComponent } from '../template-designer/template-designer.component';
 
 export type TemplateCreationType = 'invoice' | 'letter' | 'email';
 export type TemplateCreationFormat = Extract<CompanyTemplateFormat, 'docx' | 'freemarker-html'>;
@@ -156,7 +156,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
     this.dialogRef.close(result);
   }
 
-  chooseStarter(starter: StarterEmailTemplate): void {
+  chooseStarter(starter: StarterTemplate): void {
     this.dialogRef.close(null);
     queueMicrotask(() => this.openDesigner(starter.id));
   }
@@ -167,7 +167,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
   }
 
   private openDesigner(starterId?: string): void {
-    this.dialog.open(EmailTemplateDesignerComponent, {
+    this.dialog.open(TemplateDesignerComponent, {
       data: { dialogMode: true, starterId },
       width: 'min(96vw, 1720px)',
       maxWidth: '1720px',

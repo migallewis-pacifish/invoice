@@ -1,14 +1,14 @@
 import { EmailColumnStyles, EmailElement, EmailSection, EmailTemplateDefinition, EmailTemplateScenario, EmailTemplateType } from '../../models/email-template-designer.model';
 
-export type StarterEmailTemplate = Omit<EmailTemplateDefinition, 'companyId'> & { description: string; accent: string; audience: string; scenario: EmailTemplateScenario };
+export type StarterTemplate = Omit<EmailTemplateDefinition, 'companyId'> & { description: string; accent: string; audience: string; scenario: EmailTemplateScenario };
 
 const defaultColumnStyles = (): EmailColumnStyles => ({ backgroundColor: '#ffffff', verticalAlign: 'top', paddingTop: 0, paddingRight: 0, paddingBottom: 0, paddingLeft: 0, borderColor: '#e2e8f0', borderWidth: 0, borderRadius: 0 });
 const section = (elements: EmailElement[], backgroundColor = '#ffffff', paddingTop = 24, paddingBottom = 24): EmailSection => ({ id: crypto.randomUUID(), type: 'layout', columnWidths: [100], styles: { backgroundColor, contentWidth: 600, columnGap: 0, paddingTop, paddingRight: 28, paddingBottom, paddingLeft: 28 }, columns: [{ id: crypto.randomUUID(), styles: defaultColumnStyles(), elements }] });
 const text = (content: string, fontSize = 16, fontWeight = '400', color = '#071f4d', textAlign: 'left'|'center'|'right' = 'left', backgroundColor = '#ffffff'): EmailElement => ({ id: crypto.randomUUID(), type: 'text', content, styles: { fontSize, fontWeight, fontStyle: 'normal', textAlign, color, backgroundColor, lineHeight: 1.5, paddingTop: 8, paddingRight: 8, paddingBottom: 8, paddingLeft: 8 } });
 const spacer = (height: number): EmailElement => ({ id: crypto.randomUUID(), type: 'spacer', height });
-const tpl = (id: string, type: EmailTemplateType, scenario: EmailTemplateScenario, name: string, description: string, subject: string, accent: string, audience: string, heading: string, body: string, cta: string): StarterEmailTemplate => ({ schemaVersion: 1, id, type, scenario, name, description, subject, accent, audience, sections: [section([text(heading, 26, '700', '#ffffff', 'left', accent), text(body), spacer(12), text(cta, 16, '700', accent)], accent, 26, 18), section([text('Thanks,\n{{company.name}}', 15, '600')], '#f8fbff', 18, 22)] });
+const tpl = (id: string, type: EmailTemplateType, scenario: EmailTemplateScenario, name: string, description: string, subject: string, accent: string, audience: string, heading: string, body: string, cta: string): StarterTemplate => ({ schemaVersion: 1, id, type, scenario, name, description, subject, accent, audience, sections: [section([text(heading, 26, '700', '#ffffff', 'left', accent), text(body), spacer(12), text(cta, 16, '700', accent)], accent, 26, 18), section([text('Thanks,\n{{company.name}}', 15, '600')], '#f8fbff', 18, 22)] });
 
-export function createStarterEmailTemplates(): StarterEmailTemplate[] {
+export function createStarterTemplates(): StarterTemplate[] {
   return [
     tpl('invoice-polished', 'invoice', 'invoice-sending', 'Polished invoice', 'A confident invoice delivery email with clear payment details.', 'Invoice {{invoice.number}} is ready from {{company.name}}', '#2563eb', 'Professional clients', 'Invoice {{invoice.number}} is ready', 'Hi {{client.name}},\n\nYour invoice from {{company.name}} is attached for review. The current total is {{invoice.total}} and payment is due by {{invoice.dueDate}}.\n\nPlease include reference {{invoice.number}} with your payment.', 'Review the attached invoice and let us know if anything needs attention.'),
     tpl('invoice-friendly', 'invoice', 'invoice-sending', 'Friendly handoff', 'A warmer invoice email for ongoing relationships.', 'Your {{company.name}} invoice: {{invoice.number}}', '#0f766e', 'Repeat customers', 'A quick invoice note', 'Hi {{client.name}},\n\nThanks again for working with us. We have attached invoice {{invoice.number}} for {{invoice.total}}. It is due on {{invoice.dueDate}}.\n\nWe appreciate your prompt payment.', 'Have questions? Reply to this email and we will help.'),
@@ -31,6 +31,11 @@ export function createStarterEmailTemplates(): StarterEmailTemplate[] {
   ];
 }
 
-export function cloneStarterEmailTemplate(starter: StarterEmailTemplate, companyId: string): EmailTemplateDefinition {
+export function cloneStarterTemplate(starter: StarterTemplate, companyId: string): EmailTemplateDefinition {
   return { ...structuredClone(starter), companyId, id: undefined, createdAt: undefined, updatedAt: undefined };
 }
+
+// Compatibility aliases for callers compiled against the former email-specific API.
+export const createStarterEmailTemplates = createStarterTemplates;
+export const cloneStarterEmailTemplate = cloneStarterTemplate;
+export type StarterEmailTemplate = StarterTemplate;

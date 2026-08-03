@@ -16,11 +16,10 @@ import { EmailTemplateService, validateEmailTemplate } from '../../services/emai
 import { WorkspaceShellComponent } from '../../components/workspace-shell/workspace-shell.component';
 import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
 import { EmailTemplateDefinition, EmailTemplateScenario } from '../../models/email-template-designer.model';
-import { EMAIL_TEMPLATE_SCENARIOS, EmailTemplateDefinitionService } from '../../features/email-template-designer/services/email-template-definition.service';
+import { EMAIL_TEMPLATE_SCENARIOS, EmailTemplateDefinitionService } from '../../components/template-designer/services/email-template-definition.service';
 import { Dialog } from '@angular/cdk/dialog';
-import { EmailTemplateDesignerComponent } from '../../features/email-template-designer/email-template-designer.component';
-import { EmailTemplateBuilderService } from '../../features/email-template-designer/services/email-template-builder.service';
-import { EmailTemplatePreviewDataService } from '../../features/email-template-designer/services/email-template-preview-data.service';
+import { EmailTemplateBuilderService } from '../../components/template-designer/services/email-template-builder.service';
+import { EmailTemplatePreviewDataService } from '../../components/template-designer/services/email-template-preview-data.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { TemplateCreationWizardComponent } from '../../components/template-creation-wizard/template-creation-wizard.component';
 
@@ -346,7 +345,7 @@ export class TemplatesComponent {
   }
 
   protected editDesignedEmailTemplate(template: EmailTemplateDefinition): void {
-    if (template.id) this.router.navigate(['/email-templates/designer', template.id]);
+    if (template.id) this.router.navigate(['/templates/designer', template.id]);
   }
 
   private async loadCompanyTemplates(): Promise<void> {

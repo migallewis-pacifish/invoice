@@ -7,7 +7,7 @@ import { Observable, of } from 'rxjs';
 import { EmailService, SendEmailRequest, normalizeEmailList, validateSendEmailRequest } from '../../services/email.service';
 import { FormFieldComponent } from '../form-field/form-field.component';
 import { EmailTemplateDefinition } from '../../models/email-template-designer.model';
-import { EmailTemplateDefinitionService, renderDesignedEmailPreview } from '../../features/email-template-designer/services/email-template-definition.service';
+import { EmailTemplateDefinitionService, renderDesignedEmailPreview } from '../template-designer/services/email-template-definition.service';
 
 @Component({
   selector: 'app-email-compose-dialog',
