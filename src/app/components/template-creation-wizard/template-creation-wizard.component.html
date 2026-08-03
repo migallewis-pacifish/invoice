@@ -2,15 +2,15 @@
   <header class="wizard-header">
     <div>
       <p class="eyebrow">New template</p>
-      <h1 id="template-wizard-title">{{ step() === 'type' ? 'What kind of template is this?' : (step() === 'format' ? 'Choose a template format' : (creationType() === 'email' ? 'Select an email template' : (format() === 'freemarker-html' ? 'Select a template' : 'Upload ' + creationType() + ' template'))) }}</h1>
-      <p>{{ step() === 'type' ? 'Choose whether the new template is for invoices, letters, or emails.' : (step() === 'format' ? 'Choose Word DOCX or FreeMarker/HTML for this ' + creationType() + ' template.' : (creationType() === 'email' ? 'Choose a starting design to customise in the email editor.' : (format() === 'freemarker-html' ? 'Choose one of the ready-made designs and preview it before adding it.' : 'Upload the DOCX file containing the required ' + creationType() + ' variables.'))) }}</p>
+      <h1 id="template-wizard-title">{{ step() === 'type' ? 'What kind of template is this?' : (step() === 'format' ? 'How would you like to create it?' : (creationType() === 'email' ? 'Select an email design' : (format() === 'freemarker-html' ? 'Select a ready-made design' : 'Upload a custom Word document'))) }}</h1>
+      <p>{{ step() === 'type' ? 'Choose whether the new template is for invoices, letters, or emails.' : (step() === 'format' ? 'Start with an existing design or upload your own Microsoft Word document.' : (creationType() === 'email' ? 'Choose an existing design to customise in the email editor.' : (format() === 'freemarker-html' ? 'Choose a professionally designed template, preview it, and customise its colours.' : 'Upload your custom Microsoft Word (.docx) layout for this ' + creationType() + '.'))) }}</p>
     </div>
     <button type="button" class="close" aria-label="Close template wizard" (click)="close()">×</button>
   </header>
 
   <nav class="steps" aria-label="Template creation steps">
     <span *ngIf="!typeLocked" class="active">1 <small>Type</small></span>
-    <span *ngIf="creationType() !== 'email'" [class.active]="step() === 'format'">{{ typeLocked ? 1 : 2 }} <small>Format</small></span>
+    <span *ngIf="creationType() !== 'email'" [class.active]="step() === 'format'">{{ typeLocked ? 1 : 2 }} <small>Starting point</small></span>
     <span [class.active]="step() === 'configure'">{{ typeLocked ? (creationType() === 'email' ? 1 : 2) : (creationType() === 'email' ? 2 : 3) }} <small>{{ creationType() === 'email' || format() === 'freemarker-html' ? 'Select template' : 'Upload' }}</small></span>
   </nav>
 
@@ -35,13 +35,13 @@
   <div *ngIf="step() === 'format'" class="type-grid format-grid">
     <button type="button" class="type-card" [class.selected]="format() === 'docx'" (click)="selectFormat('docx')">
       <span class="type-icon" aria-hidden="true">W</span>
-      <strong>Word DOCX</strong>
-      <small>Use a Microsoft Word document containing template variables.</small>
+      <strong>Custom Word document</strong>
+      <small>Upload your own Microsoft Word (.docx) layout and branding.</small>
     </button>
     <button type="button" class="type-card" [class.selected]="format() === 'freemarker-html'" (click)="selectFormat('freemarker-html')">
       <span class="type-icon code" aria-hidden="true">&lt;/&gt;</span>
-      <strong>FreeMarker / HTML</strong>
-      <small>Use an HTML template containing FreeMarker or double-brace variables.</small>
+      <strong>Ready-made design</strong>
+      <small>Choose an existing professional design and customise its colours.</small>
     </button>
   </div>
 
@@ -70,7 +70,7 @@
       </section>
       <p class="template-error" role="alert" *ngIf="freemarkerError()">{{ freemarkerError() }}</p>
     </ng-container>
-    <ng-template #noFreemarkerTemplates><div class="empty-catalog"><strong>No ready-made letter templates yet</strong><span>Choose Word DOCX to upload a letter template.</span></div></ng-template>
+    <ng-template #noFreemarkerTemplates><div class="empty-catalog"><strong>No ready-made letter designs yet</strong><span>Choose Custom Word document to upload your own letter layout.</span></div></ng-template>
   </div>
 
   <div *ngIf="step() === 'configure' && creationType() === 'email'" class="starter-step">

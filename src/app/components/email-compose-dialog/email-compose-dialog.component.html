@@ -14,9 +14,9 @@
   <section class="template-choice">
     <strong>Email body template</strong>
     <label><input type="radio" formControlName="templateKind" value="simple"> Simple text template</label>
-    <label><input type="radio" formControlName="templateKind" value="designed"> Designed HTML template</label>
+    <label><input type="radio" formControlName="templateKind" value="designed"> Ready-made email design</label>
     <select formControlName="designedTemplateId" *ngIf="form.value.templateKind === 'designed'">
-      <option value="">Choose a designed template…</option>
+      <option value="">Choose a ready-made design…</option>
       <option *ngFor="let template of designedTemplates$ | async" [value]="template.id">{{ template.name }}</option>
     </select>
   </section>

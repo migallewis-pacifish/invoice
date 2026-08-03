@@ -119,7 +119,7 @@ export class TemplatesComponent {
   protected readonly invoiceTemplateCount = computed(() => this.templates().filter(template => template.type === 'invoice' && !template.archived).length);
   protected readonly letterTemplateCount = computed(() => this.templates().filter(template => template.type === 'letter' && !template.archived).length);
   protected readonly emailTemplateCount = computed(() => this.designedEmailTemplates().filter(template => !template.archived).length);
-  protected readonly formatLabels: Record<string, string> = { docx: 'Word DOCX', 'freemarker-html': 'FreeMarker/HTML', 'pdf-mapped': 'PDF-mapped' };
+  protected readonly formatLabels: Record<string, string> = { docx: 'Custom Word document', 'freemarker-html': 'Ready-made design', 'pdf-mapped': 'Mapped PDF' };
   protected readonly totalTemplateCount = computed(() => this.templates().filter(template => template.active && !template.archived).length + this.emailTemplateCount());
 
   protected setTab(tab: TemplateTab): void {
