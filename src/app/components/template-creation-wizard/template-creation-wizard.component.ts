@@ -220,10 +220,14 @@ export class TemplateCreationWizardComponent implements OnDestroy {
       const profile = await firstValueFrom(docData(doc(this.db, `users/${user.uid}`)).pipe(take(1))) as any;
       if (!profile?.companyId) throw new Error('No company is linked to your account.');
       const source = this.customizeStarterSource(await this.fetchStarter(starter), starter);
+      const palette = this.paletteFor(starter);
       const file = new File([source], `${starter.id}.html`, { type: 'text/html' });
       const result = await this.templateService.upload(profile.companyId, file, this.documentType(), undefined, {
         format: 'freemarker-html',
-        name: starter.name
+        name: starter.name,
+        sourceKind: 'ready-made',
+        starterTemplateId: starter.id,
+        theme: { primary: palette[0], secondary: palette[1], accent: palette[2] }
       });
       this.close(result.path);
     } catch (error: any) {

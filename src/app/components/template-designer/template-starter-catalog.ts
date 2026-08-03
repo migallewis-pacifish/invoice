@@ -76,7 +76,16 @@ export function applyStarterPalette(starter: StarterTemplate, palette: TemplateP
 
 export function cloneStarterTemplate(starter: StarterTemplate, companyId: string): EmailTemplateDefinition {
   const { description: _description, accent: _accent, audience: _audience, sourcePath: _sourcePath, palette: _palette, ...definition } = structuredClone(starter);
-  return { ...definition, companyId, id: undefined, createdAt: undefined, updatedAt: undefined };
+  return {
+    ...definition,
+    companyId,
+    id: undefined,
+    sourceKind: 'ready-made',
+    ...(starter.id ? { starterTemplateId: starter.id } : {}),
+    theme: { primary: starter.palette[0], secondary: starter.palette[1], accent: starter.palette[2] },
+    createdAt: undefined,
+    updatedAt: undefined
+  };
 }
 
 export const createStarterEmailTemplates = createStarterTemplates;

@@ -194,6 +194,12 @@ export interface CompanyTemplatePreviewMetadata {
   updatedAt?: number;
 }
 
+export interface CompanyTemplateTheme {
+  primary: string;
+  secondary: string;
+  accent: string;
+}
+
 export interface CompanyTemplate {
   id: string;
   companyId: string;
@@ -214,6 +220,9 @@ export interface CompanyTemplate {
   fileName?: string;
   preview?: CompanyTemplatePreviewMetadata;
   requiredVariables?: string[];
+  sourceKind?: 'ready-made' | 'custom';
+  starterTemplateId?: string;
+  theme?: CompanyTemplateTheme;
   isDefault?: boolean;
   archived?: boolean;
   createdAt?: number;

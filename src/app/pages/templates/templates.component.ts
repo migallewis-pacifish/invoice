@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { collection, collectionData, Firestore } from '@angular/fire/firestore';
@@ -20,8 +20,9 @@ import { EMAIL_TEMPLATE_SCENARIOS, EmailTemplateDefinitionService } from '../../
 import { Dialog } from '@angular/cdk/dialog';
 import { EmailTemplateBuilderService } from '../../components/template-designer/services/email-template-builder.service';
 import { EmailTemplatePreviewDataService } from '../../components/template-designer/services/email-template-preview-data.service';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
 import { TemplateCreationType, TemplateCreationWizardComponent } from '../../components/template-creation-wizard/template-creation-wizard.component';
+import { DocumentTemplatePreviewService } from '../../services/document-template-preview.service';
 
 type TemplateType = 'invoice' | 'letter';
 type TemplateTab = 'overview' | 'invoices' | 'letters' | 'emails';
@@ -78,7 +79,7 @@ export function filterTemplates(templates: TemplateCard[], filter: TemplateFilte
   templateUrl: './templates.component.html',
   styleUrl: './templates.component.scss'
 })
-export class TemplatesComponent {
+export class TemplatesComponent implements OnDestroy {
   private db = inject(Firestore);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -92,6 +93,7 @@ export class TemplatesComponent {
   private emailBuilder = inject(EmailTemplateBuilderService);
   private previewData = inject(EmailTemplatePreviewDataService);
   private sanitizer = inject(DomSanitizer);
+  private documentPreview = inject(DocumentTemplatePreviewService);
 
   protected readonly activeTab = signal<TemplateTab>('overview');
   protected readonly loading = signal(true);
@@ -104,13 +106,14 @@ export class TemplatesComponent {
   protected readonly previewEmailTemplate = signal<EmailTemplateDefinition | null>(null);
   protected readonly previewEmailHtml = signal<SafeHtml>('');
   protected readonly previewDocumentTemplate = signal<GalleryCard | null>(null);
-  protected readonly previewDocumentHtml = signal('');
+  protected readonly previewDocumentUrl = signal<SafeResourceUrl | null>(null);
   protected readonly scenarios = EMAIL_TEMPLATE_SCENARIOS;
   protected readonly selectedEmailTemplate = signal<CompanyEmailTemplate | null>(null);
   protected readonly emailTemplateMessage = signal('');
   protected readonly variables = EMAIL_TEMPLATE_VARIABLES;
   protected readonly variableLabels = EMAIL_TEMPLATE_VARIABLE_LABELS;
   private handledEditQuery = false;
+  private documentPreviewObjectUrl: string | null = null;
 
   protected readonly emailTemplateForm = this.fb.nonNullable.group({
     subject: ['', [Validators.required]],
@@ -208,7 +211,7 @@ export class TemplatesComponent {
   protected viewGalleryTemplate(template: GalleryCard): void {
     if (template.kind === 'email') this.previewDesignedEmailTemplate(template.source);
     else if (template.viewAction === 'download') void this.viewTemplate(template.source);
-    else void this.previewDocument(template);
+    else void this.previewDesignedDocumentTemplate(template);
   }
 
   protected openGalleryMenu(template: GalleryCard): void {
@@ -231,42 +234,32 @@ export class TemplatesComponent {
 
   protected closeDocumentPreview(): void {
     this.previewDocumentTemplate.set(null);
-    this.previewDocumentHtml.set('');
+    this.releaseDocumentPreview();
   }
 
-  private async previewDocument(template: GalleryCard & { kind: 'invoice' | 'letter' }): Promise<void> {
+  protected async previewDesignedDocumentTemplate(template: GalleryCard & { kind: 'invoice' | 'letter' }): Promise<void> {
+    this.previewDocumentTemplate.set(template);
+    this.releaseDocumentPreview();
     try {
-      const url = await this.templateService.getDownloadUrl(template.source.bodyStoragePath || template.source.storagePath);
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Unable to load the template preview.');
-      this.previewDocumentHtml.set(this.renderDocumentPreview(await response.text()));
-      this.previewDocumentTemplate.set(template);
+      const source = await this.templateService.getTemplateSource(template.source.storagePath);
+      console.log('previewDesignedDocumentTemplate source', source);
+      const previewHtml = this.documentPreview.buildHtml(source);
+      this.documentPreviewObjectUrl = URL.createObjectURL(new Blob([previewHtml], { type: 'text/html' }));
+      this.previewDocumentUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.documentPreviewObjectUrl));
     } catch (e: any) {
+      this.closeDocumentPreview();
       this.error.set(e?.message ?? 'Unable to preview template.');
     }
   }
 
-  private renderDocumentPreview(source: string): string {
-    const sampleValues: Record<string, string> = {
-      'company.name': 'Nexus Studio Ltd', 'company.address': '100 Market Street, Johannesburg', 'company.email': 'accounts@nexus.example',
-      'company.phone': '+27 11 555 0100', 'company.website': 'www.nexus.example', 'company.registrationNumber': '2026/123456/07', 'company.taxNumber': '4123456789',
-      'client.name': 'Acme Corporation', 'client.address': '42 Client Avenue, Sandton', 'client.street': '42 Client Avenue', 'client.suburb': 'Sandton',
-      'client.city': 'Johannesburg', 'client.postalCode': '2196', 'client.email': 'finance@acme.example',
-      'invoice.number': 'INV-2026-1042', 'invoice.date': '3 August 2026', 'invoice.dueDate': '2 September 2026',
-      'invoice.subtotal': 'R 4,800.00', 'invoice.vatPercentage': '15', 'invoice.vat': 'R 720.00', 'invoice.total': 'R 5,520.00', 'invoice.notes': 'Thank you for your business.',
-      'item.description': 'Professional services', 'item.hours': '8', 'item.rate': 'R 600.00', 'item.amount': 'R 4,800.00',
-      'payment.reference': 'INV-2026-1042', 'payment.bankName': 'Example Bank', 'payment.accountHolder': 'Nexus Studio Ltd',
-      'payment.accountType': 'Business', 'payment.accountNumber': '1234567890', 'payment.branchCode': '123456', 'signature.name': 'Alex Morgan'
-    };
-    return source
-      .replace(/\$\{\(theme\.sidebarColor[123]\)!'([^']+)'}/g, '$1')
-      .replace(/<#--[\s\S]*?-->/g, '')
-      .replace(/<#[^>]*>/g, '')
-      .replace(/<\/#(?:if|list)>/g, '')
-      .replace(/\$\{([^}]+)}/g, (_match, expression: string) => {
-        const path = Object.keys(sampleValues).find(key => expression.includes(key));
-        return path ? sampleValues[path] : '';
-      });
+  ngOnDestroy(): void {
+    this.releaseDocumentPreview();
+  }
+
+  private releaseDocumentPreview(): void {
+    if (this.documentPreviewObjectUrl) URL.revokeObjectURL(this.documentPreviewObjectUrl);
+    this.documentPreviewObjectUrl = null;
+    this.previewDocumentUrl.set(null);
   }
 
   protected editTemplate(template: TemplateCard): void {
