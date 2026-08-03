@@ -336,9 +336,9 @@ export class TemplatesComponent {
 
   private openCreationWizard(): void {
     this.dialog.open(TemplateCreationWizardComponent, {
-      width: 'min(94vw, 1080px)',
-      maxWidth: '1080px',
-      maxHeight: '94vh',
+      width: 'min(97vw, 1440px)',
+      maxWidth: '1440px',
+      maxHeight: '97vh',
       backdropClass: 'dlg-backdrop',
       panelClass: 'template-creation-wizard-panel'
     });

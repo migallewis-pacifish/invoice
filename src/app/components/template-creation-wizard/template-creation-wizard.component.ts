@@ -10,6 +10,7 @@ import { firstValueFrom, take } from 'rxjs';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { createStarterEmailTemplates, StarterTemplate } from '../template-designer/template-starter-catalog';
 import { TemplateDesignerComponent } from '../template-designer/template-designer.component';
+import { TemplateColourSelectorComponent, TemplatePalette } from '../template-colour-selector/template-colour-selector.component';
 
 export type TemplateCreationType = 'invoice' | 'letter' | 'email';
 export type TemplateCreationFormat = Extract<CompanyTemplateFormat, 'docx' | 'freemarker-html'>;
@@ -25,6 +26,21 @@ export interface FreemarkerStarterTemplate {
 
 const FREEMARKER_STARTER_IDS = ['azure-ledger', 'midnight-teal', 'sage-studio', 'coral-sidebar', 'monochrome-grid', 'violet-gradient', 'tricolour-sidebar'];
 
+interface StarterPaletteConfig {
+  defaults: TemplatePalette;
+  sourceColors: [string[], string[], string[]];
+}
+
+const STARTER_PALETTES: Record<string, StarterPaletteConfig> = {
+  'azure-ledger': { defaults: ['#3478d4', '#245ca8', '#c9dcf7'], sourceColors: [['#3478d4'], ['#245ca8'], ['#c9dcf7']] },
+  'midnight-teal': { defaults: ['#062f43', '#0e6174', '#16a9b8'], sourceColors: [['#062f43', '#063c50'], ['#0e6174', '#1993a3'], ['#16a9b8', '#18a4b3']] },
+  'sage-studio': { defaults: ['#637f70', '#8b664a', '#9caf9f'], sourceColors: [['#637f70', '#647e70'], ['#8b664a'], ['#9caf9f']] },
+  'coral-sidebar': { defaults: ['#18324b', '#ff6b5d', '#ff9c93'], sourceColors: [['#18324b'], ['#ff6b5d', '#ff6255'], ['#ff9c93', '#ff8b80']] },
+  'monochrome-grid': { defaults: ['#111111', '#555555', '#dddddd'], sourceColors: [['#111'], ['#555'], ['#ddd']] },
+  'violet-gradient': { defaults: ['#302561', '#5b3cc4', '#8b5cf6'], sourceColors: [['#302561', '#292344'], ['#5b3cc4', '#5135aa'], ['#8b5cf6', '#9f7aea']] },
+  'tricolour-sidebar': { defaults: ['#3a666d', '#2a7a87', '#71c2a7'], sourceColors: [[], [], []] }
+};
+
 export const FREEMARKER_INVOICE_TEMPLATES: FreemarkerStarterTemplate[] = [
   starter('azure-ledger', 'Azure Ledger', 'A crisp blue header with a classic ledger layout.', '#3478d4'),
   starter('midnight-teal', 'Midnight Teal', 'A dark, polished invoice with teal highlights.', '#1b9c96'),
@@ -32,7 +48,7 @@ export const FREEMARKER_INVOICE_TEMPLATES: FreemarkerStarterTemplate[] = [
   starter('coral-sidebar', 'Coral Sidebar', 'A warm, modern layout with a bold side panel.', '#ed765f'),
   starter('monochrome-grid', 'Monochrome Grid', 'A minimal black-and-white professional layout.', '#202020'),
   starter('violet-gradient', 'Violet Gradient', 'A vibrant contemporary invoice with violet accents.', '#7357d9'),
-  starter('tricolour-sidebar', 'Tricolour Sidebar', 'A structured sidebar design with three brand colours.', '#318b91')
+  starter('tricolour-sidebar', 'Tricolour Sidebar', 'A structured sidebar design with a custom three-colour gradient.', 'linear-gradient(#3a666d, #2a7a87, #71c2a7)')
 ];
 
 function starter(id: string, name: string, description: string, accent: string): FreemarkerStarterTemplate {
@@ -43,7 +59,7 @@ function starter(id: string, name: string, description: string, accent: string):
 @Component({
   selector: 'app-template-creation-wizard',
   standalone: true,
-  imports: [CommonModule, UploadTemplateComponent],
+  imports: [CommonModule, UploadTemplateComponent, TemplateColourSelectorComponent],
   templateUrl: './template-creation-wizard.component.html',
   styleUrl: './template-creation-wizard.component.scss'
 })
@@ -64,6 +80,9 @@ export class TemplateCreationWizardComponent implements OnDestroy {
   readonly freemarkerPreview = signal<SafeResourceUrl | null>(null);
   readonly freemarkerBusy = signal(false);
   readonly freemarkerError = signal<string | null>(null);
+  readonly starterPalettes = signal<Record<string, TemplatePalette>>(Object.fromEntries(
+    Object.entries(STARTER_PALETTES).map(([id, config]) => [id, [...config.defaults] as TemplatePalette])
+  ));
   private previewObjectUrl: string | null = null;
 
   selectType(type: TemplateCreationType): void {
@@ -96,8 +115,9 @@ export class TemplateCreationWizardComponent implements OnDestroy {
     this.freemarkerError.set(null);
     this.releasePreview();
     try {
-      const source = await this.fetchStarter(starter);
+      const source = this.customizeStarterSource(await this.fetchStarter(starter), starter);
       const preview = source
+        .replace(/\$\{\(theme\.sidebarColor([123])\)!'[^']+'}/g, (_match, index) => this.paletteFor(starter)[Number(index) - 1] ?? '#2a7a87')
         .replace(/<#[^>]*>/g, '')
         .replace(/<\/#(?:if|list)>/g, '')
         .replace(/\$\{[^}]+}/g, 'Sample');
@@ -106,6 +126,17 @@ export class TemplateCreationWizardComponent implements OnDestroy {
     } catch {
       this.freemarkerError.set('The template preview could not be loaded. Please try another template.');
     }
+  }
+
+  updateStarterPalette(colors: TemplatePalette): void {
+    const selected = this.selectedFreemarker();
+    if (!selected) return;
+    this.starterPalettes.update(palettes => ({ ...palettes, [selected.id]: colors }));
+    void this.selectFreemarker(selected);
+  }
+
+  paletteFor(starter: FreemarkerStarterTemplate): TemplatePalette {
+    return this.starterPalettes()[starter.id] ?? STARTER_PALETTES[starter.id]?.defaults ?? ['#000000', '#666666', '#cccccc'];
   }
 
   async useSelectedFreemarker(): Promise<void> {
@@ -118,7 +149,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
       if (!user) throw new Error('Sign in to add a template.');
       const profile = await firstValueFrom(docData(doc(this.db, `users/${user.uid}`)).pipe(take(1))) as any;
       if (!profile?.companyId) throw new Error('No company is linked to your account.');
-      const source = await this.fetchStarter(starter);
+      const source = this.customizeStarterSource(await this.fetchStarter(starter), starter);
       const file = new File([source], `${starter.id}.html`, { type: 'text/html' });
       const result = await this.templateService.upload(profile.companyId, file, 'invoice', undefined, {
         format: 'freemarker-html',
@@ -140,6 +171,23 @@ export class TemplateCreationWizardComponent implements OnDestroy {
     const response = await fetch(starter.path);
     if (!response.ok) throw new Error(`Unable to load ${starter.name}.`);
     return response.text();
+  }
+
+  private customizeStarterSource(source: string, starter: FreemarkerStarterTemplate): string {
+    const palette = this.paletteFor(starter);
+    if (starter.id === 'tricolour-sidebar') {
+      return source.replace(
+        /\$\{\(theme\.sidebarColor([123])\)!'[^']+'}/g,
+        (expression, index) => expression.replace(/'[^']+'/, `'${palette[Number(index) - 1] ?? '#2a7a87'}'`)
+      );
+    }
+    const config = STARTER_PALETTES[starter.id];
+    if (!config) return source;
+    if (starter.id === 'monochrome-grid') source = source.replace('border-top:5px solid #111', `border-top:5px solid ${palette[1]}`);
+    return config.sourceColors.reduce((result, sourceColors, index) => sourceColors.reduce((updated, sourceColor) => {
+      const exactCssColor = new RegExp(`${sourceColor}(?![0-9a-f])`, 'gi');
+      return updated.replace(exactCssColor, () => palette[index] ?? config.defaults[index] ?? '#000000');
+    }, result), source);
   }
 
   private releasePreview(): void {

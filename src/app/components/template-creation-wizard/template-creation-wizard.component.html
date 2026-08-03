@@ -57,6 +57,9 @@
           <span class="template-swatch" [style.background]="starter.accent"></span>
           <strong>{{ starter.name }}</strong><small>{{ starter.description }}</small>
         </button>
+        <app-template-colour-selector *ngIf="selectedFreemarker() as selected"
+          [colors]="paletteFor(selected)" [title]="selected.id === 'tricolour-sidebar' ? 'Sidebar gradient' : 'Template colours'"
+          (colorsChange)="updateStarterPalette($event)"></app-template-colour-selector>
       </div>
       <section class="template-preview-panel" *ngIf="selectedFreemarker() as selected">
         <div class="preview-heading"><div><small>Preview</small><h2>{{ selected.name }}</h2></div>

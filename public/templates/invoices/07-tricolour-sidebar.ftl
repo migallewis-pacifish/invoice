@@ -16,20 +16,20 @@
     @page { size: A4; margin: 0; }
     * { box-sizing: border-box; }
     body { margin: 0; background: #eef0f1; color: #211f1e; font: 12px Arial, sans-serif; }
-    .page { width: 210mm; min-height: 297mm; margin: auto; background: #fff; display: grid; grid-template-columns: 88mm 1fr; }
+    .page { width: 210mm; min-height: 297mm; margin: auto; background: #fff; display: grid; grid-template-columns: 55mm 1fr; }
     .sidebar {
       min-height: 297mm;
-      padding: 25mm 10mm 18mm;
+      padding: 18mm 10mm;
       color: #fff;
       background: linear-gradient(180deg,
-        ${(theme.sidebarColor1)!'#356d72'} 0%,
-        ${(theme.sidebarColor2)!'#318b91'} 52%,
-        ${(theme.sidebarColor3)!'#68c6bf'} 100%);
+        ${(theme.sidebarColor1)!'#3a666d'} 0%,
+        ${(theme.sidebarColor2)!'#2a7a87'} 52%,
+        ${(theme.sidebarColor3)!'#71c2a7'} 100%);
       display: flex;
       flex-direction: column;
     }
-    .logo { display: block; max-width: 53mm; max-height: 22mm; object-fit: contain; object-position: left center; margin-bottom: 9mm; }
-    .company-name { margin: 0 0 24mm; font: 30px Georgia, serif; letter-spacing: .01em; }
+    .logo { display: block; max-width: 35mm; max-height: 18mm; object-fit: contain; object-position: left center; margin-bottom: 9mm; }
+    .company-name { margin: 0 0 18mm; font: 24px Georgia, serif; letter-spacing: .01em; overflow-wrap: anywhere; }
     .side-label { margin: 0 0 5mm; font-size: 14px; font-weight: bold; }
     .client-name { font: 16px Georgia, serif; line-height: 1.45; }
     .side-section { margin-top: 25mm; line-height: 1.45; overflow-wrap: anywhere; }
@@ -38,26 +38,26 @@
     .side-section p { margin: 0; }
     .side-section strong { font-weight: bold; }
     .contact { margin-top: 18mm; }
-    .main { min-width: 0; min-height: 297mm; padding: 25mm 9mm 14mm 7mm; display: flex; flex-direction: column; }
+    .main { min-width: 0; min-height: 297mm; padding: 18mm 16mm 25mm; display: flex; flex-direction: column; }
     .invoice-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5mm; }
     .invoice-head h1 { margin: 0; font-size: 34px; line-height: 1; letter-spacing: .05em; text-transform: uppercase; }
     .meta { margin-left: 8mm; text-align: right; line-height: 1.55; white-space: nowrap; }
     .meta strong { display: inline-block; min-width: 24mm; font-weight: normal; }
     .company-details { color: #625e5b; font-size: 10px; line-height: 1.45; text-align: right; margin: 0 0 5mm auto; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    .items th { padding: 3mm 2mm; color: #fff; background: ${(theme.sidebarColor2)!'#318b91'}; font-size: 12px; text-align: right; }
+    .items th { padding: 3mm 2mm; color: #fff; background: ${(theme.sidebarColor2)!'#2a7a87'}; font-size: 12px; text-align: right; }
     .items th:first-child { width: 62%; text-align: left; }
     .items td { padding: 3mm 2mm; border: 1px solid #a5abad; border-top: 0; text-align: right; vertical-align: top; overflow-wrap: anywhere; }
     .items td:first-child { text-align: left; }
     .totals { width: 58%; margin: auto 0 0 auto; }
     .totals td { padding: 1.4mm 3mm; text-align: right; }
     .totals td:first-child { width: 58%; }
-    .totals .grand td { padding-top: 3mm; padding-bottom: 3mm; color: #fff; background: ${(theme.sidebarColor2)!'#318b91'}; font-size: 14px; font-weight: bold; }
+    .totals .grand td { padding-top: 3mm; padding-bottom: 3mm; color: #fff; background: ${(theme.sidebarColor2)!'#2a7a87'}; font-size: 14px; font-weight: bold; }
     .closing { min-height: 48mm; margin-top: 36mm; display: flex; justify-content: flex-end; align-items: flex-end; }
     .signature { width: 57mm; text-align: center; }
     .signature img { display: block; width: auto; max-width: 52mm; height: auto; max-height: 22mm; margin: 0 auto -1mm; object-fit: contain; }
     .signature-line { border-top: 1px solid #667175; padding-top: 3mm; font-weight: bold; }
-    .brand-footer { margin-top: 17mm; text-align: right; color: ${(theme.sidebarColor1)!'#356d72'}; font: 25px Georgia, serif; }
+    .brand-footer { margin-top: 17mm; text-align: right; color: ${(theme.sidebarColor1)!'#3a666d'}; font: 25px Georgia, serif; }
   </style>
 </head>
 <body>
