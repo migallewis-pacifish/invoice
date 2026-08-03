@@ -1,10 +1,8 @@
 <app-workspace-shell shellClass="templates-shell" topbarClass="templates-topbar">
   <section class="templates-header">
-    <div>
-      <nav class="breadcrumb" aria-label="Breadcrumb"><a routerLink="/settings">Admin</a><span>›</span><span>Templates</span></nav>
-      <h1>Templates</h1>
-      <p>Manage document layouts, reusable emails, and template activity across your workspace.</p>
-    </div>
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a routerLink="/settings">Admin</a><span>›</span><span>Templates</span></nav>
+    <h1>Templates</h1>
+    <p>Manage document layouts, reusable emails, and template activity across your workspace.</p>
   </section>
 
   <div class="template-tabs" role="tablist" aria-label="Template types">
@@ -16,10 +14,7 @@
 
   <ng-container [ngSwitch]="activeTab()">
     <section *ngSwitchCase="'overview'" class="template-overview" aria-labelledby="template-overview-title">
-      <div class="overview-heading">
-        <h2 id="template-overview-title">Template statistics</h2>
-        <p class="muted">A live summary of the active templates available to your company.</p>
-      </div>
+      <div class="overview-heading"><h2 id="template-overview-title">Template statistics</h2><p class="muted">A live summary of the active templates available to your company.</p></div>
       <section class="stats-grid" aria-label="Template statistics">
         <article class="stats-card usage-card"><div class="stats-label">Active Templates <span class="app-icon" aria-hidden="true">📁</span></div><strong>{{ totalTemplateCount() }}</strong><p>Document and email templates ready to use</p></article>
         <article class="stats-card active-types-card"><div class="stats-label">Invoice Templates <span class="app-icon" aria-hidden="true">🧾</span></div><strong>{{ invoiceTemplateCount() }}</strong><p>Active invoice document layouts</p></article>
@@ -28,52 +23,12 @@
       </section>
     </section>
 
-    <ng-container *ngSwitchCase="'invoices'">
-      <ng-container *ngTemplateOutlet="documentGallery; context: { type: 'invoice', title: 'Invoice Templates', description: 'Manage layouts used to generate customer invoices.' }"></ng-container>
-    </ng-container>
-
-    <ng-container *ngSwitchCase="'letters'">
-      <ng-container *ngTemplateOutlet="documentGallery; context: { type: 'letter', title: 'Letter Templates', description: 'Manage reusable layouts for customer letters.' }"></ng-container>
-    </ng-container>
-
-    <section *ngSwitchCase="'emails'" class="gallery-section" aria-label="Email templates">
-      <header class="gallery-header gallery-tab-header">
-        <div><h2>Email Templates</h2><p>Create, assign, and manage reusable email designs for every sending scenario.</p></div>
-        <div class="header-actions">
-          <button class="filter-button" type="button" (click)="toggleStatusFilter()">{{ statusFilter() === 'active' ? 'Active' : 'Archived' }}</button>
-        </div>
-      </header>
-
-      <p class="error gallery-message" *ngIf="error()">{{ error() }}</p>
-      <app-empty-state class="gallery-message" *ngIf="!error() && filteredEmailTemplates().length === 0" message="No email templates in this view."></app-empty-state>
-
-      <section class="template-grid mb-24" aria-label="Created email templates">
-        <article class="template-card" *ngFor="let template of filteredEmailTemplates()">
-          <div class="template-preview email-card-preview">
-            <div class="email-paper" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-            <span class="template-badge type-badge">email</span>
-            <span class="template-badge category-badge">{{ template.type }}</span>
-          </div>
-          <div class="template-content">
-            <div class="title-line"><h2>{{ template.name }}</h2><button class="more-button" type="button" aria-label="More email template actions" (click)="openEmailMoreMenu(template)"><span class="app-icon" aria-hidden="true">⋮</span></button></div>
-            <p>{{ template.subject }}</p>
-            <small>{{ template.sections.length }} section{{ template.sections.length === 1 ? '' : 's' }}</small>
-            <div class="default-list" *ngIf="template.defaultForScenarios?.length">Default for: <span *ngFor="let scenario of template.defaultForScenarios">{{ scenarioLabel(scenario) }}</span></div>
-          </div>
-          <div class="template-actions">
-            <button class="edit-button" type="button" (click)="editDesignedEmailTemplate(template)">Edit</button>
-            <button class="square-button" type="button" aria-label="Duplicate email template" (click)="duplicateDesignedEmailTemplate(template)"><span class="app-icon" aria-hidden="true">⧉</span></button>
-            <button class="square-button" type="button" aria-label="Preview email template" (click)="previewDesignedEmailTemplate(template)"><span class="app-icon" aria-hidden="true">👁</span></button>
-          </div>
-        </article>
-        <button class="upload-card" type="button" *ngIf="statusFilter() === 'active'" (click)="newEmailTemplate()"><span class="plus-icon app-icon" aria-hidden="true">＋</span><strong>New Email Template</strong><small>Choose a starter design or start from scratch.</small></button>
-      </section>
-
-      <div class="email-preview-modal" *ngIf="previewEmailTemplate() as preview"><div class="email-preview-panel"><button class="filter-button" type="button" (click)="closeEmailPreview()">Close preview</button><h3>{{ preview.name }}</h3><p class="muted">{{ preview.subject }}</p><div class="email-preview-frame" [innerHTML]="previewEmailHtml()"></div></div></div>
-    </section>
+    <ng-container *ngSwitchCase="'invoices'"><ng-container *ngTemplateOutlet="templateGallery; context: { title: 'Invoice Templates', description: 'Manage layouts used to generate customer invoices.' }"></ng-container></ng-container>
+    <ng-container *ngSwitchCase="'letters'"><ng-container *ngTemplateOutlet="templateGallery; context: { title: 'Letter Templates', description: 'Manage reusable layouts for customer letters.' }"></ng-container></ng-container>
+    <ng-container *ngSwitchCase="'emails'"><ng-container *ngTemplateOutlet="templateGallery; context: { title: 'Email Templates', description: 'Create, assign, and manage reusable email designs for every sending scenario.' }"></ng-container></ng-container>
   </ng-container>
 
-  <ng-template #documentGallery let-type="type" let-title="title" let-description="description">
+  <ng-template #templateGallery let-title="title" let-description="description">
     <section class="gallery-section">
       <header class="gallery-header gallery-tab-header">
         <div><h2>{{ title }}</h2><p>{{ description }}</p></div>
@@ -81,22 +36,41 @@
           <button class="filter-button" type="button" (click)="toggleStatusFilter()">{{ statusFilter() === 'active' ? 'Active' : 'Archived' }}</button>
         </div>
       </header>
+
       <p class="muted gallery-message" *ngIf="loading()">Loading templates…</p>
       <p class="error gallery-message" *ngIf="error()">{{ error() }}</p>
 
       <section class="template-grid mb-24" [attr.aria-label]="title">
-        <article class="template-card" *ngFor="let template of documentTemplates()">
-          <div class="template-preview" [class.preview-letter]="type === 'letter'">
-            <div class="preview-paper" [class.invoice-paper]="type === 'invoice'"><div class="paper-logo"></div><div class="paper-line short"></div><div class="paper-line"></div><div class="paper-line"></div><div class="paper-table" *ngIf="type === 'invoice'"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div class="paper-signature" *ngIf="type === 'letter'"></div></div>
-            <span class="template-badge type-badge">{{ type }}</span>
-            <span class="template-badge category-badge">{{ formatLabels[template.format || 'docx'] || template.format || 'docx' }}</span>
+        <article class="template-card" *ngFor="let template of galleryCards()">
+          <div class="template-preview" [class.preview-letter]="template.kind === 'letter'" [class.email-card-preview]="template.kind === 'email'">
+            <div class="email-paper" *ngIf="template.kind === 'email'" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+            <div class="preview-paper" *ngIf="template.kind !== 'email'" [class.invoice-paper]="template.kind === 'invoice'">
+              <div class="paper-logo"></div><div class="paper-line short"></div><div class="paper-line"></div><div class="paper-line"></div>
+              <div class="paper-table" *ngIf="template.kind === 'invoice'"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+              <div class="paper-signature" *ngIf="template.kind === 'letter'"></div>
+            </div>
+            <span class="template-badge type-badge">{{ template.kind }}</span>
+            <span class="template-badge category-badge">{{ template.badge }}</span>
           </div>
-          <div class="template-content"><div class="title-line"><h2>{{ template.name }}</h2><button class="more-button" type="button" aria-label="More template actions" (click)="openMoreMenu(template)"><span class="app-icon" aria-hidden="true">⋮</span></button></div><p>{{ template.description }}</p></div>
-          <div class="template-actions"><button class="edit-button" type="button" (click)="editTemplate(template)">Edit</button><button class="square-button" type="button" aria-label="Duplicate template" (click)="duplicateTemplate(template)"><span class="app-icon" aria-hidden="true">⧉</span></button><button class="square-button" type="button" aria-label="View or download template" (click)="viewTemplate(template)"><span class="app-icon" aria-hidden="true">⬇️</span></button></div>
+
+          <div class="template-content">
+            <div class="title-line"><h2>{{ template.name }}</h2><button class="more-button" type="button" aria-label="More template actions" (click)="openGalleryMenu(template)"><span class="app-icon" aria-hidden="true">⋮</span></button></div>
+            <p>{{ template.description }}</p>
+            <small *ngIf="template.detail">{{ template.detail }}</small>
+            <div class="default-list" *ngIf="template.defaults.length">Default for: <span *ngFor="let scenario of template.defaults">{{ scenario }}</span></div>
+          </div>
+
+          <div class="template-actions">
+            <button class="edit-button" type="button" (click)="editGalleryTemplate(template)">Edit</button>
+            <button class="square-button" type="button" aria-label="Duplicate template" (click)="duplicateGalleryTemplate(template)"><span class="app-icon" aria-hidden="true">⧉</span></button>
+            <button class="square-button" type="button" [attr.aria-label]="template.kind === 'email' ? 'Preview email template' : 'View or download template'" (click)="viewGalleryTemplate(template)"><span class="app-icon" aria-hidden="true">{{ template.kind === 'email' ? '👁' : '⬇️' }}</span></button>
+          </div>
         </article>
-        <button class="upload-card" type="button" *ngIf="statusFilter() === 'active'" (click)="openUploadFlow()"><span class="plus-icon app-icon" aria-hidden="true">＋</span><strong>New {{ type | titlecase }} Template</strong><small>Upload a document or choose one of the ready-made designs.</small></button>
+
+        <button class="upload-card" type="button" *ngIf="statusFilter() === 'active'" (click)="addGalleryTemplate()"><span class="plus-icon app-icon" aria-hidden="true">＋</span><strong>New {{ galleryTypeLabel() }} Template</strong><small>{{ galleryAddDescription() }}</small></button>
       </section>
     </section>
   </ng-template>
 
+  <div class="email-preview-modal" *ngIf="previewEmailTemplate() as preview"><div class="email-preview-panel"><button class="filter-button" type="button" (click)="closeEmailPreview()">Close preview</button><h3>{{ preview.name }}</h3><p class="muted">{{ preview.subject }}</p><div class="email-preview-frame" [innerHTML]="previewEmailHtml()"></div></div></div>
 </app-workspace-shell>

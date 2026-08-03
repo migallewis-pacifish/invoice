@@ -40,6 +40,19 @@ export interface TemplateCard extends TemplateDocument {
   accent: 'invoice' | 'letter' | 'professional';
 }
 
+interface GalleryCardBase {
+  id: string;
+  name: string;
+  description: string;
+  badge: string;
+  detail: string;
+  defaults: string[];
+}
+
+type GalleryCard =
+  | (GalleryCardBase & { kind: 'invoice' | 'letter'; source: TemplateCard })
+  | (GalleryCardBase & { kind: 'email'; source: EmailTemplateDefinition });
+
 
 export type TemplateFilter = 'active' | 'archived' | TemplateType;
 
@@ -116,6 +129,30 @@ export class TemplatesComponent {
     const archived = this.statusFilter() === 'archived';
     return this.designedEmailTemplates().filter(template => !!template.archived === archived);
   });
+  protected readonly galleryCards = computed<GalleryCard[]>(() => {
+    if (this.activeTab() === 'emails') {
+      return this.filteredEmailTemplates().map(template => ({
+        kind: 'email',
+        id: template.id ?? template.name,
+        name: template.name,
+        description: template.subject,
+        badge: template.type,
+        detail: `${template.sections.length} section${template.sections.length === 1 ? '' : 's'}`,
+        defaults: (template.defaultForScenarios ?? []).map(scenario => this.scenarioLabel(scenario)),
+        source: template
+      }));
+    }
+    return this.documentTemplates().map(template => ({
+      kind: template.type,
+      id: template.id,
+      name: template.name,
+      description: template.description ?? template.fileName ?? template.name,
+      badge: this.formatLabels[template.format || 'docx'] || template.format || 'Custom Word document',
+      detail: '',
+      defaults: [],
+      source: template
+    }));
+  });
   protected readonly invoiceTemplateCount = computed(() => this.templates().filter(template => template.type === 'invoice' && !template.archived).length);
   protected readonly letterTemplateCount = computed(() => this.templates().filter(template => template.type === 'letter' && !template.archived).length);
   protected readonly emailTemplateCount = computed(() => this.designedEmailTemplates().filter(template => !template.archived).length);
@@ -133,6 +170,41 @@ export class TemplatesComponent {
 
   protected toggleStatusFilter(): void {
     this.statusFilter.update(current => current === 'active' ? 'archived' : 'active');
+  }
+
+  protected galleryTypeLabel(): string {
+    return this.activeTab() === 'emails' ? 'Email' : this.activeTab() === 'letters' ? 'Letter' : 'Invoice';
+  }
+
+  protected galleryAddDescription(): string {
+    return this.activeTab() === 'emails'
+      ? 'Choose a ready-made design or start from scratch.'
+      : 'Upload a custom Word document or choose a ready-made design.';
+  }
+
+  protected addGalleryTemplate(): void {
+    if (this.activeTab() === 'emails') this.newEmailTemplate();
+    else this.openUploadFlow();
+  }
+
+  protected editGalleryTemplate(template: GalleryCard): void {
+    if (template.kind === 'email') this.editDesignedEmailTemplate(template.source);
+    else this.editTemplate(template.source);
+  }
+
+  protected duplicateGalleryTemplate(template: GalleryCard): void {
+    if (template.kind === 'email') void this.duplicateDesignedEmailTemplate(template.source);
+    else void this.duplicateTemplate(template.source);
+  }
+
+  protected viewGalleryTemplate(template: GalleryCard): void {
+    if (template.kind === 'email') this.previewDesignedEmailTemplate(template.source);
+    else void this.viewTemplate(template.source);
+  }
+
+  protected openGalleryMenu(template: GalleryCard): void {
+    if (template.kind === 'email') void this.openEmailMoreMenu(template.source);
+    else void this.openMoreMenu(template.source);
   }
 
   protected editTemplate(template: TemplateCard): void {
