@@ -6,20 +6,6 @@
             <input type="text" formControlName="invoiceNumber">
         </div>
 
-        <div class="form-group full" *ngIf="!trackingOnly">
-            <label>Invoice template <span>*</span></label>
-            <div class="template-picker-row">
-                <select formControlName="templateId" required>
-                    <option value="" disabled>{{ templatesLoading() ? 'Loading templates…' : 'Choose a Word template' }}</option>
-                    <option *ngFor="let template of invoiceTemplates()" [value]="template.id">
-                        {{ template.name }}{{ template.isDefault ? ' (Default)' : '' }}
-                    </option>
-                </select>
-                <button type="button" class="secondary edit-template" (click)="editSelectedTemplate()" [disabled]="!form.get('templateId')?.value">Edit</button>
-            </div>
-            <small *ngIf="!templatesLoading() && invoiceTemplates().length === 0">No Word invoice template exists yet. Open Templates to create one.</small>
-        </div>
-
         <div class="item-row header">
             <div>Description</div>
             <div>Rate ({{ currencySymbol() }})</div>
@@ -86,6 +72,19 @@
                 </select>
             </div>
         </ng-container>
+
+        <div class="form-group full" *ngIf="!trackingOnly">
+            <label>Invoice template <span>*</span></label>
+            <div class="template-picker-row">
+                <select formControlName="templateId" required>
+                    <option value="" disabled>{{ templatesLoading() ? 'Loading templates…' : 'Choose an invoice template' }}</option>
+                    <option *ngFor="let template of invoiceTemplates()" [value]="template.id">
+                        {{ template.name }} — {{ templateFormatLabel(template) }}{{ template.isDefault ? ' (Default)' : '' }}
+                    </option>
+                </select>
+            </div>
+            <small *ngIf="!templatesLoading() && invoiceTemplates().length === 0">No invoice template exists yet. Open Templates to create one.</small>
+        </div>
 
         <div class="form-group full" *ngIf="!trackingOnly">
             <label>Output format</label>
