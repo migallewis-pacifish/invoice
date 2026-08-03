@@ -11,6 +11,9 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { createStarterEmailTemplates, StarterTemplate } from '../template-designer/template-starter-catalog';
 import { TemplateDesignerComponent } from '../template-designer/template-designer.component';
 import { TemplateColourSelectorComponent, TemplatePalette } from '../template-colour-selector/template-colour-selector.component';
+import { TemplateSelectionLayoutComponent } from '../template-selection-layout/template-selection-layout.component';
+import { EmailTemplateBuilderService } from '../template-designer/services/email-template-builder.service';
+import { EmailTemplatePreviewDataService } from '../template-designer/services/email-template-preview-data.service';
 
 export type TemplateCreationType = 'invoice' | 'letter' | 'email';
 export type TemplateCreationFormat = Extract<CompanyTemplateFormat, 'docx' | 'freemarker-html'>;
@@ -63,7 +66,7 @@ function starter(id: string, name: string, description: string, accent: string):
 @Component({
   selector: 'app-template-creation-wizard',
   standalone: true,
-  imports: [CommonModule, UploadTemplateComponent, TemplateColourSelectorComponent],
+  imports: [CommonModule, UploadTemplateComponent, TemplateColourSelectorComponent, TemplateSelectionLayoutComponent],
   templateUrl: './template-creation-wizard.component.html',
   styleUrl: './template-creation-wizard.component.scss'
 })
@@ -74,6 +77,8 @@ export class TemplateCreationWizardComponent implements OnDestroy {
   private readonly db = inject(Firestore);
   private readonly templateService = inject(TemplateService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly emailBuilder = inject(EmailTemplateBuilderService);
+  private readonly emailPreviewData = inject(EmailTemplatePreviewDataService);
   private readonly dialogData = inject<TemplateCreationWizardData>(DIALOG_DATA, { optional: true });
 
   readonly typeLocked = !!this.dialogData?.initialType;
@@ -86,6 +91,8 @@ export class TemplateCreationWizardComponent implements OnDestroy {
   readonly freemarkerPreview = signal<SafeResourceUrl | null>(null);
   readonly freemarkerBusy = signal(false);
   readonly freemarkerError = signal<string | null>(null);
+  readonly selectedEmailStarter = signal<StarterTemplate | null>(null);
+  readonly emailStarterPreview = signal('');
   readonly starterPalettes = signal<Record<string, TemplatePalette>>(Object.fromEntries(
     Object.entries(STARTER_PALETTES).map(([id, config]) => [id, [...config.defaults] as TemplatePalette])
   ));
@@ -143,6 +150,16 @@ export class TemplateCreationWizardComponent implements OnDestroy {
     if (!selected) return;
     this.starterPalettes.update(palettes => ({ ...palettes, [selected.id]: colors }));
     void this.selectFreemarker(selected);
+  }
+
+  selectEmailStarter(starter: StarterTemplate): void {
+    this.selectedEmailStarter.set(starter);
+    this.emailStarterPreview.set(this.emailBuilder.buildHtml({ ...starter, companyId: 'preview' }, value => this.emailPreviewData.renderTokens(value)));
+  }
+
+  useSelectedEmailStarter(): void {
+    const starter = this.selectedEmailStarter();
+    if (starter) this.chooseStarter(starter);
   }
 
   paletteFor(starter: FreemarkerStarterTemplate): TemplatePalette {

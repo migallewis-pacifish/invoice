@@ -1,0 +1,6 @@
+.selection-layout { display:grid; grid-template-columns:minmax(240px,300px) minmax(0,1fr); gap:20px; align-items:start; }
+.selection-options { max-height:68vh; overflow:auto; padding-right:4px; }
+.selection-preview { min-width:0; }
+.selection-message { grid-column:1/-1; }
+.selection-message:empty { display:none; }
+@media(max-width:860px){.selection-layout{grid-template-columns:1fr}.selection-options{max-height:none}.selection-message{grid-column:auto}}
