@@ -10,6 +10,7 @@ export interface InvoiceItem {
 export interface InvoiceData {
   invoice_number: string;
   invoice_date: string;
+  dueDate?: string;
 
   client_name: string;
   client_street: string;

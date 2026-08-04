@@ -275,6 +275,7 @@ export class AddInvoiceDialogComponent {
       invoice_date: this.viewOnly && this.previousInvoice?.date
         ? this.toIsoDate(this.previousInvoice.date)
         : new Date().toISOString().slice(0, 10),
+      dueDate: formValue.dueDate || '',
       client_name: this.client?.displayName || 'Unknown Client',
       client_building: this.client?.address?.building || '',
       client_street: `${this.client?.address?.line1 || ''} ${this.client?.address?.line2 || ''}`.trim(),

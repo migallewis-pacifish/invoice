@@ -22,6 +22,21 @@ const { _test } = require('./index.js');
   assert.strictEqual(brandedVariables.letter.signatureUrl, 'signature.png');
   assert.strictEqual(brandedVariables.letter.signedBy, 'Alex');
 
+  const invoiceVariables = _test.buildTemplateVariables({
+    documentId: 'INV-42',
+    payload: { dueDate: '2026-09-30', reference: 'INV-42' },
+    company: { banking: { bankName: 'Nexus Bank', accountName: 'Nexus Studio', accountNumber: '12345', branchCode: '67890' } }
+  });
+  assert.strictEqual(invoiceVariables.invoice.dueDate, '2026-09-30');
+  assert.deepStrictEqual(invoiceVariables.payment, {
+    bankName: 'Nexus Bank', accountName: 'Nexus Studio', accountNumber: '12345', branchCode: '67890', accountHolder: 'Nexus Studio', reference: 'INV-42'
+  });
+  const bankingHtml = _test.renderDocumentTemplate(
+    `<#if (payment.bankName)?has_content><b>\${payment.bankName?html}</b></#if><span>\${payment.accountHolder?html}</span><time>\${invoice.dueDate?html}</time>`,
+    invoiceVariables
+  );
+  assert.strictEqual(bankingHtml, '<b>Nexus Bank</b><span>Nexus Studio</span><time>2026-09-30</time>');
+
   const htmlText = _test.htmlToText('<style>.x{}</style><h1>Hello</h1><p>World</p>');
   assert.strictEqual(htmlText, 'Hello World');
 
