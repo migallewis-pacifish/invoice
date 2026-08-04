@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { doc, docData, Firestore, updateDoc } from '@angular/fire/firestore';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { take } from 'rxjs';
@@ -16,7 +16,7 @@ import { CompanyEmailSettings, EmailProvider } from '../../models/email-integrat
 import { CompanyBrandingService } from '../../services/company-branding.service';
 import { ImageUploadComponent, ImageUploadRequest } from '../../components/image-upload/image-upload.component';
 
-type SettingsTab = 'branding' | 'general' | 'storage' | 'email';
+type SettingsTab = 'account' | 'branding' | 'general' | 'storage' | 'email';
 
 @Component({
   selector: 'app-placeholder-page',
@@ -34,6 +34,30 @@ type SettingsTab = 'branding' | 'general' | 'storage' | 'email';
         <nav class="settings-tabs" role="tablist" aria-label="Settings categories">
           <button *ngFor="let tab of settingsTabs" type="button" role="tab" [id]="'settings-tab-' + tab.id" [attr.aria-selected]="activeTab() === tab.id" [attr.aria-controls]="'settings-panel-' + tab.id" [class.active]="activeTab() === tab.id" (click)="selectTab(tab.id)"><span class="tab-icon" aria-hidden="true">{{ tab.icon }}</span>{{ tab.label }}</button>
         </nav>
+
+        <form *ngIf="activeTab() === 'account'" id="settings-panel-account" role="tabpanel" aria-labelledby="settings-tab-account" [formGroup]="accountForm" (ngSubmit)="saveCompanyAccount()" class="account-form tab-panel">
+          <div class="section-heading"><div><p class="eyebrow">Company account</p><h2>Company details</h2><p>Keep the legal, contact, address, and banking information used across your workspace up to date.</p></div><button class="primary" type="submit" [disabled]="savingAccount() || !companyId() || accountForm.invalid">{{ savingAccount() ? 'Saving…' : 'Save Company Details' }}</button></div>
+          <fieldset><legend>Legal and contact information</legend><div class="account-grid">
+            <label>Company name <span>*</span><input formControlName="name" placeholder="Registered company name"></label>
+            <label>Registration number<input formControlName="regNo" placeholder="e.g. 2026/123456/07"></label>
+            <label>VAT number<input formControlName="vatNo" placeholder="VAT registration number"></label>
+            <label>Telephone<input formControlName="tel" placeholder="+27 11 555 0100"></label>
+            <label>Company email<input type="email" formControlName="email" placeholder="accounts@example.com"></label>
+            <label>Website<input formControlName="website" placeholder="https://example.com"></label>
+          </div></fieldset>
+          <fieldset><legend>Registered address</legend><div class="account-grid">
+            <label>Address line 1<input formControlName="line1" placeholder="Street and number"></label>
+            <label>Address line 2<input formControlName="line2" placeholder="Building, floor, or suite"></label>
+            <label>Suburb<input formControlName="suburb"></label><label>City<input formControlName="city"></label>
+            <label>Province<input formControlName="province"></label><label>Postal code<input formControlName="postalCode"></label>
+            <label>Country<input formControlName="country" placeholder="South Africa"></label>
+          </div></fieldset>
+          <fieldset><legend>Banking details</legend><div class="account-grid">
+            <label>Bank name<input formControlName="bankName"></label><label>Account holder<input formControlName="accountName"></label>
+            <label>Account number<input formControlName="accountNumber"></label><label>Branch code<input formControlName="branchCode"></label>
+          </div><p class="muted account-note">These details may be assigned to invoice and payment templates.</p></fieldset>
+          <button class="primary mobile-save" type="submit" [disabled]="savingAccount() || !companyId() || accountForm.invalid">{{ savingAccount() ? 'Saving…' : 'Save Company Details' }}</button>
+        </form>
 
         <section class="branding-section tab-panel" *ngIf="activeTab() === 'branding'" id="settings-panel-branding" role="tabpanel" aria-labelledby="settings-tab-branding">
           <div class="section-heading"><div><p class="eyebrow">Brand assets</p><h2>Logo and signature</h2><p>These images are automatically supplied to invoice and letter templates that include logo or signature variables.</p></div></div>
@@ -158,16 +182,18 @@ type SettingsTab = 'branding' | 'general' | 'storage' | 'email';
     .settings-form, .provider-card label { display: grid; gap: 8px; } .compact-form { max-width: 520px; } select, input { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; }
     .primary, .secondary { border-radius: 999px; padding: 10px 18px; font-weight: 700; cursor: pointer; } .primary { border: 0; background: #092c7d; color: #fff; } .secondary { border: 1px solid #cbd5e1; background: #fff; color: #0f172a; } .primary:disabled { opacity: .65; cursor: not-allowed; }
     .settings-tabs { display:flex; gap:6px; margin:26px 0 0; padding:5px; border:1px solid var(--border); border-radius:14px; background:#f4f7fc; overflow-x:auto; scrollbar-width:thin; } .settings-tabs button { flex:1 0 auto; display:flex; align-items:center; justify-content:center; gap:8px; min-height:42px; padding:9px 14px; border:0; border-radius:10px; background:transparent; color:var(--muted); font-weight:800; cursor:pointer; white-space:nowrap; } .settings-tabs button.active { background:var(--surface); color:var(--primary); box-shadow:0 3px 12px rgba(7,31,77,.09); } .settings-tabs button:focus-visible { outline:3px solid rgba(9,44,125,.2); outline-offset:1px; } .tab-icon { font-size:17px; } .tab-panel { min-height:360px; animation:tab-in .18s ease-out; } @keyframes tab-in { from { opacity:0; transform:translateY(4px); } }
+    .account-form { display:grid; gap:20px; margin-top:24px; }.account-form fieldset{margin:0;padding:18px;border:1px solid var(--border);border-radius:var(--radius-md);background:#fbfdff}.account-form legend{padding:0 8px;color:var(--primary);font-weight:800;font-size:13px}.account-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.account-grid label{display:grid;gap:6px;margin:0;color:var(--ink);font-size:12px;font-weight:700}.account-note{margin:12px 0 0}.mobile-save{display:none}
     .branding-section, .storage-section, .email-section { display: grid; gap: 16px; margin-top: 24px; } .compact-form { margin-top:24px; } .section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: start; } .eyebrow { color: #2563eb; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
     .brand-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
-    .provider-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; } .provider-card { display: grid; gap: 12px; box-shadow: none; } .status { color: #64748b; font-weight: 700; } .muted { color: #64748b; font-size: .9rem; } .msg { color: #007a53; font-weight: 700; } @media(max-width:640px){.settings-tabs{justify-content:flex-start}.settings-tabs button{flex:0 0 auto}.section-heading{flex-direction:column}.section-heading .primary{width:100%}.tab-panel{min-height:0}}
+    .provider-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; } .provider-card { display: grid; gap: 12px; box-shadow: none; } .status { color: #64748b; font-weight: 700; } .muted { color: #64748b; font-size: .9rem; } .msg { color: #007a53; font-weight: 700; } @media(max-width:640px){.settings-tabs{justify-content:flex-start}.settings-tabs button{flex:0 0 auto}.section-heading{flex-direction:column}.section-heading .primary{width:100%}.account-grid{grid-template-columns:1fr}.account-form .section-heading .primary{display:none}.mobile-save{display:block;width:100%}.tab-panel{min-height:0}}
   `]
 })
 export class PlaceholderPageComponent {
   private route = inject(ActivatedRoute); private fb = inject(FormBuilder); private db = inject(Firestore); private currencyService = inject(CurrencyService); private storageService = inject(DocumentStorageService); private emailService = inject(EmailIntegrationService); private activityService = inject(ActivityService); private companyContext = inject(CompanyContextService); private brandingService = inject(CompanyBrandingService);
-  readonly settingsTabs = [{ id: 'branding', label: 'Branding', icon: '✦' }, { id: 'general', label: 'General', icon: '⚙' }, { id: 'storage', label: 'Document Storage', icon: '▣' }, { id: 'email', label: 'Email', icon: '✉' }] as const;
-  activeTab = signal<SettingsTab>('branding');
-  sectionName = this.route.snapshot.data['sectionName'] ?? 'this section'; isSettings = this.sectionName === 'Settings'; currencyOptions = this.currencyService.options; companyId = signal<string | null>(null); saving = signal(false); savingStorage = signal(false); savingEmail = signal(false); savingBranding = signal(false); message = signal(''); storage = signal<CompanyDocumentStorageSettings | null>(null); emailSettings = signal<CompanyEmailSettings | null>(null); logoUrl = signal(''); signatureUrl = signal(''); signerName = signal('');
+  readonly settingsTabs = [{ id: 'account', label: 'Company Account', icon: '●' }, { id: 'branding', label: 'Branding', icon: '✦' }, { id: 'general', label: 'General', icon: '⚙' }, { id: 'storage', label: 'Document Storage', icon: '▣' }, { id: 'email', label: 'Email', icon: '✉' }] as const;
+  activeTab = signal<SettingsTab>('account');
+  sectionName = this.route.snapshot.data['sectionName'] ?? 'this section'; isSettings = this.sectionName === 'Settings'; currencyOptions = this.currencyService.options; companyId = signal<string | null>(null); saving = signal(false); savingAccount = signal(false); savingStorage = signal(false); savingEmail = signal(false); savingBranding = signal(false); message = signal(''); storage = signal<CompanyDocumentStorageSettings | null>(null); emailSettings = signal<CompanyEmailSettings | null>(null); logoUrl = signal(''); signatureUrl = signal(''); signerName = signal('');
+  accountForm = this.fb.nonNullable.group({ name: ['', [Validators.required, Validators.minLength(2)]], regNo: [''], vatNo: [''], tel: [''], email: ['', Validators.email], website: [''], line1: [''], line2: [''], suburb: [''], city: [''], province: [''], postalCode: [''], country: ['South Africa'], bankName: [''], accountName: [''], accountNumber: [''], branchCode: [''] });
   form = this.fb.nonNullable.group({ currency: [this.currencyService.defaultCurrency] });
   storageForm = this.fb.nonNullable.group({ defaultProvider: ['browser_download' as DocumentStorageProvider], browserDownloadFolder: [''], googleDriveFolder: [''], googleDriveFolderId: [''], oneDriveFolder: [''], oneDriveFolderId: [''], localFolderPath: [''] });
   emailForm = this.fb.nonNullable.group({ defaultProvider: ['gmail' as EmailProvider], gmailAccountEmail: [''], exchangeAccountEmail: [''], exchangeTenantId: [''], sendgridFromEmail: [''], sendgridFromName: [''] });
@@ -182,6 +208,9 @@ export class PlaceholderPageComponent {
       if (!companyId) return;
       this.companyContext.currentCompany$().pipe(take(1)).subscribe((company: any) => {
         this.form.controls.currency.setValue(this.currencyService.normalize(company?.currency));
+        const address = company?.address || {};
+        const banking = company?.banking || company?.bankDetails || {};
+        this.accountForm.patchValue({ name: company?.name || '', regNo: company?.regNo || company?.registrationNumber || '', vatNo: company?.vatNo || company?.taxNumber || '', tel: company?.tel || company?.phone || '', email: company?.email || '', website: company?.website || '', line1: address?.line1 || '', line2: address?.line2 || '', suburb: address?.suburb || '', city: address?.city || '', province: address?.province || '', postalCode: address?.postalCode || '', country: address?.country || 'South Africa', bankName: banking?.bankName || '', accountName: banking?.accountName || banking?.accountHolder || '', accountNumber: banking?.accountNumber || '', branchCode: banking?.branchCode || '' });
         this.logoUrl.set(company?.logoUrl || '');
         this.signatureUrl.set(company?.signature?.imageUrl || company?.signature?.url || company?.signatureUrl || '');
         this.signerName.set(company?.signature?.name || '');
@@ -198,6 +227,8 @@ export class PlaceholderPageComponent {
   }
 
   async saveCurrency() { const companyId = this.companyId(); if (!companyId) return; this.saving.set(true); this.message.set(''); try { await this.activityService.track(companyId, 'update', `companies/${companyId}`, 'Updated company currency settings.', () => updateDoc(doc(this.db, `companies/${companyId}`), { currency: this.currencyService.normalize(this.form.controls.currency.value) })); this.message.set('Currency settings saved.'); } finally { this.saving.set(false); } }
+
+  async saveCompanyAccount() { const companyId = this.companyId(); if (!companyId) return; if (this.accountForm.invalid) { this.accountForm.markAllAsTouched(); return; } const value = this.accountForm.getRawValue(); this.savingAccount.set(true); this.message.set(''); try { await this.activityService.track(companyId, 'update', `companies/${companyId}`, 'Updated company account details.', () => updateDoc(doc(this.db, `companies/${companyId}`), { name: value.name.trim(), regNo: value.regNo.trim(), vatNo: value.vatNo.trim(), tel: value.tel.trim(), email: value.email.trim(), website: value.website.trim(), address: { line1: value.line1.trim(), line2: value.line2.trim(), suburb: value.suburb.trim(), city: value.city.trim(), province: value.province.trim(), postalCode: value.postalCode.trim(), country: value.country.trim() }, banking: { bankName: value.bankName.trim(), accountName: value.accountName.trim(), accountNumber: value.accountNumber.trim(), branchCode: value.branchCode.trim() } })); this.message.set('Company account details saved.'); } catch (error: any) { this.message.set(error?.message || 'Unable to save company account details.'); } finally { this.savingAccount.set(false); } }
 
   async uploadLogo(request: ImageUploadRequest) { const companyId = this.companyId(); if (!companyId) return; this.savingBranding.set(true); this.message.set(''); try { const asset = await this.brandingService.uploadLogo(companyId, request.file); this.logoUrl.set(asset.imageUrl); this.message.set('Company logo uploaded and ready for templates.'); } catch (error: any) { this.message.set(error?.message || 'Unable to upload company logo.'); } finally { this.savingBranding.set(false); } }
   async uploadSignature(request: ImageUploadRequest) { const companyId = this.companyId(); if (!companyId) return; this.savingBranding.set(true); this.message.set(''); try { const asset = await this.brandingService.uploadSignature(companyId, request.file, request.name || ''); this.signatureUrl.set(asset.imageUrl); this.signerName.set(asset.name); this.message.set('Default signature uploaded and ready for templates.'); } catch (error: any) { this.message.set(error?.message || 'Unable to upload signature.'); } finally { this.savingBranding.set(false); } }

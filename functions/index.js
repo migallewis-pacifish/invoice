@@ -446,7 +446,10 @@ function buildTemplateVariables(data) {
       phone: company.phone || company.tel || '', address: typeof company.address === 'string' ? company.address : [company.address?.line1, company.address?.line2, company.address?.suburb, company.address?.city, company.address?.postalCode].filter(Boolean).join(', '), website: company.website || '', logoUrl: company.logoUrl || '',
       registrationNumber: company.registrationNumber || company.regNo || '', taxNumber: company.taxNumber || company.vatNo || '',
     },
-    payment: company.payment || company.bankDetails || { reference: payload.reference || payload.invoice_number || data.documentId },
+    payment: (() => {
+      const banking = company.payment || company.bankDetails || company.banking || {};
+      return { ...banking, accountHolder: banking.accountHolder || banking.accountName || '', reference: payload.reference || payload.invoice_number || data.documentId };
+    })(),
     signature: { ...signature, name: payload.signedBy || signature.name || '', imageUrl: payload.signatureUrl || signatureUrl },
     custom: { notes: payload.notes || '' },
   };
