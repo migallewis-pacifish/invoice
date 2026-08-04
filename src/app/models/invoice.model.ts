@@ -30,6 +30,9 @@ export interface InvoiceData {
   vat_percentage: string;
   notes: string;
   reference: string;
+  company_logo_url?: string;
+  signed_by?: string;
+  signature_url?: string;
 }
 
 
@@ -88,6 +91,11 @@ export interface Company {
   vatNo?: string;
   banking?: Banking;
   signatures?: import('./letter.model').LetterSignature[];        
+  logoUrl?: string;
+  logoPath?: string;
+  signatureUrl?: string;
+  signaturePath?: string;
+  signature?: { name?: string; path?: string; imageUrl?: string; url?: string; updatedAt?: number };
   users: string[];             
   createdAt: number;
   storageProvider?: 'local';

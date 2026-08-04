@@ -12,6 +12,16 @@ const { _test } = require('./index.js');
   const unresolved = _test.renderFreeMarkerTemplate('<p>${client.secret}</p><p>${invoice.total}</p>', { invoice: { total: '$42.00' } });
   assert.deepStrictEqual(unresolved.unresolved, ['client.secret']);
 
+  const brandedVariables = _test.buildTemplateVariables({
+    documentId: 'LETTER-1', payload: { title: 'Hello' }, company: {
+      name: 'Acme', logoUrl: 'logo.png', signature: { name: 'Alex', imageUrl: 'signature.png' }
+    }
+  });
+  assert.strictEqual(brandedVariables.company.logoUrl, 'logo.png');
+  assert.strictEqual(brandedVariables.signature.imageUrl, 'signature.png');
+  assert.strictEqual(brandedVariables.letter.signatureUrl, 'signature.png');
+  assert.strictEqual(brandedVariables.letter.signedBy, 'Alex');
+
   const htmlText = _test.htmlToText('<style>.x{}</style><h1>Hello</h1><p>World</p>');
   assert.strictEqual(htmlText, 'Hello World');
 

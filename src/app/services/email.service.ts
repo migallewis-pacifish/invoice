@@ -50,6 +50,13 @@ export interface EmailTemplateVariablePayload {
   company?: Record<string, string>;
   client?: Record<string, string>;
   invoice?: Record<string, string>;
+  signature?: Record<string, string>;
+}
+
+interface BrandedEmailTemplateVariables extends EmailTemplateVariables {
+  companyLogoUrl: string;
+  signatureName: string;
+  signatureImageUrl: string;
 }
 
 
@@ -191,7 +198,7 @@ export class EmailService {
     return 'invoice';
   }
 
-  private async buildTemplateVariables(companyId: string, document: any, client?: any): Promise<EmailTemplateVariables> {
+  private async buildTemplateVariables(companyId: string, document: any, client?: any): Promise<BrandedEmailTemplateVariables> {
     const companySnap = await getDoc(doc(this.db, `companies/${companyId}`));
     const company = companySnap.exists() ? companySnap.data() as any : {};
     const invoiceNumber = document?.invoiceNumber || document?.invoice_number || document?.filename || document?.title || document?.id || '';
@@ -203,14 +210,18 @@ export class EmailService {
       companyName: company?.name || company?.companyName || 'our team',
       paymentReference: document?.reference || document?.paymentReference || invoiceNumber,
       outstandingBalance: this.formatTemplateTotal(this.invoiceOutstanding(document)),
-      daysOverdue: String(this.daysOverdue(document?.dueDate || document?.due_date))
+      daysOverdue: String(this.daysOverdue(document?.dueDate || document?.due_date)),
+      companyLogoUrl: company?.logoUrl || '',
+      signatureName: company?.signature?.name || '',
+      signatureImageUrl: company?.signature?.imageUrl || company?.signature?.url || company?.signatureUrl || ''
     };
   }
 
-  private expandTemplateVariables(variables: EmailTemplateVariables, document: any, client?: any): EmailTemplateVariablePayload {
+  private expandTemplateVariables(variables: BrandedEmailTemplateVariables, document: any, client?: any): EmailTemplateVariablePayload {
     return {
       ...variables,
-      company: { name: variables.companyName },
+      company: { name: variables.companyName, logoUrl: variables.companyLogoUrl || '' },
+      signature: { name: variables.signatureName || '', imageUrl: variables.signatureImageUrl || '' },
       client: { name: variables.clientName, email: client?.email || '' },
       invoice: {
         number: variables.invoiceNumber,

@@ -63,6 +63,14 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    match /companies/{companyId}/branding/{fileName} {
+      allow read: if isCompanyMember(companyId);
+      allow write: if isCompanyMember(companyId)
+        && request.resource != null
+        && request.resource.size <= 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

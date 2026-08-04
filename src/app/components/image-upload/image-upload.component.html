@@ -1,0 +1,30 @@
+<article class="upload-card" [class.is-busy]="busy">
+  <header>
+    <div class="icon app-icon" aria-hidden="true">{{ variant === 'logo' ? '🏢' : '✍️' }}</div>
+    <div><h3>{{ title }}</h3><p>{{ description }}</p></div>
+    <span class="status" *ngIf="savedUrl()">Uploaded</span>
+  </header>
+
+  <label class="name-field" *ngIf="requireName">
+    <span>{{ nameLabel }}</span>
+    <input type="text" [ngModel]="assetName()" (ngModelChange)="assetName.set($event)" [placeholder]="namePlaceholder" [disabled]="busy">
+  </label>
+
+  <div class="preview" [class.signature]="variant === 'signature'" *ngIf="previewUrl; else emptyPreview">
+    <img [src]="previewUrl" [alt]="previewAlt">
+    <span class="new-badge" *ngIf="selectedFile()">New image</span>
+  </div>
+  <ng-template #emptyPreview><div class="empty-preview"><span aria-hidden="true">＋</span><small>No image uploaded yet</small></div></ng-template>
+
+  <div class="dropzone" [class.dragging]="dragging()" (dragover)="dragOver($event)" (dragleave)="dragLeave()" (drop)="drop($event)">
+    <input #fileInput type="file" accept="image/*" (change)="filePicked($event)" hidden>
+    <strong>Drag and drop an image here</strong>
+    <span>PNG, JPG, WebP or SVG · Max {{ maxSizeMB }} MB</span>
+    <button type="button" class="choose" (click)="choose(fileInput)" [disabled]="busy">Choose image</button>
+  </div>
+
+  <div class="selected" *ngIf="selectedFile() as file"><span><strong>{{ file.name }}</strong><small>{{ (file.size / 1024) | number:'1.0-0' }} KB</small></span><button type="button" (click)="clear()" [disabled]="busy" aria-label="Remove selected image">×</button></div>
+  <p class="error" role="alert" *ngIf="error()">{{ error() }}</p>
+
+  <button type="button" class="upload primary" (click)="submit()" [disabled]="!canUpload">{{ busy ? 'Uploading…' : buttonLabel }}</button>
+</article>

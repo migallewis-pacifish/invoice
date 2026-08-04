@@ -29,4 +29,5 @@ export interface LetterData {
   company_postal_code: string;
   signed_by: string;
   signature_url: string;
+  company_logo_url: string;
 }
