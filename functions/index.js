@@ -51,7 +51,7 @@ async function assertCompanyMember(uid, companyId) {
   }
 }
 
-const APPROVED_TEMPLATE_VARIABLES = new Set(['clientName', 'invoiceNumber', 'dueDate', 'total', 'companyName', 'paymentReference', 'outstandingBalance', 'daysOverdue', 'company.name', 'company.email', 'company.phone', 'company.address', 'client.name', 'client.email', 'invoice.number', 'invoice.date', 'invoice.dueDate', 'invoice.subtotal', 'invoice.vat', 'invoice.total', 'invoice.outstandingBalance', 'invoice.daysOverdue']);
+const APPROVED_TEMPLATE_VARIABLES = new Set(['clientName', 'invoiceNumber', 'dueDate', 'total', 'companyName', 'paymentReference', 'outstandingBalance', 'daysOverdue', 'company.name', 'company.email', 'company.phone', 'company.address', 'company.logoUrl', 'signature.name', 'signature.imageUrl', 'client.name', 'client.email', 'invoice.number', 'invoice.date', 'invoice.dueDate', 'invoice.subtotal', 'invoice.vat', 'invoice.total', 'invoice.outstandingBalance', 'invoice.daysOverdue']);
 
 function lookupVariable(source, path) {
   return path.split('.').reduce((value, key) => value && typeof value === 'object' ? value[key] : undefined, source);
@@ -413,6 +413,8 @@ function buildTemplateVariables(data) {
   const includeVat = payload.includeVat ?? payload.shouldIncludeVAT ?? false;
   const vatNumber = includeVat ? subtotalNumber * 0.15 : 0;
   const money = value => `R ${Number(value || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const signature = company.signature || {};
+  const signatureUrl = signature.imageUrl || signature.url || company.signatureUrl || '';
   return {
     invoice: {
       number: payload.invoice_number || payload.invoiceNumber || data.documentId,
@@ -429,6 +431,8 @@ function buildTemplateVariables(data) {
       title: payload.title || data.documentId,
       message: payload.message || '',
       date: new Date().toISOString().slice(0, 10),
+      signedBy: payload.signedBy || signature.name || '',
+      signatureUrl: payload.signatureUrl || signatureUrl,
     },
     client: {
       name: payload.client_name || client.displayName || data.clientName || '',
@@ -439,11 +443,11 @@ function buildTemplateVariables(data) {
     company: {
       name: company.name || '',
       email: company.email || '',
-      phone: company.phone || '', address: company.address || '', website: company.website || '', logoUrl: company.logoUrl || '',
-      registrationNumber: company.registrationNumber || '', taxNumber: company.taxNumber || '',
+      phone: company.phone || company.tel || '', address: typeof company.address === 'string' ? company.address : [company.address?.line1, company.address?.line2, company.address?.suburb, company.address?.city, company.address?.postalCode].filter(Boolean).join(', '), website: company.website || '', logoUrl: company.logoUrl || '',
+      registrationNumber: company.registrationNumber || company.regNo || '', taxNumber: company.taxNumber || company.vatNo || '',
     },
     payment: company.payment || company.bankDetails || { reference: payload.reference || payload.invoice_number || data.documentId },
-    signature: company.signature || {},
+    signature: { ...signature, name: payload.signedBy || signature.name || '', imageUrl: payload.signatureUrl || signatureUrl },
     custom: { notes: payload.notes || '' },
   };
 }
@@ -598,4 +602,4 @@ exports.generatePdfDocument = onCall({ memory: '1GiB', timeoutSeconds: 120 }, as
   }
 });
 
-module.exports._test = { validatePayload, renderFreeMarkerTemplate, renderDocumentTemplate, htmlToText, normalizeEmailList, buildEmailContent, isCompanyMember, validatePdfAnalysisRequest, buildPdfMapping, validatePdfVariables, generatedPdfMetadata, validatePdfGenerationRequest, sanitizePathSegment, minimalPdfBuffer, firebaseStorageDownloadUrl };
+module.exports._test = { validatePayload, renderFreeMarkerTemplate, renderDocumentTemplate, buildTemplateVariables, htmlToText, normalizeEmailList, buildEmailContent, isCompanyMember, validatePdfAnalysisRequest, buildPdfMapping, validatePdfVariables, generatedPdfMetadata, validatePdfGenerationRequest, sanitizePathSegment, minimalPdfBuffer, firebaseStorageDownloadUrl };

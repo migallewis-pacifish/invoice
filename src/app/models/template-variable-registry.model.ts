@@ -25,7 +25,7 @@ export const TEMPLATE_VARIABLES: TemplateVariableDefinition[] = [
   { group: 'Company', path: 'company.name', label: 'Company name', docxKey: 'company_name', legacyEmailKey: 'companyName' },
   { group: 'Company', path: 'company.email', label: 'Company email', docxKey: 'company_email' },
   { group: 'Company', path: 'company.phone', label: 'Company phone', docxKey: 'company_tel' },
-  { group: 'Company', path: 'company.logoUrl', label: 'Company logo URL' },
+  { group: 'Company', path: 'company.logoUrl', label: 'Company logo URL', docxKey: 'company_logo_url' },
   { group: 'Company', path: 'company.website', label: 'Company website' },
   { group: 'Company', path: 'company.taxNumber', label: 'Company tax number' },
   { group: 'Company', path: 'company.address', label: 'Company address' },

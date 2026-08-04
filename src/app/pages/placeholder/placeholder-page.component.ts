@@ -13,11 +13,13 @@ import { CompanyContextService } from '../../services/company-context.service';
 import { CompanyDocumentStorageSettings, DocumentStorageProvider } from '../../models/document-storage.model';
 import { EmailIntegrationService } from '../../services/email-integration.service';
 import { CompanyEmailSettings, EmailProvider } from '../../models/email-integration.model';
+import { CompanyBrandingService } from '../../services/company-branding.service';
+import { ImageUploadComponent, ImageUploadRequest } from '../../components/image-upload/image-upload.component';
 
 @Component({
   selector: 'app-placeholder-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, NavBarComponent, WorkspaceTopbarComponent, ReactiveFormsModule],
+  imports: [CommonModule, RouterLink, NavBarComponent, WorkspaceTopbarComponent, ReactiveFormsModule, ImageUploadComponent],
   template: `
     <app-nav-bar></app-nav-bar>
     <main class="placeholder-wrap">
@@ -25,7 +27,15 @@ import { CompanyEmailSettings, EmailProvider } from '../../models/email-integrat
       <nav class="crumbs"><a routerLink="/">Company</a> / {{ sectionName }}</nav>
       <section class="card" *ngIf="isSettings; else placeholder">
         <h1>Settings</h1>
-        <p>Select workspace defaults for currency, document storage, and outbound email delivery.</p>
+        <p>Manage brand assets and workspace defaults used when documents are generated.</p>
+
+        <section class="branding-section">
+          <div class="section-heading"><div><p class="eyebrow">Brand assets</p><h2>Logo and signature</h2><p>These images are automatically supplied to invoice and letter templates that include logo or signature variables.</p></div></div>
+          <div class="brand-grid">
+            <app-image-upload title="Company logo" description="Used wherever a template includes the company logo." buttonLabel="Upload logo" previewAlt="Current company logo" variant="logo" [currentUrl]="logoUrl()" [busy]="savingBranding()" (upload)="uploadLogo($event)"></app-image-upload>
+            <app-image-upload title="Default signature" description="Used wherever a template includes an authorised signature." buttonLabel="Upload signature" previewAlt="Current default signature" variant="signature" [requireName]="true" nameLabel="Signer name" namePlaceholder="e.g. Alex Morgan" [currentName]="signerName()" [currentUrl]="signatureUrl()" [busy]="savingBranding()" (upload)="uploadSignature($event)"></app-image-upload>
+          </div>
+        </section>
 
         <form [formGroup]="form" (ngSubmit)="saveCurrency()" class="settings-form compact-form">
           <label for="currency">Currency</label>
@@ -140,13 +150,14 @@ import { CompanyEmailSettings, EmailProvider } from '../../models/email-integrat
     .card, .provider-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 24px; box-shadow: 0 8px 30px rgba(15, 23, 42, .06); } h1, h2, h3 { margin-top: 0; }
     .settings-form, .provider-card label { display: grid; gap: 8px; } .compact-form { max-width: 420px; margin-top: 20px; } select, input { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; }
     .primary, .secondary { border-radius: 999px; padding: 10px 18px; font-weight: 700; cursor: pointer; } .primary { border: 0; background: #092c7d; color: #fff; } .secondary { border: 1px solid #cbd5e1; background: #fff; color: #0f172a; } .primary:disabled { opacity: .65; cursor: not-allowed; }
-    .storage-section, .email-section { display: grid; gap: 16px; margin-top: 32px; } .section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: start; } .eyebrow { color: #2563eb; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .branding-section, .storage-section, .email-section { display: grid; gap: 16px; margin-top: 32px; } .section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: start; } .eyebrow { color: #2563eb; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .brand-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
     .provider-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; } .provider-card { display: grid; gap: 12px; box-shadow: none; } .status { color: #64748b; font-weight: 700; } .muted { color: #64748b; font-size: .9rem; } .msg { color: #007a53; font-weight: 700; }
   `]
 })
 export class PlaceholderPageComponent {
-  private route = inject(ActivatedRoute); private fb = inject(FormBuilder); private db = inject(Firestore); private currencyService = inject(CurrencyService); private storageService = inject(DocumentStorageService); private emailService = inject(EmailIntegrationService); private activityService = inject(ActivityService); private companyContext = inject(CompanyContextService);
-  sectionName = this.route.snapshot.data['sectionName'] ?? 'this section'; isSettings = this.sectionName === 'Settings'; currencyOptions = this.currencyService.options; companyId = signal<string | null>(null); saving = signal(false); savingStorage = signal(false); savingEmail = signal(false); message = signal(''); storage = signal<CompanyDocumentStorageSettings | null>(null); emailSettings = signal<CompanyEmailSettings | null>(null);
+  private route = inject(ActivatedRoute); private fb = inject(FormBuilder); private db = inject(Firestore); private currencyService = inject(CurrencyService); private storageService = inject(DocumentStorageService); private emailService = inject(EmailIntegrationService); private activityService = inject(ActivityService); private companyContext = inject(CompanyContextService); private brandingService = inject(CompanyBrandingService);
+  sectionName = this.route.snapshot.data['sectionName'] ?? 'this section'; isSettings = this.sectionName === 'Settings'; currencyOptions = this.currencyService.options; companyId = signal<string | null>(null); saving = signal(false); savingStorage = signal(false); savingEmail = signal(false); savingBranding = signal(false); message = signal(''); storage = signal<CompanyDocumentStorageSettings | null>(null); emailSettings = signal<CompanyEmailSettings | null>(null); logoUrl = signal(''); signatureUrl = signal(''); signerName = signal('');
   form = this.fb.nonNullable.group({ currency: [this.currencyService.defaultCurrency] });
   storageForm = this.fb.nonNullable.group({ defaultProvider: ['browser_download' as DocumentStorageProvider], browserDownloadFolder: [''], googleDriveFolder: [''], googleDriveFolderId: [''], oneDriveFolder: [''], oneDriveFolderId: [''], localFolderPath: [''] });
   emailForm = this.fb.nonNullable.group({ defaultProvider: ['gmail' as EmailProvider], gmailAccountEmail: [''], exchangeAccountEmail: [''], exchangeTenantId: [''], sendgridFromEmail: [''], sendgridFromName: [''] });
@@ -159,6 +170,9 @@ export class PlaceholderPageComponent {
       if (!companyId) return;
       this.companyContext.currentCompany$().pipe(take(1)).subscribe((company: any) => {
         this.form.controls.currency.setValue(this.currencyService.normalize(company?.currency));
+        this.logoUrl.set(company?.logoUrl || '');
+        this.signatureUrl.set(company?.signature?.imageUrl || company?.signature?.url || company?.signatureUrl || '');
+        this.signerName.set(company?.signature?.name || '');
       });
       this.storageService.getCompanySettings(companyId).pipe(take(1)).subscribe(settings => {
         this.storage.set(settings);
@@ -172,6 +186,9 @@ export class PlaceholderPageComponent {
   }
 
   async saveCurrency() { const companyId = this.companyId(); if (!companyId) return; this.saving.set(true); this.message.set(''); try { await this.activityService.track(companyId, 'update', `companies/${companyId}`, 'Updated company currency settings.', () => updateDoc(doc(this.db, `companies/${companyId}`), { currency: this.currencyService.normalize(this.form.controls.currency.value) })); this.message.set('Currency settings saved.'); } finally { this.saving.set(false); } }
+
+  async uploadLogo(request: ImageUploadRequest) { const companyId = this.companyId(); if (!companyId) return; this.savingBranding.set(true); this.message.set(''); try { const asset = await this.brandingService.uploadLogo(companyId, request.file); this.logoUrl.set(asset.imageUrl); this.message.set('Company logo uploaded and ready for templates.'); } catch (error: any) { this.message.set(error?.message || 'Unable to upload company logo.'); } finally { this.savingBranding.set(false); } }
+  async uploadSignature(request: ImageUploadRequest) { const companyId = this.companyId(); if (!companyId) return; this.savingBranding.set(true); this.message.set(''); try { const asset = await this.brandingService.uploadSignature(companyId, request.file, request.name || ''); this.signatureUrl.set(asset.imageUrl); this.signerName.set(asset.name); this.message.set('Default signature uploaded and ready for templates.'); } catch (error: any) { this.message.set(error?.message || 'Unable to upload signature.'); } finally { this.savingBranding.set(false); } }
 
   async saveDocumentStorage() { const companyId = this.companyId(); if (!companyId) return; const value = this.storageForm.getRawValue(); const selectedFolder = this.folderMetadataFor(value.defaultProvider, value); this.savingStorage.set(true); this.message.set(''); try { await this.storageService.saveCompanySettings(companyId, { defaultProvider: value.defaultProvider, selectedProvider: value.defaultProvider, selectedFolder, browserDownload: { enabled: true, suggestedSubfolder: value.browserDownloadFolder || undefined }, googleDrive: { ...this.storage()?.googleDrive, connected: this.storage()?.googleDrive?.connected || false, rootFolderId: value.googleDriveFolderId || undefined, rootFolderName: value.googleDriveFolder || undefined, rootFolderUrl: value.googleDriveFolder?.startsWith('http') ? value.googleDriveFolder : undefined }, oneDrive: { ...this.storage()?.oneDrive, connected: this.storage()?.oneDrive?.connected || false, rootFolderId: value.oneDriveFolderId || undefined, rootFolderName: value.oneDriveFolder || undefined, rootFolderUrl: value.oneDriveFolder?.startsWith('http') ? value.oneDriveFolder : undefined }, localFolder: { enabled: value.defaultProvider === 'local_folder', supported: this.storageService.supportsLocalFolderAccess(), rootPath: value.localFolderPath || undefined, displayName: value.localFolderPath || undefined, fallbackProvider: 'browser_download' } }); this.message.set(value.defaultProvider === 'local_folder' && !this.storageService.supportsLocalFolderAccess() ? 'Local folder APIs are unsupported in this browser. Browser download fallback saved.' : 'Document storage settings saved.'); } finally { this.savingStorage.set(false); } }
 

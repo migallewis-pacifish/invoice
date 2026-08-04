@@ -190,8 +190,9 @@ export class LetterDocxService {
       company_city: a.city || '',
       company_province: a.province || '',
       company_postal_code: a.postalCode || '',
-      signed_by: input.signedBy || input.signature?.name || '',
-      signature_url: input.signature?.url || ''
+      signed_by: input.signedBy || input.signature?.name || company.signature?.name || '',
+      signature_url: input.signature?.url || company.signature?.imageUrl || company.signature?.url || company.signatureUrl || '',
+      company_logo_url: company.logoUrl || ''
     };
   }
 

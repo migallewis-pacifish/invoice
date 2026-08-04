@@ -142,6 +142,9 @@ export class InvoiceDocxService {
           notes: data.notes,
           total: totals.grandStr,
           reference: data.reference || '',
+          company_logo_url: company.logoUrl || '',
+          signed_by: company.signature?.name || '',
+          signature_url: company.signature?.imageUrl || company.signature?.url || company.signatureUrl || '',
         };
         const zip = new PizZip(arrayBuffer as ArrayBuffer);
         const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
