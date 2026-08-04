@@ -61,6 +61,11 @@ const { _test } = require('./index.js');
   assert.strictEqual(meta.pageCount, 2);
   assert.strictEqual(meta.bytes, 4);
 
+  assert.strictEqual(
+    _test.firebaseStorageDownloadUrl('invoice.appspot.com', 'companies/co/generated/INV 1.pdf', 'token/value'),
+    'https://firebasestorage.googleapis.com/v0/b/invoice.appspot.com/o/companies%2Fco%2Fgenerated%2FINV%201.pdf?alt=media&token=token%2Fvalue'
+  );
+
   const documentHtml = _test.renderDocumentTemplate(
     `<style>.total{color:red}</style><#if (company.logoUrl)?has_content><img src="\${company.logoUrl?html}"></#if><#list invoice.items as item><p>\${item.description?html}: \${item.amount?html}</p></#list><strong>\${invoice.total?html}</strong>`,
     { company: { logoUrl: '' }, invoice: { items: [{ description: '<Design>', amount: 'R 100.00' }], total: 'R 100.00' } }
