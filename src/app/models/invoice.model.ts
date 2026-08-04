@@ -101,6 +101,7 @@ export interface Company {
   storageProvider?: 'local';
   storagePath?: string;
   currency?: string;
+  website?: string;
 }
 
 export interface AppUser {
