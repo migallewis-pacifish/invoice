@@ -16,6 +16,8 @@ import { CompanyEmailSettings, EmailProvider } from '../../models/email-integrat
 import { CompanyBrandingService } from '../../services/company-branding.service';
 import { ImageUploadComponent, ImageUploadRequest } from '../../components/image-upload/image-upload.component';
 
+type SettingsTab = 'branding' | 'general' | 'storage' | 'email';
+
 @Component({
   selector: 'app-placeholder-page',
   standalone: true,
@@ -29,7 +31,11 @@ import { ImageUploadComponent, ImageUploadRequest } from '../../components/image
         <h1>Settings</h1>
         <p>Manage brand assets and workspace defaults used when documents are generated.</p>
 
-        <section class="branding-section">
+        <nav class="settings-tabs" role="tablist" aria-label="Settings categories">
+          <button *ngFor="let tab of settingsTabs" type="button" role="tab" [id]="'settings-tab-' + tab.id" [attr.aria-selected]="activeTab() === tab.id" [attr.aria-controls]="'settings-panel-' + tab.id" [class.active]="activeTab() === tab.id" (click)="selectTab(tab.id)"><span class="tab-icon" aria-hidden="true">{{ tab.icon }}</span>{{ tab.label }}</button>
+        </nav>
+
+        <section class="branding-section tab-panel" *ngIf="activeTab() === 'branding'" id="settings-panel-branding" role="tabpanel" aria-labelledby="settings-tab-branding">
           <div class="section-heading"><div><p class="eyebrow">Brand assets</p><h2>Logo and signature</h2><p>These images are automatically supplied to invoice and letter templates that include logo or signature variables.</p></div></div>
           <div class="brand-grid">
             <app-image-upload title="Company logo" description="Used wherever a template includes the company logo." buttonLabel="Upload logo" previewAlt="Current company logo" variant="logo" [currentUrl]="logoUrl()" [busy]="savingBranding()" (upload)="uploadLogo($event)"></app-image-upload>
@@ -37,7 +43,8 @@ import { ImageUploadComponent, ImageUploadRequest } from '../../components/image
           </div>
         </section>
 
-        <form [formGroup]="form" (ngSubmit)="saveCurrency()" class="settings-form compact-form">
+        <form *ngIf="activeTab() === 'general'" id="settings-panel-general" role="tabpanel" aria-labelledby="settings-tab-general" [formGroup]="form" (ngSubmit)="saveCurrency()" class="settings-form compact-form tab-panel">
+          <div><p class="eyebrow">General</p><h2>Workspace defaults</h2><p>Set the default currency used throughout invoices and financial records.</p></div>
           <label for="currency">Currency</label>
           <select id="currency" formControlName="currency">
             <option *ngFor="let option of currencyOptions" [value]="option.code">
@@ -49,7 +56,7 @@ import { ImageUploadComponent, ImageUploadRequest } from '../../components/image
           </button>
         </form>
 
-        <section class="storage-section" [formGroup]="storageForm">
+        <section class="storage-section tab-panel" *ngIf="activeTab() === 'storage'" id="settings-panel-storage" role="tabpanel" aria-labelledby="settings-tab-storage" [formGroup]="storageForm">
           <div class="section-heading">
             <div>
               <p class="eyebrow">Document Storage</p>
@@ -98,7 +105,7 @@ import { ImageUploadComponent, ImageUploadRequest } from '../../components/image
 
         </section>
 
-        <section class="email-section" [formGroup]="emailForm">
+        <section class="email-section tab-panel" *ngIf="activeTab() === 'email'" id="settings-panel-email" role="tabpanel" aria-labelledby="settings-tab-email" [formGroup]="emailForm">
           <div class="section-heading">
             <div>
               <p class="eyebrow">Email Integrations</p>
@@ -148,20 +155,25 @@ import { ImageUploadComponent, ImageUploadRequest } from '../../components/image
   styles: [`
     .placeholder-wrap { max-width: 1100px; margin: 24px auto; padding: 0 20px; } .crumbs { margin-bottom: 16px; color: #64748b; } .crumbs a { color: #2563eb; text-decoration: none; }
     .card, .provider-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 24px; box-shadow: 0 8px 30px rgba(15, 23, 42, .06); } h1, h2, h3 { margin-top: 0; }
-    .settings-form, .provider-card label { display: grid; gap: 8px; } .compact-form { max-width: 420px; margin-top: 20px; } select, input { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; }
+    .settings-form, .provider-card label { display: grid; gap: 8px; } .compact-form { max-width: 520px; } select, input { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; }
     .primary, .secondary { border-radius: 999px; padding: 10px 18px; font-weight: 700; cursor: pointer; } .primary { border: 0; background: #092c7d; color: #fff; } .secondary { border: 1px solid #cbd5e1; background: #fff; color: #0f172a; } .primary:disabled { opacity: .65; cursor: not-allowed; }
-    .branding-section, .storage-section, .email-section { display: grid; gap: 16px; margin-top: 32px; } .section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: start; } .eyebrow { color: #2563eb; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .settings-tabs { display:flex; gap:6px; margin:26px 0 0; padding:5px; border:1px solid var(--border); border-radius:14px; background:#f4f7fc; overflow-x:auto; scrollbar-width:thin; } .settings-tabs button { flex:1 0 auto; display:flex; align-items:center; justify-content:center; gap:8px; min-height:42px; padding:9px 14px; border:0; border-radius:10px; background:transparent; color:var(--muted); font-weight:800; cursor:pointer; white-space:nowrap; } .settings-tabs button.active { background:var(--surface); color:var(--primary); box-shadow:0 3px 12px rgba(7,31,77,.09); } .settings-tabs button:focus-visible { outline:3px solid rgba(9,44,125,.2); outline-offset:1px; } .tab-icon { font-size:17px; } .tab-panel { min-height:360px; animation:tab-in .18s ease-out; } @keyframes tab-in { from { opacity:0; transform:translateY(4px); } }
+    .branding-section, .storage-section, .email-section { display: grid; gap: 16px; margin-top: 24px; } .compact-form { margin-top:24px; } .section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: start; } .eyebrow { color: #2563eb; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
     .brand-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
-    .provider-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; } .provider-card { display: grid; gap: 12px; box-shadow: none; } .status { color: #64748b; font-weight: 700; } .muted { color: #64748b; font-size: .9rem; } .msg { color: #007a53; font-weight: 700; }
+    .provider-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; } .provider-card { display: grid; gap: 12px; box-shadow: none; } .status { color: #64748b; font-weight: 700; } .muted { color: #64748b; font-size: .9rem; } .msg { color: #007a53; font-weight: 700; } @media(max-width:640px){.settings-tabs{justify-content:flex-start}.settings-tabs button{flex:0 0 auto}.section-heading{flex-direction:column}.section-heading .primary{width:100%}.tab-panel{min-height:0}}
   `]
 })
 export class PlaceholderPageComponent {
   private route = inject(ActivatedRoute); private fb = inject(FormBuilder); private db = inject(Firestore); private currencyService = inject(CurrencyService); private storageService = inject(DocumentStorageService); private emailService = inject(EmailIntegrationService); private activityService = inject(ActivityService); private companyContext = inject(CompanyContextService); private brandingService = inject(CompanyBrandingService);
+  readonly settingsTabs = [{ id: 'branding', label: 'Branding', icon: '✦' }, { id: 'general', label: 'General', icon: '⚙' }, { id: 'storage', label: 'Document Storage', icon: '▣' }, { id: 'email', label: 'Email', icon: '✉' }] as const;
+  activeTab = signal<SettingsTab>('branding');
   sectionName = this.route.snapshot.data['sectionName'] ?? 'this section'; isSettings = this.sectionName === 'Settings'; currencyOptions = this.currencyService.options; companyId = signal<string | null>(null); saving = signal(false); savingStorage = signal(false); savingEmail = signal(false); savingBranding = signal(false); message = signal(''); storage = signal<CompanyDocumentStorageSettings | null>(null); emailSettings = signal<CompanyEmailSettings | null>(null); logoUrl = signal(''); signatureUrl = signal(''); signerName = signal('');
   form = this.fb.nonNullable.group({ currency: [this.currencyService.defaultCurrency] });
   storageForm = this.fb.nonNullable.group({ defaultProvider: ['browser_download' as DocumentStorageProvider], browserDownloadFolder: [''], googleDriveFolder: [''], googleDriveFolderId: [''], oneDriveFolder: [''], oneDriveFolderId: [''], localFolderPath: [''] });
   emailForm = this.fb.nonNullable.group({ defaultProvider: ['gmail' as EmailProvider], gmailAccountEmail: [''], exchangeAccountEmail: [''], exchangeTenantId: [''], sendgridFromEmail: [''], sendgridFromName: [''] });
   localFolderSupportMessage = this.storageService.localFolderFallbackMessage();
+
+  selectTab(tab: SettingsTab): void { this.activeTab.set(tab); this.message.set(''); }
 
   constructor() {
     if (!this.isSettings) return;
