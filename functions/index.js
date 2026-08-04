@@ -2,6 +2,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const admin = require('firebase-admin');
+const { randomUUID } = require('crypto');
 
 admin.initializeApp();
 
@@ -521,9 +522,8 @@ function minimalPdfBuffer(title, lines = []) {
   return Buffer.from(pdf);
 }
 
-async function getDownloadUrlForStoragePath(storagePath) {
-  const [url] = await admin.storage().bucket().file(storagePath).getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
-  return url;
+function firebaseStorageDownloadUrl(bucketName, storagePath, token) {
+  return `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucketName)}/o/${encodeURIComponent(storagePath)}?alt=media&token=${encodeURIComponent(token)}`;
 }
 
 exports.generatePdfDocument = onCall({ memory: '1GiB', timeoutSeconds: 120 }, async request => {
@@ -583,8 +583,13 @@ exports.generatePdfDocument = onCall({ memory: '1GiB', timeoutSeconds: 120 }, as
     const documentSegment = sanitizePathSegment(data.documentId, data.documentType);
     const fileName = `${documentSegment}.pdf`;
     const storagePath = `companies/${data.companyId}/clients/${clientSegment}/${data.documentType}s/${documentSegment}/generated/${fileName}`;
-    await admin.storage().bucket().file(storagePath).save(pdf, { metadata: { contentType: 'application/pdf', metadata: { provider, templateId: templateDoc.id, templateFormat: format } } });
-    const downloadUrl = await getDownloadUrlForStoragePath(storagePath);
+    const bucket = admin.storage().bucket();
+    const downloadToken = randomUUID();
+    await bucket.file(storagePath).save(pdf, { metadata: { contentType: 'application/pdf', metadata: { provider, templateId: templateDoc.id, templateFormat: format, firebaseStorageDownloadTokens: downloadToken } } });
+    // Signed URLs require the runtime service account to have signBlob permission.
+    // Firebase download tokens work with the Storage client and avoid turning an
+    // otherwise successful PDF render into a 500 when that IAM role is absent.
+    const downloadUrl = firebaseStorageDownloadUrl(bucket.name, storagePath, downloadToken);
     return { storagePath, downloadUrl, mimeType: 'application/pdf', provider, fileName, bytes: pdf.length, pageCount, templateId: templateDoc.id, generatedAt: new Date().toISOString() };
   } catch (error) {
     if (error instanceof HttpsError) throw error;
@@ -593,4 +598,4 @@ exports.generatePdfDocument = onCall({ memory: '1GiB', timeoutSeconds: 120 }, as
   }
 });
 
-module.exports._test = { validatePayload, renderFreeMarkerTemplate, renderDocumentTemplate, htmlToText, normalizeEmailList, buildEmailContent, isCompanyMember, validatePdfAnalysisRequest, buildPdfMapping, validatePdfVariables, generatedPdfMetadata, validatePdfGenerationRequest, sanitizePathSegment, minimalPdfBuffer };
+module.exports._test = { validatePayload, renderFreeMarkerTemplate, renderDocumentTemplate, htmlToText, normalizeEmailList, buildEmailContent, isCompanyMember, validatePdfAnalysisRequest, buildPdfMapping, validatePdfVariables, generatedPdfMetadata, validatePdfGenerationRequest, sanitizePathSegment, minimalPdfBuffer, firebaseStorageDownloadUrl };
