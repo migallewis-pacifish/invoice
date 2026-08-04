@@ -39,12 +39,13 @@
     .side-section strong { font-weight: bold; }
     .contact { margin-top: 18mm; }
     .main { min-width: 0; min-height: 297mm; padding: 18mm 16mm 25mm; display: flex; flex-direction: column; }
-    .invoice-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5mm; }
+    .invoice-head {margin-bottom: 12px; margin-bottom: 5mm; text-align: right;} 
     .invoice-head h1 { margin: 0; font-size: 34px; line-height: 1; letter-spacing: .05em; text-transform: uppercase; }
     .meta { margin-left: 8mm; text-align: right; line-height: 1.55; white-space: nowrap; }
     .meta strong { display: inline-block; min-width: 24mm; font-weight: normal; }
     .company-details { color: #625e5b; font-size: 10px; line-height: 1.45; text-align: right; margin: 0 0 5mm auto; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    thead { border: 1px solid #2a7a87; }
     .items th { padding: 3mm 2mm; color: #fff; background: ${(theme.sidebarColor2)!'#2a7a87'}; font-size: 12px; text-align: right; }
     .items th:first-child { width: 62%; text-align: left; }
     .items td { padding: 3mm 2mm; border: 1px solid #a5abad; border-top: 0; text-align: right; vertical-align: top; overflow-wrap: anywhere; }
@@ -102,14 +103,6 @@
           Due Date: <strong>${invoice.dueDate?html}</strong>
         </div>
       </header>
-
-      <#if (company.address)?has_content || (company.registrationNumber)?has_content || (company.taxNumber)?has_content>
-        <div class="company-details">
-          <#if (company.address)?has_content>${company.address?html}<br></#if>
-          <#if (company.registrationNumber)?has_content>Registration: ${company.registrationNumber?html}<br></#if>
-          <#if (company.taxNumber)?has_content>Tax number: ${company.taxNumber?html}</#if>
-        </div>
-      </#if>
 
       <table class="items">
         <thead><tr><th>Description</th><th>Price</th></tr></thead>
