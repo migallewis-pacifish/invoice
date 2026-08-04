@@ -19,7 +19,7 @@
     .page { width: 210mm; min-height: 297mm; margin: auto; background: #fff; display: grid; grid-template-columns: 55mm 1fr; }
     .sidebar {
       min-height: 297mm;
-      padding: 18mm 10mm;
+      padding: 18mm 6mm;
       color: #fff;
       background: linear-gradient(180deg,
         ${(theme.sidebarColor1)!'#3a666d'} 0%,
@@ -38,6 +38,7 @@
     .side-section p { margin: 0; }
     .side-section strong { font-weight: bold; }
     .contact { margin-top: 18mm; }
+    .email { font-size: 9px;}
     .main { min-width: 0; min-height: 297mm; padding: 18mm 16mm 25mm; display: flex; flex-direction: column; }
     .invoice-head {margin-bottom: 12px; margin-bottom: 5mm; text-align: right;} 
     .invoice-head h1 { margin: 0; font-size: 34px; line-height: 1; letter-spacing: .05em; text-transform: uppercase; }
@@ -86,8 +87,10 @@
 
       <section class="side-section contact">
         <h2>Contact</h2>
-        <p>
+        <p class="email">
           <#if (company.email)?has_content>${company.email?html}<br></#if>
+        </p>
+        <p>
           <#if (company.phone)?has_content>${company.phone?html}<br></#if>
           <#if (company.website)?has_content>${company.website?html}</#if>
         </p>
