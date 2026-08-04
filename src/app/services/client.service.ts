@@ -287,6 +287,21 @@ export class ClientService {
     );
   }
 
+  updateInvoiceDescriptions(clientId: string, invoiceId: string, items: Array<Record<string, unknown>>): Observable<void> {
+    return this.getCompanyId$().pipe(
+      switchMap(companyId => {
+        const invoiceRef = doc(this.db, `companies/${companyId}/clients/${clientId}/invoices/${invoiceId}`);
+        return from(this.activityService.track(
+          companyId,
+          'update',
+          `companies/${companyId}/clients/${clientId}/invoices/${invoiceId}`,
+          `Updated line-item descriptions for invoice ${invoiceId}.`,
+          () => updateDoc(invoiceRef, { items, lineItems: items, updatedAt: serverTimestamp() })
+        ));
+      })
+    );
+  }
+
 
   getLettersForClient(id: string): Observable<any[]> {
     return this.getCompanyId$().pipe(

@@ -16,7 +16,7 @@
 
         <div formArrayName="items" class="items-block">
             <div *ngFor="let item of items.controls; let i = index" [formGroupName]="i" class="item-row">
-                <input placeholder="Description" formControlName="description">
+                <input placeholder="Description" formControlName="description" [class.editable-description]="viewOnly" [attr.aria-label]="'Description for invoice item ' + (i + 1)">
                 <input type="number" placeholder="Rate ({{ currencySymbol() }})" formControlName="rate">
                 <input type="number" placeholder="Hours" formControlName="hours">
                 <input type="number" placeholder="Total" formControlName="total" readonly>
