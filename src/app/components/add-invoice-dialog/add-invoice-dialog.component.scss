@@ -4,6 +4,7 @@
 input, textarea, select {
   padding:10px 12px; border:1px solid #e3e9ef; border-radius:8px; width:100%;
 }
+.editable-description { border-color:#9fc0ee; background:#fff; box-shadow:0 0 0 3px rgba(9,44,125,.08); }
 .items-block { display:flex; flex-direction:column; gap:10px; }
 .item-row {
   display:grid;

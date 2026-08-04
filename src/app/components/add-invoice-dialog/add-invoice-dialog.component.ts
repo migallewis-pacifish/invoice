@@ -170,6 +170,9 @@ export class AddInvoiceDialogComponent {
     if (this.viewOnly || this.trackingOnly) {
       this.form.disable({ emitEvent: false });
       this.form.get('templateId')?.enable({ emitEvent: false });
+      if (this.viewOnly) {
+        this.items.controls.forEach(item => item.get('description')?.enable({ emitEvent: false }));
+      }
       if (this.trackingOnly) {
         this.form.get('dueDate')?.enable({ emitEvent: false });
         this.form.get('amountPaid')?.enable({ emitEvent: false });
@@ -200,7 +203,7 @@ export class AddInvoiceDialogComponent {
     }
 
     return this.viewOnly
-      ? 'This invoice is read-only. You can regenerate it as a Word document.'
+      ? 'You can update line-item descriptions, choose a template, and regenerate the invoice.'
       : 'Copied from the previous invoice. Edit any details before generating.';
   }
 
@@ -272,6 +275,7 @@ export class AddInvoiceDialogComponent {
       invoice_date: this.viewOnly && this.previousInvoice?.date
         ? this.toIsoDate(this.previousInvoice.date)
         : new Date().toISOString().slice(0, 10),
+      dueDate: formValue.dueDate || '',
       client_name: this.client?.displayName || 'Unknown Client',
       client_building: this.client?.address?.building || '',
       client_street: `${this.client?.address?.line1 || ''} ${this.client?.address?.line2 || ''}`.trim(),
@@ -299,7 +303,9 @@ export class AddInvoiceDialogComponent {
     generate$.pipe(
       switchMap(generated => {
         if (this.viewOnly) {
-          return of(generated);
+          if (!this.previousInvoice?.id) return of(generated);
+          return this.clientSvc.updateInvoiceDescriptions(this.clientId, this.previousInvoice.id, items)
+            .pipe(map(() => generated));
         }
 
         return from(
@@ -335,7 +341,7 @@ export class AddInvoiceDialogComponent {
         ).pipe(map(() => generated));
       }),
       tap(generated => {
-        this.notifications.success(`Invoice created: ${generated.filename}`);
+        this.notifications.success(this.viewOnly ? `Invoice descriptions updated: ${generated.filename}` : `Invoice created: ${generated.filename}`);
         this.dialog.close(generated.filename);
       }),
       catchError((err) => {

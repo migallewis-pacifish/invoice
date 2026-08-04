@@ -419,7 +419,7 @@ function buildTemplateVariables(data) {
     invoice: {
       number: payload.invoice_number || payload.invoiceNumber || data.documentId,
       date: payload.invoice_date || payload.date || new Date().toISOString().slice(0, 10),
-      dueDate: payload.dueDate || '',
+      dueDate: payload.dueDate || payload.due_date || '',
       items: items.map(item => ({ ...item, amount: money(item.amount ?? item.total ?? (Number(item.rate) * Number(item.hours))), rate: money(item.rate) })),
       subtotal: payload.excluding_vat || payload.subtotal || money(subtotalNumber),
       vatPercentage: includeVat ? '15' : '0',
