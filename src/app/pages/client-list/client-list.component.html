@@ -28,11 +28,11 @@
         <label class="toolbar-field">
           <span>Type</span>
           <select [formControl]="relationshipFilter">
-            <option value="all">All relationships</option>
-            <option value="enterprise">Enterprise</option>
-            <option value="partner">Partner</option>
-            <option value="prospect">Prospect</option>
-            <option value="individual">Individual</option>
+            <option value="all">All types</option>
+            <option value="client">Clients</option>
+            <option value="tenant">Tenants</option>
+            <option value="company">Companies</option>
+            <option value="employee">Employees</option>
           </select>
         </label>
         <button class="secondary" type="button" (click)="exportVisibleClients()">Export CSV</button>

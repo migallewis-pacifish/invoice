@@ -8,21 +8,44 @@
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <div class="form-grid">
 
-        <div class="form-group half">
+        <div class="form-group full">
+          <label>Type <span>*</span></label>
+          <select formControlName="clientType">
+            <option *ngFor="let type of clientTypes" [value]="type.value">{{ type.label }}</option>
+          </select>
+        </div>
+
+        <div class="form-group half" *ngIf="!isCompany">
           <label>Title</label>
           <input type="text" formControlName="title" placeholder="e.g. Mr, Ms, Dr">
         </div>
 
-        <!-- Company Name -->
-        <div class="form-group half">
-          <label>Client / Company Name <span>*</span></label>
-          <input type="text" formControlName="displayName" placeholder="e.g. ABC Holdings (Pty) Ltd">
-          <small *ngIf="form.controls.displayName.touched && form.controls.displayName.invalid">
-            Name is required.
+        <div class="form-group half" *ngIf="!isCompany">
+          <label>First Name <span>*</span></label>
+          <input type="text" formControlName="firstName" placeholder="e.g. Thandi">
+          <small *ngIf="form.controls.firstName.touched && form.controls.firstName.invalid">First name is required.</small>
+        </div>
+
+        <div class="form-group half" *ngIf="!isCompany">
+          <label>Surname <span>*</span></label>
+          <input type="text" formControlName="lastName" placeholder="e.g. Nkosi">
+          <small *ngIf="form.controls.lastName.touched && form.controls.lastName.invalid">Surname is required.</small>
+        </div>
+
+        <div class="form-group full" *ngIf="isCompany">
+          <label>Company Name <span>*</span></label>
+          <input type="text" formControlName="companyName" placeholder="e.g. ABC Holdings (Pty) Ltd">
+          <small *ngIf="form.controls.companyName.touched && form.controls.companyName.invalid">
+            Company name is required.
           </small>
         </div>
 
         <!-- Address Fields -->
+        <div class="form-group full">
+          <label>Building</label>
+          <input type="text" formControlName="building" placeholder="e.g. Building A, 1st Floor">
+        </div>
+
         <div class="form-group full">
           <label>Street Address </label>
           <input type="text" formControlName="line1" placeholder="123 Main Street,1st floor Building A">

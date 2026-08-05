@@ -190,6 +190,12 @@ export class ClientDetailComponent {
     return this.client()?.relationshipType || this.client()?.clientType || 'Not provided';
   }
 
+  get clientTypeLabel(): string {
+    const client = this.client();
+    const type = client?.clientType || (client?.title || client?.firstName || client?.lastName ? 'client' : 'company');
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  }
+
   get clientStatus(): string {
     return this.client()?.status || 'Not provided';
   }
