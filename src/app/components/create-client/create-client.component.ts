@@ -33,10 +33,10 @@ export class CreateClientComponent implements OnChanges {
   postalCode: [''],
   country: [''],
   email: ['', [Validators.email]],
-  phone: [''],
+  phone: ['', [Validators.required]],
   vatNo: [''],
   relationshipType: [''],
-  status: ['active'],
+  status: ['active', [Validators.required]],
   notes: ['']
   });
 

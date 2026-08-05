@@ -1,8 +1,9 @@
-    .dialog-wrap {
-        background: #fff;
-        border-radius: 18px;
-        padding: 0;
-        width: min(700px, 95vw);
-        max-height: fit-content;
-        overflow: auto;
-    }
+.dialog-wrap {
+  background: #fff;
+  border-radius: 18px;
+  padding: 0;
+  width: min(700px, 95vw);
+  max-height: calc(100svh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

@@ -29,4 +29,20 @@ describe('NotificationService', () => {
     ]);
     expect(consoleError).toHaveBeenCalledWith('Something went wrong.', detail);
   });
+
+  it('resolves confirmation notifications from the user response', async () => {
+    const result = service.confirm('Delete this client?', 'Delete');
+    const notification = service.notifications()[0];
+
+    expect(notification).toEqual(jasmine.objectContaining({
+      type: 'confirmation',
+      message: 'Delete this client?',
+      confirmLabel: 'Delete'
+    }));
+
+    service.respond(notification.id, true);
+
+    await expectAsync(result).toBeResolvedTo(true);
+    expect(service.notifications()).toEqual([]);
+  });
 });

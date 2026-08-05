@@ -23,6 +23,7 @@ import { EmailTemplatePreviewDataService } from '../../components/template-desig
 import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
 import { TemplateCreationType, TemplateCreationWizardComponent } from '../../components/template-creation-wizard/template-creation-wizard.component';
 import { DocumentTemplatePreviewService } from '../../services/document-template-preview.service';
+import { NotificationService } from '../../services/notification.service';
 
 type TemplateType = 'invoice' | 'letter';
 type TemplateTab = 'overview' | 'invoices' | 'letters' | 'emails';
@@ -94,6 +95,7 @@ export class TemplatesComponent implements OnDestroy {
   private previewData = inject(EmailTemplatePreviewDataService);
   private sanitizer = inject(DomSanitizer);
   private documentPreview = inject(DocumentTemplatePreviewService);
+  private notifications = inject(NotificationService);
 
   protected readonly activeTab = signal<TemplateTab>('overview');
   protected readonly loading = signal(true);
@@ -341,11 +343,15 @@ export class TemplatesComponent implements OnDestroy {
           await this.templateService.duplicateTemplate(companyId, template);
           break;
         case 'delete':
-          if (window.confirm(`Delete ${template.name}?`)) await this.templateService.deleteTemplate(companyId, template);
+          if (await this.notifications.confirm(`Delete ${template.name}? This action cannot be undone.`, 'Delete template')) {
+            await this.templateService.deleteTemplate(companyId, template);
+            this.notifications.success(`${template.name} was deleted.`);
+          }
           break;
       }
     } catch (e: any) {
       this.error.set(e?.message ?? 'Unable to update template.');
+      this.notifications.error(e?.message ?? 'Unable to update template.', e);
     }
   }
 

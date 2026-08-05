@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { collectionData, Firestore } from '@angular/fire/firestore';
-import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { Client, ClientUpdate } from '../models/client.model';
 import { ActivityService } from './activity.service';
 import { CompanyContextService } from './company-context.service';
@@ -364,6 +364,21 @@ export class ClientService {
             ...payload,
             updatedAt: serverTimestamp(),
           })
+        ));
+      })
+    );
+  }
+
+  deleteClient(clientId: string, displayName?: string): Observable<void> {
+    return this.companyContext$().pipe(
+      switchMap(({ companyId }) => {
+        const clientRef = doc(this.db, `companies/${companyId}/clients/${clientId}`);
+        return from(this.activityService.track(
+          companyId,
+          'delete',
+          `companies/${companyId}/clients/${clientId}`,
+          `Deleted client ${displayName || clientId}.`,
+          () => deleteDoc(clientRef)
         ));
       })
     );

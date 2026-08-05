@@ -1,0 +1,25 @@
+<section class="toast-stack" aria-label="Notifications">
+  <article
+    *ngFor="let notification of notifications.notifications()"
+    class="toast"
+    [class]="'toast ' + notification.type"
+    [attr.role]="notification.type === 'confirmation' ? 'alertdialog' : 'status'"
+    [attr.aria-live]="notification.type === 'error' ? 'assertive' : 'polite'">
+    <span class="toast-icon" aria-hidden="true">
+      {{ notification.type === 'success' ? '✓' : notification.type === 'error' ? '!' : notification.type === 'confirmation' ? '?' : 'i' }}
+    </span>
+    <div class="toast-content">
+      <p>{{ notification.message }}</p>
+      <div class="toast-actions" *ngIf="notification.type === 'confirmation'">
+        <button type="button" class="cancel" (click)="notifications.respond(notification.id, false)">{{ notification.cancelLabel }}</button>
+        <button type="button" class="confirm" (click)="notifications.respond(notification.id, true)">{{ notification.confirmLabel }}</button>
+      </div>
+    </div>
+    <button
+      *ngIf="notification.type !== 'confirmation'"
+      class="dismiss"
+      type="button"
+      aria-label="Dismiss notification"
+      (click)="notifications.dismiss(notification.id)">×</button>
+  </article>
+</section>

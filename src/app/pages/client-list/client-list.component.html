@@ -86,7 +86,27 @@
         <div *ngSwitchCase="'actions'" class="row-actions" (click)="$event.stopPropagation()">
           <button class="icon-button" type="button" aria-label="View client" (click)="goClient(item.client)"><span class="app-icon" aria-hidden="true">👁️</span></button>
           <button class="icon-button" type="button" aria-label="Edit client" (click)="goClient(item.client)"><span class="app-icon" aria-hidden="true">✎</span></button>
-          <button class="icon-button" type="button" aria-label="More actions"><span class="app-icon" aria-hidden="true">⋯</span></button>
+          <div class="action-menu-wrap">
+            <button
+              class="icon-button"
+              type="button"
+              aria-label="More actions"
+              aria-haspopup="menu"
+              [attr.aria-expanded]="actionMenuClientId() === item.client.id"
+              (click)="toggleActionMenu(item.client.id)">
+              <span class="app-icon" aria-hidden="true">⋯</span>
+            </button>
+            <div class="action-menu" role="menu" *ngIf="actionMenuClientId() === item.client.id">
+              <button
+                class="delete-action"
+                type="button"
+                role="menuitem"
+                [disabled]="deletingClientId() === item.client.id"
+                (click)="deleteClient(item.client)">
+                {{ deletingClientId() === item.client.id ? 'Deleting…' : 'Delete client' }}
+              </button>
+            </div>
+          </div>
         </div>
       </ng-container>
     </ng-template>
