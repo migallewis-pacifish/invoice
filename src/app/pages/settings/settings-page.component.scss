@@ -1,15 +1,245 @@
-.settings-wrap { max-width: 1100px; margin: 24px auto; padding: 0 20px 60px; }
-.crumbs { display:flex; gap:8px; margin-bottom:16px; color:var(--muted); }.crumbs a { color:var(--primary); text-decoration:none; }
-.settings-card,.provider-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow); }
-.settings-card { padding:24px; }.page-heading h1,.section-heading h2,.provider-card h3 { margin-top:0; }.page-heading p { color:var(--muted); }
-.settings-tabs { display:flex; gap:6px; margin:26px 0 0; padding:5px; border:1px solid var(--border); border-radius:var(--radius-md); background:#f4f7fc; overflow-x:auto; }
-.settings-tabs button { flex:1 0 auto; display:flex; align-items:center; justify-content:center; gap:8px; min-height:42px; padding:9px 14px; border:0; border-radius:var(--button-radius); background:transparent; color:var(--muted); font-weight:800; cursor:pointer; white-space:nowrap; }
-.settings-tabs button.active { background:var(--surface); color:var(--primary); box-shadow:var(--shadow2); }.settings-tabs button:focus-visible { outline:3px solid rgba(9,44,125,.2); }.tab-icon { font-size:17px; }
-.tab-panel { min-height:360px; margin-top:24px; animation:tab-in .18s ease-out; } @keyframes tab-in { from { opacity:0; transform:translateY(4px); } }
-.section-panel,.account-form,.settings-form { display:grid; gap:20px; }.section-heading { display:flex; justify-content:space-between; gap:16px; align-items:start; }.section-heading p { margin:4px 0; color:var(--muted); }
-.eyebrow { color:var(--primary) !important; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
-.account-form fieldset { margin:0; padding:18px; border:1px solid var(--border); border-radius:var(--radius-md); background:#fbfdff; }.account-form legend { padding:0 8px; color:var(--primary); font-size:13px; font-weight:800; }
-.account-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }.account-grid label,.provider-card label,.settings-form { display:grid; gap:8px; }.account-grid label { margin:0; color:var(--ink); font-size:12px; font-weight:700; }
-.compact-form { max-width:520px; }.brand-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }.provider-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:16px; }
-.provider-card { display:grid; gap:12px; padding:24px; box-shadow:none; }.status { color:var(--muted); font-weight:700; }.muted { color:var(--muted); font-size:.9rem; }.account-note { margin:12px 0 0; }.message { color:var(--accent); font-weight:700; }.mobile-save { display:none; }
-@media(max-width:640px){.settings-tabs{justify-content:flex-start}.settings-tabs button{flex:0 0 auto}.section-heading{flex-direction:column}.section-heading .primary{width:100%}.account-grid{grid-template-columns:1fr}.desktop-save{display:none}.mobile-save{display:inline-flex;width:100%}.tab-panel{min-height:0}.settings-card{padding:18px}}
+.settings-wrap {
+    max-width: 1100px;
+    margin: 24px auto;
+    padding: 0 20px 60px;
+}
+
+.crumbs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    color: var(--muted);
+}
+
+.crumbs a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.settings-card,
+.provider-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+}
+
+.settings-card {
+    padding: 24px;
+}
+
+.page-heading h1,
+.section-heading h2,
+.provider-card h3 {
+    margin-top: 0;
+}
+
+.page-heading p {
+    color: var(--muted);
+}
+
+.settings-tabs {
+    display: flex;
+    gap: 6px;
+    margin: 26px 0 0;
+    padding: 5px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: #f4f7fc;
+    overflow-x: auto;
+}
+
+.settings-tabs button {
+    flex: 1 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 9px 14px;
+    border: 0;
+    border-radius: var(--button-radius);
+    background: transparent;
+    color: var(--muted);
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.settings-tabs button.active {
+    background: var(--surface);
+    color: var(--primary);
+    box-shadow: var(--shadow2);
+}
+
+.settings-tabs button:focus-visible {
+    outline: 3px solid rgba(9, 44, 125, .2);
+}
+
+.tab-icon {
+    font-size: 17px;
+}
+
+.tab-panel {
+    min-height: 360px;
+    margin-top: 24px;
+    animation: tab-in .18s ease-out;
+}
+
+@keyframes tab-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+}
+
+general-panel {
+    margin-bottom: 24px;
+}
+
+.section-panel,
+.account-form,
+.settings-form {
+    display: grid;
+    gap: 20px;
+}
+
+.section-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: start;
+}
+
+.section-heading p {
+    margin: 4px 0;
+    color: var(--muted);
+}
+
+.eyebrow {
+    color: var(--primary) !important;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.account-form fieldset {
+    margin: 0;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: #fbfdff;
+}
+
+.account-form legend {
+    padding: 0 8px;
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.account-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.account-grid label,
+.provider-card label,
+.settings-form {
+    display: grid;
+    gap: 8px;
+}
+
+.account-grid label {
+    margin: 0;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.compact-form {
+    max-width: 520px;
+}
+
+.brand-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.provider-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px;
+}
+
+.provider-card {
+    display: grid;
+    gap: 12px;
+    padding: 24px;
+    box-shadow: none;
+}
+
+.status {
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.muted {
+    color: var(--muted);
+    font-size: .9rem;
+}
+
+.account-note {
+    margin: 12px 0 0;
+}
+
+.message {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.mobile-save {
+    display: none;
+}
+
+@media(max-width:640px) {
+    .settings-tabs {
+        justify-content: flex-start
+    }
+
+    .settings-tabs button {
+        flex: 0 0 auto
+    }
+
+    .section-heading {
+        flex-direction: column
+    }
+
+    .section-heading .primary {
+        width: 100%
+    }
+
+    .account-grid {
+        grid-template-columns: 1fr
+    }
+
+    .desktop-save {
+        display: none
+    }
+
+    .mobile-save {
+        display: inline-flex;
+        width: 100%
+    }
+
+    .tab-panel {
+        min-height: 0
+    }
+
+    .settings-card {
+        padding: 18px
+    }
+}

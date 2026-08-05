@@ -83,11 +83,13 @@
 </ng-template>
 
 <ng-template #generalPanel>
-  <form class="settings-form tab-panel" id="settings-panel-general" role="tabpanel" aria-labelledby="settings-tab-general" [formGroup]="currencyForm" (ngSubmit)="saveCurrency()">
-    <ng-container *ngTemplateOutlet="panelHeading; context: { eyebrow: 'General', title: 'Workspace defaults', description: 'Set the default currency used throughout invoices and financial records.' }" />
-    <label for="currency">Currency</label>
-    <select id="currency" formControlName="currency"><option *ngFor="let option of currencyOptions" [value]="option.code">{{ option.label }} ({{ option.symbol }})</option></select>
-    <button class="primary" type="submit" [disabled]="saving() || !companyId()">{{ saving() ? 'Saving…' : 'Save Currency' }}</button>
+  <form class="settings-form tab-panel section-panel" id="settings-panel-general" role="tabpanel" aria-labelledby="settings-tab-general" [formGroup]="currencyForm" (ngSubmit)="saveCurrency()">
+    <ng-template #accountAction><button class="primary desktop-save" type="submit" [disabled]="saving() || !companyId()">{{ saving() ? 'Saving…' : 'Save Currency' }}</button></ng-template>
+    <ng-container *ngTemplateOutlet="panelHeading; context: { eyebrow: 'General', title: 'Workspace defaults', description: 'Set the default currency used throughout invoices and financial records.', action: accountAction }" />
+    <div class="brand-grid">
+      <label for="currency">Currency</label>
+      <select id="currency" formControlName="currency"><option *ngFor="let option of currencyOptions" [value]="option.code">{{ option.label }} ({{ option.symbol }})</option></select>
+    </div>
   </form>
 </ng-template>
 
