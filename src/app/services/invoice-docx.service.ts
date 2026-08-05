@@ -7,7 +7,7 @@ import { CurrencyService } from './currency.service';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { saveAs } from 'file-saver';
-import { Observable, catchError, from, map, switchMap, take, throwError } from 'rxjs';
+import { Observable, catchError, from, map, switchMap, take, tap, throwError } from 'rxjs';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { getDownloadURL, ref, Storage } from '@angular/fire/storage';
 import { NotificationService } from './notification.service';
@@ -201,7 +201,13 @@ export class InvoiceDocxService {
       templateId: templateId || undefined,
       payload: data as unknown as Record<string, unknown>,
       client: { displayName: data.client_name, email: data.client_email }
-    })).pipe(catchError(err => throwError(() => this.toPdfGenerationError(err))));
+    })).pipe(
+      switchMap(result => this.http.get(result.downloadUrl, { responseType: 'blob' }).pipe(
+        tap(blob => this.downloadPdfBlob(blob, result.fileName)),
+        map(() => result)
+      )),
+      catchError(err => throwError(() => this.toPdfGenerationError(err)))
+    );
   }
 
 
@@ -219,6 +225,10 @@ export class InvoiceDocxService {
       'insufficient-permissions': 'You do not have permission to generate this PDF.'
     };
     return new Error(messages[reason] || err?.message || 'PDF generation failed.');
+  }
+
+  private downloadPdfBlob(blob: Blob, fileName: string): void {
+    saveAs(blob, fileName);
   }
 
   private escapeHtml(value: string): string {
