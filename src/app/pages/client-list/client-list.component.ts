@@ -18,6 +18,7 @@ import { ClientIdentityComponent } from '../../components/client-identity/client
 import { StatusBadgeComponent } from '../../components/status-badge/status-badge.component';
 import { EmptyStateComponent } from '../../components/empty-state/empty-state.component';
 import { DirectoryTableColumn, DirectoryTableComponent } from '../../components/directory-table/directory-table.component';
+import { NotificationService } from '../../services/notification.service';
 
 export interface ClientListItem {
   client: Client;
@@ -106,6 +107,7 @@ export class ClientListComponent {
   private db = inject(Firestore);
   private currencyService = inject(CurrencyService);
   private companyContext = inject(CompanyContextService);
+  private notifications = inject(NotificationService);
 
   // search/filter
   search = new FormControl('', { nonNullable: true });
@@ -114,6 +116,8 @@ export class ClientListComponent {
   sortField = new FormControl<SortField>('displayName', { nonNullable: true });
   sortDirection = new FormControl<SortDirection>('asc', { nonNullable: true });
   selectedClientIds = signal<Set<string>>(new Set());
+  actionMenuClientId = signal<string | null>(null);
+  deletingClientId = signal<string | null>(null);
   viewMode = signal<ViewMode>('table');
   private latestItems: ClientListItem[] = [];
   clients$: Observable<Client[]>;
@@ -159,6 +163,36 @@ export class ClientListComponent {
   }
 
   goClient(c: Client) { this.openClientDetail(c); }
+
+  toggleActionMenu(clientId: string): void {
+    this.actionMenuClientId.update(openId => openId === clientId ? null : clientId);
+  }
+
+  async deleteClient(client: Client): Promise<void> {
+    this.actionMenuClientId.set(null);
+    const confirmed = await this.notifications.confirm(
+      `Delete ${client.displayName}? This action cannot be undone.`,
+      'Delete client'
+    );
+    if (!confirmed) return;
+
+    this.deletingClientId.set(client.id);
+    this.clientSvc.deleteClient(client.id, client.displayName).subscribe({
+      next: () => {
+        this.deletingClientId.set(null);
+        this.selectedClientIds.update(current => {
+          const next = new Set(current);
+          next.delete(client.id);
+          return next;
+        });
+        this.notifications.success(`${client.displayName} was deleted.`);
+      },
+      error: (error: any) => {
+        this.deletingClientId.set(null);
+        this.notifications.error(error?.message || `Failed to delete ${client.displayName}.`, error);
+      }
+    });
+  }
 
   async createInvoice(c: Client) {
     await this.openClientDetail(c, { openInvoiceDialog: true });

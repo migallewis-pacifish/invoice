@@ -22,4 +22,28 @@ describe('CreateClientComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('requires only the client name, phone number, and status', () => {
+    component.form.setValue({
+      displayName: 'Acme',
+      line1: '',
+      line2: '',
+      suburb: '',
+      city: '',
+      province: '',
+      postalCode: '',
+      country: '',
+      email: '',
+      phone: '+27 11 555 0100',
+      vatNo: '',
+      relationshipType: '',
+      status: 'active',
+      notes: ''
+    });
+
+    expect(component.form.valid).toBeTrue();
+
+    component.form.patchValue({ phone: '' });
+    expect(component.form.controls.phone.hasError('required')).toBeTrue();
+  });
 });

@@ -60,8 +60,11 @@
         </div>
 
         <div class="form-group half">
-          <label>Phone</label>
+          <label>Phone <span>*</span></label>
           <input type="text" formControlName="phone" placeholder="+27 …">
+          <small *ngIf="form.controls.phone.touched && form.controls.phone.invalid">
+            Phone number is required.
+          </small>
         </div>
 
         <!-- Other info -->
@@ -71,13 +74,16 @@
         </div>
 
         <div class="form-group half">
-          <label>Status</label>
+          <label>Status <span>*</span></label>
           <select formControlName="status">
             <option value="active">Active</option>
             <option value="prospect">Prospect</option>
             <option value="inactive">Inactive</option>
             <option value="archived">Archived</option>
           </select>
+          <small *ngIf="form.controls.status.touched && form.controls.status.invalid">
+            Status is required.
+          </small>
         </div>
 
         <div class="form-group half">
@@ -104,4 +110,3 @@
     </form>
   </div>
 </div>
-

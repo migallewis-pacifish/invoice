@@ -183,7 +183,7 @@ export class InvoiceDocxService {
     }
 
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
-    window.alert('The invoice was generated from your Word template and downloaded as a .docx file. Please use Word or your browser\'s document viewer to Save/Export it as PDF so the PDF matches the template exactly.');
+    this.notifications.info('The invoice was downloaded as a Word document. Use Word or your document viewer to save or export it as PDF.');
   }
 
   generatePdfViaBackend(

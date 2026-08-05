@@ -113,6 +113,48 @@
   background: #eef4ff;
 }
 
+.action-menu-wrap {
+  position: relative;
+}
+
+.action-menu {
+  position: absolute;
+  z-index: 10;
+  bottom: calc(100% + 6px);
+  right: 0;
+  min-width: 150px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.action-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action-menu .delete-action {
+  color: #b42318;
+}
+
+.action-menu .delete-action:hover {
+  background: #fff1f0;
+}
+
+.action-menu button:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+
 @media (max-width: 1024px) {
   .clients-page {
     margin-left: 0;
