@@ -50,7 +50,7 @@ label {
 label span {
   color: #c0392b;
 }
-input, textarea {
+input, select, textarea {
   width: 100%;
   padding: 12px 14px;
   border: 1px solid var(--border);
@@ -61,7 +61,7 @@ input, textarea {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
   background: #fff;
 }
-input:focus, textarea:focus {
+input:focus, select:focus, textarea:focus {
   border-color: #b9d3df;
   box-shadow: 0 0 0 4px rgba(43,111,138,0.12);
 }

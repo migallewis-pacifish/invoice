@@ -2,10 +2,14 @@ import { Address } from './address.model';
 import { ClientDocumentStorageSettings } from './document-storage.model';
 
 export type ClientStatus = 'active' | 'inactive' | 'prospect' | 'archived' | string;
+export type ClientType = 'client' | 'tenant' | 'company' | 'employee';
 
 export interface Client {
   id: string;
   title?: string;
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
   displayName: string;
   address?: Address;
   email?: string;
@@ -14,7 +18,7 @@ export interface Client {
   notes?: string;
   status?: ClientStatus;
   relationshipType?: string;
-  clientType?: string;
+  clientType?: ClientType | string;
   createdAt: number;
   createdBy?: string;
   documentStorage?: ClientDocumentStorageSettings;

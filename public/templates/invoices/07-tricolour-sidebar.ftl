@@ -30,19 +30,19 @@
     }
     .logo { display: block; max-width: 35mm; max-height: 18mm; object-fit: contain; object-position: left center; margin-bottom: 9mm; }
     .company-name { margin: 0 0 18mm; font: 24px Georgia, serif; letter-spacing: .01em; overflow-wrap: anywhere; }
-    .side-label { margin: 0 0 5mm; font-size: 14px; font-weight: bold; }
-    .client-name { font: 16px Georgia, serif; line-height: 1.45; }
+    .side-label { margin: 0 0 5mm; font-size: 10px; font-weight: bold; }
+    .client-name { font: 16px Georgia, serif; line-height: 1.45; margin-bottom: 6px}
     .side-section { margin-top: 25mm; line-height: 1.45; overflow-wrap: anywhere; }
     .side-section.account { margin-top: auto; }
     .side-section h2 { margin: 0 0 4mm; font: 22px Georgia, serif; font-weight: normal; }
-    .side-section p { margin: 0; }
+    .side-section p { margin: 0; font-size: 10px; }
     .side-section strong { font-weight: bold; }
     .contact { margin-top: 18mm; }
     .address { margin-top: 6mm; }
-    .email { font-size: 9px;}
+    .email { font-size: 10px;}
     .main { min-width: 0; min-height: 297mm; padding: 18mm 16mm 25mm; display: flex; flex-direction: column; }
     .invoice-head {margin-bottom: 12px; margin-bottom: 5mm; text-align: right;} 
-    .invoice-head h1 { margin: 0; font-size: 34px; line-height: 1; letter-spacing: .05em; text-transform: uppercase; }
+    .invoice-head h1 { margin: 6px; font-size: 34px; line-height: 1; letter-spacing: .05em; text-transform: uppercase; }
     .meta { margin-left: 8mm; text-align: right; line-height: 1.55; white-space: nowrap; }
     .meta strong { display: inline-block; min-width: 24mm; font-weight: normal; }
     .company-details { color: #625e5b; font-size: 10px; line-height: 1.45; text-align: right; margin: 0 0 5mm auto; }
@@ -72,17 +72,24 @@
       <section>
         <p class="side-label">Invoice for:</p>
         <div class="client-name"><#if (client.title)?has_content>${client.title?html}</#if> ${client.name?html}</div>
-        <#if (client.address)?has_content><div>${client.address?html}</div></#if>
+        <p>
+          <#if (client.address.building)?has_content>${client.address.building?html}<br></#if>
+          <#if (client.address.line1)?has_content>${client.address.line1?html}<br></#if>
+          <#if (client.address.line2)?has_content>${client.address.line2?html}<br></#if>
+          <#if (client.address.suburb)?has_content>${client.address.suburb?html}<br></#if>
+          <#if (client.address.city)?has_content>${client.address.city?html}<br></#if>
+          <#if (client.address.postalCode)?has_content>${client.address.postalCode?html}<br></#if>
+        </p>
       </section>
 
       <section class="side-section account">
         <h2>Account Details</h2>
         <p>
-          <#if (payment.bankName)?has_content><strong>Bank:</strong> ${payment.bankName?html}<br></#if>
-          <#if (payment.accountHolder)?has_content><strong>Account Holder:</strong> ${payment.accountHolder?html}<br></#if>
-          <#if (payment.accountType)?has_content><strong>Account Type:</strong> ${payment.accountType?html}<br></#if>
-          <#if (payment.accountNumber)?has_content><strong>Account Number:</strong> ${payment.accountNumber?html}<br></#if>
-          <#if (payment.branchCode)?has_content><strong>Branch Code:</strong> ${payment.branchCode?html}</#if>
+          <#if (payment.bankName)?has_content>Bank: ${payment.bankName?html}<br></#if>
+          <#if (payment.accountHolder)?has_content>Account Holder: ${payment.accountHolder?html}<br></#if>
+          <#if (payment.accountType)?has_content>Account Type: ${payment.accountType?html}<br></#if>
+          <#if (payment.accountNumber)?has_content>Account Number: ${payment.accountNumber?html}<br></#if>
+          <#if (payment.branchCode)?has_content>Branch Code: ${payment.branchCode?html}</#if>
         </p>
       </section>
 
@@ -115,7 +122,7 @@
         <h1>Tax Invoice</h1>
         <div class="meta">
           Invoice number: <strong>${invoice.number?html}</strong><br>
-          Created Date: <strong>${invoice.date?html}</strong><br>
+          Invoice Date: <strong>${invoice.date?html}</strong><br>
           Due Date: <strong>${invoice.dueDate?html}</strong>
         </div>
       </header>

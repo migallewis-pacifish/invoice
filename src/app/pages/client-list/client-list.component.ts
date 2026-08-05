@@ -50,6 +50,9 @@ export function filterAndSortClients(
     .filter(client => {
       const searchHaystack = [
         client.displayName,
+        client.firstName,
+        client.lastName,
+        client.companyName,
         client.email,
         client.phone,
         client.notes,
@@ -57,7 +60,8 @@ export function filterAndSortClients(
         client.address?.city,
       ].join(' ').toLowerCase();
       const clientStatus = (client.status || 'active').toLowerCase();
-      const relationshipValues = [client.relationshipType, client.clientType]
+      const inferredType = client.clientType || (client.title || client.firstName || client.lastName ? 'client' : 'company');
+      const relationshipValues = [client.relationshipType, inferredType]
         .filter(Boolean)
         .map(value => String(value).toLowerCase());
 
@@ -264,7 +268,12 @@ export class ClientListComponent {
   }
 
   clientDescription(client: Client): string {
-    return client.notes || client.vatNo || client.address?.city || 'Enterprise Account';
+    return client.notes || client.vatNo || client.address?.city || `${this.clientTypeLabel(client)} Account`;
+  }
+
+  clientTypeLabel(client: Client): string {
+    const type = client.clientType || (client.title || client.firstName || client.lastName ? 'client' : 'company');
+    return type.charAt(0).toUpperCase() + type.slice(1);
   }
 
   isActiveClient(client: Client): boolean {
