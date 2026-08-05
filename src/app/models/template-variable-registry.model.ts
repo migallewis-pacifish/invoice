@@ -48,6 +48,7 @@ export const TEMPLATE_VARIABLES: TemplateVariableDefinition[] = [
   { group: 'Client', path: 'client.email', label: 'Client email', docxKey: 'client_email' },
   { group: 'Client', path: 'client.phone', label: 'Client phone', docxKey: 'client_contact_no' },
   { group: 'Client', path: 'client.address', label: 'Client address' },
+  { group: 'Client', path: 'client.address.building', label: 'Client street', docxKey: 'client_street' },
   { group: 'Client', path: 'client.address.line1', label: 'Client street', docxKey: 'client_street' },
   { group: 'Client', path: 'client.address.line2', label: 'Client street 2', docxKey: 'client_street_2' },
   { group: 'Client', path: 'client.address.suburb', label: 'Client suburb', docxKey: 'client_suburb' },
