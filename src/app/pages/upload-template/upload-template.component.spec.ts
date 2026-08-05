@@ -8,6 +8,7 @@ import { TemplateService } from '../../services/template.service';
 import { PdfTemplateService } from '../../services/pdf-template.service';
 import { CURRENT_AUTH_USER } from '../../services/company-context.service';
 import { of } from 'rxjs';
+import { provideRouter } from '@angular/router';
 
 describe('UploadTemplateComponent', () => {
   let component: UploadTemplateComponent;
@@ -22,7 +23,8 @@ describe('UploadTemplateComponent', () => {
         { provide: Storage, useValue: {} },
         { provide: ActivityService, useValue: {} },
         { provide: TemplateService, useValue: {} },
-        { provide: PdfTemplateService, useValue: {} }
+        { provide: PdfTemplateService, useValue: {} },
+        provideRouter([])
       ]
     })
     .compileComponents();
