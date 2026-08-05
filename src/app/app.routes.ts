@@ -13,6 +13,7 @@ import { PlaceholderPageComponent } from './pages/placeholder/placeholder-page.c
 import { TemplatesComponent } from './pages/templates/templates.component';
 import { FinanceComponent } from './pages/finance/finance.component';
 import { TemplateDesignerComponent } from './components/template-designer/template-designer.component';
+import { SettingsPageComponent } from './pages/settings/settings-page.component';
 
 const companyRoutes = [authGuard, companyGuard];
 
@@ -32,7 +33,7 @@ export const routes: Routes = [
   { path: 'template', redirectTo: 'templates' },
   { path: 'company-expenses', component: FinanceComponent, canActivate: companyRoutes },
   { path: 'bank-statements', component: PlaceholderPageComponent, canActivate: companyRoutes, data: { sectionName: 'Bank Statement Uploads' } },
-  { path: 'settings', component: PlaceholderPageComponent, canActivate: companyRoutes, data: { sectionName: 'Settings' } },
+  { path: 'settings', component: SettingsPageComponent, canActivate: companyRoutes },
   {
     path: 'company/:companyId/client/:clientId',
     component: ClientDetailComponent,

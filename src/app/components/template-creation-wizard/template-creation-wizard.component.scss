@@ -27,7 +27,7 @@
 .plus { font-size:30px; color:#2563eb !important; }
 .wizard-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; padding-top:18px; border-top:1px solid var(--border); }
 .back-actions { justify-content:flex-start; }
-.primary,.secondary { border-radius:999px; padding:10px 18px; font-weight:700; cursor:pointer; }
+.primary,.secondary { font-weight:700; cursor:pointer; }
 .primary { border:0; background:var(--primary); color:var(--primary-ink); }
 .primary:disabled { opacity:.45; cursor:not-allowed; }
 .secondary { border:1px solid var(--border); background:#fff; color:var(--ink); }
