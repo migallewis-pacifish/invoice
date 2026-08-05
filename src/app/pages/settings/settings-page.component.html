@@ -83,7 +83,7 @@
 </ng-template>
 
 <ng-template #generalPanel>
-  <form class="settings-form tab-panel section-panel" id="settings-panel-general" role="tabpanel" aria-labelledby="settings-tab-general" [formGroup]="currencyForm" (ngSubmit)="saveCurrency()">
+  <form class="settings-form general-panel section-panel" id="settings-panel-general" role="tabpanel" aria-labelledby="settings-tab-general" [formGroup]="currencyForm" (ngSubmit)="saveCurrency()">
     <ng-template #accountAction><button class="primary desktop-save" type="submit" [disabled]="saving() || !companyId()">{{ saving() ? 'Saving…' : 'Save Currency' }}</button></ng-template>
     <ng-container *ngTemplateOutlet="panelHeading; context: { eyebrow: 'General', title: 'Workspace defaults', description: 'Set the default currency used throughout invoices and financial records.', action: accountAction }" />
     <div class="brand-grid">

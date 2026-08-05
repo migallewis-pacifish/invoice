@@ -22,6 +22,16 @@ const { _test } = require('./index.js');
   assert.strictEqual(brandedVariables.letter.signatureUrl, 'signature.png');
   assert.strictEqual(brandedVariables.letter.signedBy, 'Alex');
 
+  const addressVariables = _test.buildTemplateVariables({
+    documentId: 'INV-ADDRESS',
+    payload: { client_title: 'Dr', client_name: 'Jamie Client' },
+    company: { address: { building: 'North Tower', line1: '1 Main Road', line2: 'Suite 2', suburb: 'Sandton', city: 'Johannesburg', postalCode: '2196' } }
+  });
+  assert.strictEqual(addressVariables.client.title, 'Dr');
+  assert.strictEqual(addressVariables.company.address.building, 'North Tower');
+  assert.strictEqual(addressVariables.company.address.line1, '1 Main Road');
+  assert.strictEqual(String(addressVariables.company.address), 'North Tower, 1 Main Road, Suite 2, Sandton, Johannesburg, 2196');
+
   const invoiceVariables = _test.buildTemplateVariables({
     documentId: 'INV-42',
     payload: { dueDate: '2026-09-30', reference: 'INV-42' },

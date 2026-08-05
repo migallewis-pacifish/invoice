@@ -14,6 +14,7 @@ describe('ClientDetailComponent client summary', () => {
     component.editingClient = signal(false);
     component.clientStorageProvider = signal('company_default');
     component.clientStorageLocation = signal('');
+    component.clientStorageFolderId = signal('');
   });
 
   it('uses the Firestore client displayName as the primary contact', () => {

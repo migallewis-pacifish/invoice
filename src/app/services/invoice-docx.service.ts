@@ -127,6 +127,7 @@ export class InvoiceDocxService {
           invoice_number: data.invoice_number,
           invoice_date: data.invoice_date,
           client_name: data.client_name,
+          client_title: data.client_title || '',
           client_building: data.client_building || '',
           client_street: data.client_street || '',
           client_suburb: data.client_suburb || '',
@@ -200,7 +201,7 @@ export class InvoiceDocxService {
       documentId: data.invoice_number,
       templateId: templateId || undefined,
       payload: data as unknown as Record<string, unknown>,
-      client: { displayName: data.client_name, email: data.client_email }
+      client: { title: data.client_title || '', displayName: data.client_name, email: data.client_email }
     })).pipe(
       switchMap(result => this.http.get(result.downloadUrl, { responseType: 'blob' }).pipe(
         tap(blob => this.downloadPdfBlob(blob, result.fileName)),

@@ -131,7 +131,7 @@ describe('InvoiceDocxService', () => {
       invoice_number: 'INV-003', invoice_date: '2026-08-05', client_name: 'Client C', client_building: '', client_street: '', client_suburb: '', client_city: '', client_postal_code: '', client_contact_no: '', services_rendered: '', client_email: '', notes: '', reference: '', items: []
     }, 'ready-made-1').subscribe(generated => {
       expect(generated).toEqual(result);
-      expect(http.get).toHaveBeenCalledWith(result.downloadUrl, { responseType: 'blob' });
+      expect(http.get as jasmine.Spy).toHaveBeenCalledWith(result.downloadUrl, { responseType: 'blob' });
       expect(downloadSpy).toHaveBeenCalledWith(pdf, result.fileName);
       done();
     });
