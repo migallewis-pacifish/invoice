@@ -23,6 +23,10 @@
   --radius-lg: 18px;
   --radius-xl: 24px;
   --radius: 18px;
+  --button-height: 40px;
+  --button-height-small: 34px;
+  --button-radius: 10px;
+  --button-padding: 18px;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -74,15 +78,48 @@ a { color: inherit; }
   min-height: 100svh;
 }
 
-.primary, .secondary {
+.primary, .secondary, .ghost, button.danger {
+  min-height: var(--button-height);
   border: none;
-  border-radius: 999px;
-  padding: 10px 18px;
+  border-radius: var(--button-radius);
+  padding: 0 var(--button-padding);
   font-weight: 700;
   cursor: pointer;
 }
 .primary { background: var(--primary); color: var(--primary-ink); box-shadow: var(--shadow); }
 .secondary { background: #e8eef8; color: var(--primary); }
+.ghost { border: 1px solid var(--border); background: transparent; color: var(--ink); }
+button.danger { border: 1px solid #f3c9c9; background: #fff0f0; color: var(--danger); }
+
+/* Shared action-button geometry. Component styles may choose colours, but not shape or size. */
+:is(button, a):is(.primary, .secondary, .ghost, .danger, .pill-button, .action-button, .top-upload, .primary-action, .filter-button, .edit-button, .option-btn, .choose, .pick, .confirm, .cancel, .logout, .date-filter, .text-button) {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--button-height) !important;
+  border-radius: var(--button-radius) !important;
+  padding: 0 var(--button-padding) !important;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+:is(button, a):is(.small, .small-btn) {
+  min-height: var(--button-height-small) !important;
+  padding-inline: 12px !important;
+}
+
+button:is(.icon-button, .icon-btn, .square-button, .more-button, .remove, .close, .dialog-close, .dismiss) {
+  width: var(--button-height-small) !important;
+  min-width: var(--button-height-small) !important;
+  height: var(--button-height-small) !important;
+  min-height: var(--button-height-small) !important;
+  border-radius: var(--button-radius) !important;
+  padding: 0 !important;
+}
+
+button:disabled { cursor: not-allowed; transform: none; }
 
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px 24px; }
 .form-group.full { grid-column: 1 / -1; }

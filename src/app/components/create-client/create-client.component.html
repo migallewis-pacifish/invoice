@@ -8,8 +8,13 @@
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <div class="form-grid">
 
+        <div class="form-group half">
+          <label>Title</label>
+          <input type="text" formControlName="title" placeholder="e.g. Mr, Ms, Dr">
+        </div>
+
         <!-- Company Name -->
-        <div class="form-group full">
+        <div class="form-group half">
           <label>Client / Company Name <span>*</span></label>
           <input type="text" formControlName="displayName" placeholder="e.g. ABC Holdings (Pty) Ltd">
           <small *ngIf="form.controls.displayName.touched && form.controls.displayName.invalid">

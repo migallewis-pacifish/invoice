@@ -1,0 +1,121 @@
+<app-nav-bar />
+<main class="settings-wrap">
+  <app-workspace-topbar />
+  <nav class="crumbs"><a routerLink="/">Company</a><span>/</span><span>Settings</span></nav>
+
+  <section class="settings-card">
+    <header class="page-heading">
+      <h1>Settings</h1>
+      <p>Manage company details, brand assets, integrations, and workspace defaults.</p>
+    </header>
+
+    <nav class="settings-tabs" role="tablist" aria-label="Settings categories">
+      <button
+        *ngFor="let tab of settingsTabs"
+        type="button"
+        role="tab"
+        [id]="'settings-tab-' + tab.id"
+        [attr.aria-selected]="activeTab() === tab.id"
+        [attr.aria-controls]="'settings-panel-' + tab.id"
+        [class.active]="activeTab() === tab.id"
+        (click)="selectTab(tab.id)">
+        <span class="tab-icon" aria-hidden="true">{{ tab.icon }}</span>{{ tab.label }}
+      </button>
+    </nav>
+
+    <ng-container [ngSwitch]="activeTab()">
+      <ng-container *ngSwitchCase="'account'" [ngTemplateOutlet]="accountPanel" />
+      <ng-container *ngSwitchCase="'branding'" [ngTemplateOutlet]="brandingPanel" />
+      <ng-container *ngSwitchCase="'general'" [ngTemplateOutlet]="generalPanel" />
+      <ng-container *ngSwitchCase="'storage'" [ngTemplateOutlet]="storagePanel" />
+      <ng-container *ngSwitchCase="'email'" [ngTemplateOutlet]="emailPanel" />
+    </ng-container>
+
+    <p class="message" role="status" *ngIf="message()">{{ message() }}</p>
+  </section>
+</main>
+
+<ng-template #panelHeading let-eyebrow="eyebrow" let-title="title" let-description="description" let-action="action">
+  <div class="section-heading">
+    <div><p class="eyebrow">{{ eyebrow }}</p><h2>{{ title }}</h2><p>{{ description }}</p></div>
+    <ng-container *ngIf="action" [ngTemplateOutlet]="action" />
+  </div>
+</ng-template>
+
+<ng-template #accountPanel>
+  <form id="settings-panel-account" role="tabpanel" aria-labelledby="settings-tab-account" [formGroup]="accountForm" (ngSubmit)="saveCompanyAccount()" class="account-form tab-panel">
+    <ng-template #accountAction><button class="primary desktop-save" type="submit" [disabled]="savingAccount() || !companyId() || accountForm.invalid">{{ savingAccount() ? 'Saving…' : 'Save Company Details' }}</button></ng-template>
+    <ng-container *ngTemplateOutlet="panelHeading; context: { eyebrow: 'Company account', title: 'Company details', description: 'Keep the legal, contact, address, and banking information used across your workspace up to date.', action: accountAction }" />
+
+    <fieldset><legend>Legal and contact information</legend><div class="account-grid">
+      <label>Company name <span>*</span><input formControlName="name" placeholder="Registered company name"></label>
+      <label>Registration number<input formControlName="regNo" placeholder="e.g. 2026/123456/07"></label>
+      <label>VAT number<input formControlName="vatNo" placeholder="VAT registration number"></label>
+      <label>Telephone<input formControlName="tel" placeholder="+27 11 555 0100"></label>
+      <label>Company email<input type="email" formControlName="email" placeholder="accounts@example.com"></label>
+      <label>Website<input formControlName="website" placeholder="https://example.com"></label>
+    </div></fieldset>
+
+    <fieldset><legend>Registered address</legend><div class="account-grid">
+      <label>Address line 1<input formControlName="line1" placeholder="Street and number"></label>
+      <label>Address line 2<input formControlName="line2" placeholder="Building, floor, or suite"></label>
+      <label>Suburb<input formControlName="suburb"></label><label>City<input formControlName="city"></label>
+      <label>Province<input formControlName="province"></label><label>Postal code<input formControlName="postalCode"></label>
+      <label>Country<input formControlName="country" placeholder="South Africa"></label>
+    </div></fieldset>
+
+    <fieldset><legend>Banking details</legend><div class="account-grid">
+      <label>Bank name<input formControlName="bankName"></label><label>Account holder<input formControlName="accountName"></label>
+      <label>Account number<input formControlName="accountNumber"></label><label>Branch code<input formControlName="branchCode"></label>
+    </div><p class="muted account-note">These details may be assigned to invoice and payment templates.</p></fieldset>
+    <button class="primary mobile-save" type="submit" [disabled]="savingAccount() || !companyId() || accountForm.invalid">{{ savingAccount() ? 'Saving…' : 'Save Company Details' }}</button>
+  </form>
+</ng-template>
+
+<ng-template #brandingPanel>
+  <section class="tab-panel section-panel" id="settings-panel-branding" role="tabpanel" aria-labelledby="settings-tab-branding">
+    <ng-container *ngTemplateOutlet="panelHeading; context: { eyebrow: 'Brand assets', title: 'Logo and signature', description: 'These images are automatically supplied to invoice and letter templates that include logo or signature variables.' }" />
+    <div class="brand-grid">
+      <app-image-upload title="Company logo" description="Used wherever a template includes the company logo." buttonLabel="Upload logo" previewAlt="Current company logo" variant="logo" [currentUrl]="logoUrl()" [busy]="savingBranding()" (upload)="uploadLogo($event)" />
+      <app-image-upload title="Default signature" description="Used wherever a template includes an authorised signature." buttonLabel="Upload signature" previewAlt="Current default signature" variant="signature" [requireName]="true" nameLabel="Signer name" namePlaceholder="e.g. Alex Morgan" [currentName]="signerName()" [currentUrl]="signatureUrl()" [busy]="savingBranding()" (upload)="uploadSignature($event)" />
+    </div>
+  </section>
+</ng-template>
+
+<ng-template #generalPanel>
+  <form class="settings-form tab-panel" id="settings-panel-general" role="tabpanel" aria-labelledby="settings-tab-general" [formGroup]="currencyForm" (ngSubmit)="saveCurrency()">
+    <ng-container *ngTemplateOutlet="panelHeading; context: { eyebrow: 'General', title: 'Workspace defaults', description: 'Set the default currency used throughout invoices and financial records.' }" />
+    <label for="currency">Currency</label>
+    <select id="currency" formControlName="currency"><option *ngFor="let option of currencyOptions" [value]="option.code">{{ option.label }} ({{ option.symbol }})</option></select>
+    <button class="primary" type="submit" [disabled]="saving() || !companyId()">{{ saving() ? 'Saving…' : 'Save Currency' }}</button>
+  </form>
+</ng-template>
+
+<ng-template #storagePanel>
+  <section class="tab-panel section-panel" id="settings-panel-storage" role="tabpanel" aria-labelledby="settings-tab-storage" [formGroup]="storageForm">
+    <ng-template #storageAction><button class="primary" type="button" (click)="saveDocumentStorage()" [disabled]="savingStorage() || !companyId()">{{ savingStorage() ? 'Saving…' : 'Save Storage Settings' }}</button></ng-template>
+    <ng-container *ngTemplateOutlet="panelHeading; context: { eyebrow: 'Document storage', title: 'Default document storage provider', description: 'Choose where client documents should be saved by default.', action: storageAction }" />
+    <label for="defaultProvider">Company default provider</label>
+    <select id="defaultProvider" formControlName="defaultProvider"><option value="browser_download">Browser Download</option><option value="google_drive">Google Workspace Drive</option><option value="onedrive">Microsoft 365 OneDrive</option><option value="local_folder">Local Folder (future)</option><option value="external_link">External Link</option></select>
+    <div class="provider-grid">
+      <article class="provider-card"><h3>Browser Download</h3><span class="status">Always available</span><p class="muted">Generated files use the browser download flow.</p><label>Suggested subfolder label<input formControlName="browserDownloadFolder" placeholder="e.g. Client documents"></label></article>
+      <article class="provider-card"><h3>Google Workspace Drive</h3><span class="status">{{ storage()?.googleDrive?.connected ? 'Connected' : 'Not connected' }}</span><button class="secondary" type="button" (click)="connectStorageProvider('google_drive')">Connect Google Drive</button><label>Default folder<input formControlName="googleDriveFolder" placeholder="Folder URL, ID, or name"></label><label>Folder ID<input formControlName="googleDriveFolderId"></label></article>
+      <article class="provider-card"><h3>Microsoft 365 OneDrive</h3><span class="status">{{ storage()?.oneDrive?.connected ? 'Connected' : 'Not connected' }}</span><button class="secondary" type="button" (click)="connectStorageProvider('onedrive')">Connect OneDrive</button><label>Default folder<input formControlName="oneDriveFolder" placeholder="Folder URL, ID, or name"></label><label>Folder ID<input formControlName="oneDriveFolderId"></label></article>
+      <article class="provider-card future-card"><h3>Local Folder (future)</h3><span class="status">{{ localFolderSupportMessage }}</span><button class="secondary" type="button" disabled>Set Local Folder</button><label>Folder metadata<input formControlName="localFolderPath"></label><p class="muted">Unsupported browsers fall back to browser downloads.</p></article>
+    </div>
+  </section>
+</ng-template>
+
+<ng-template #emailPanel>
+  <section class="tab-panel section-panel" id="settings-panel-email" role="tabpanel" aria-labelledby="settings-tab-email" [formGroup]="emailForm">
+    <ng-template #emailAction><button class="primary" type="button" (click)="saveEmailSettings()" [disabled]="savingEmail() || !companyId()">{{ savingEmail() ? 'Saving…' : 'Save Email Settings' }}</button></ng-template>
+    <ng-container *ngTemplateOutlet="panelHeading; context: { eyebrow: 'Email integrations', title: 'Outbound email provider', description: 'Configure the sender used for invoices, letters, and reminders.', action: emailAction }" />
+    <label for="defaultEmailProvider">Company default sender</label>
+    <select id="defaultEmailProvider" formControlName="defaultProvider"><option value="gmail">Google Workspace Gmail</option><option value="microsoft_exchange">Microsoft 365 Exchange</option><option value="sendgrid">SendGrid</option></select>
+    <div class="provider-grid">
+      <article class="provider-card"><h3>Google Workspace Gmail</h3><span class="status">{{ emailSettings()?.gmail?.connected ? 'Connected' : 'Not connected' }}</span><button class="secondary" type="button" disabled>Connect Gmail</button><label>Gmail account<input formControlName="gmailAccountEmail" placeholder="billing@example.com"></label><p class="muted">OAuth connection must be completed by the backend.</p></article>
+      <article class="provider-card"><h3>Microsoft 365 Exchange</h3><span class="status">{{ emailSettings()?.microsoftExchange?.connected ? 'Connected' : 'Not connected' }}</span><button class="secondary" type="button" disabled>Connect Exchange</button><label>Exchange mailbox<input formControlName="exchangeAccountEmail" placeholder="billing@example.com"></label><label>Tenant ID<input formControlName="exchangeTenantId"></label></article>
+      <article class="provider-card"><h3>SendGrid</h3><span class="status">{{ emailSettings()?.sendgrid?.apiKeyConfigured ? 'API key configured' : 'Needs backend API key' }}</span><button class="secondary" type="button" disabled>Configure SendGrid</button><label>Verified from email<input formControlName="sendgridFromEmail" placeholder="billing@example.com"></label><label>From name<input formControlName="sendgridFromName"></label><p class="muted">API keys remain in backend secrets.</p></article>
+    </div>
+  </section>
+</ng-template>

@@ -38,6 +38,7 @@
     .side-section p { margin: 0; }
     .side-section strong { font-weight: bold; }
     .contact { margin-top: 18mm; }
+    .address { margin-top: 6mm; }
     .email { font-size: 9px;}
     .main { min-width: 0; min-height: 297mm; padding: 18mm 16mm 25mm; display: flex; flex-direction: column; }
     .invoice-head {margin-bottom: 12px; margin-bottom: 5mm; text-align: right;} 
@@ -70,7 +71,7 @@
 
       <section>
         <p class="side-label">Invoice for:</p>
-        <div class="client-name">${client.name?html}</div>
+        <div class="client-name"><#if (client.title)?has_content>${client.title?html}</#if> ${client.name?html}</div>
         <#if (client.address)?has_content><div>${client.address?html}</div></#if>
       </section>
 
@@ -95,11 +96,23 @@
           <#if (company.website)?has_content>${company.website?html}</#if>
         </p>
       </section>
+
+      <section class="side-section address">
+        <h2>Address</h2>
+        <p>
+          <#if (company.address.building)?has_content>${company.address.building?html}<br></#if>
+          <#if (company.address.line1)?has_content>${company.address.line1?html}<br></#if>
+          <#if (company.address.line2)?has_content>${company.address.line2?html}<br></#if>
+          <#if (company.address.suburb)?has_content>${company.address.suburb?html}<br></#if>
+          <#if (company.address.city)?has_content>${company.address.city?html}<br></#if>
+          <#if (company.address.postalCode)?has_content>${company.address.postalCode?html}<br></#if>
+        </p>
+      </section>
     </aside>
 
     <section class="main">
       <header class="invoice-head">
-        <h1>Invoice</h1>
+        <h1>Tax Invoice</h1>
         <div class="meta">
           Invoice number: <strong>${invoice.number?html}</strong><br>
           Created Date: <strong>${invoice.date?html}</strong><br>

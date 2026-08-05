@@ -332,4 +332,12 @@ export class ClientListComponent {
       }
     });
   }
+
+  openEditClient(client: Client): void {
+    this.dialog.open<string | null>(AddClientDialogueComponent, {
+      backdropClass: 'dlg-backdrop',
+      panelClass: 'dlg-panel',
+      data: { client }
+    });
+  }
 }

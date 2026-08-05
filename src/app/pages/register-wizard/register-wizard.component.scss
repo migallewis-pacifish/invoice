@@ -57,12 +57,12 @@ label span { color: #c0392b; }
 .actions { display: flex; gap: 12px; align-items: center; margin-top: 18px; }
 .primary {
   background: var(--primary); color: var(--primary-ink); border: none;
-  border-radius: 999px; padding: 12px 22px; font-weight: 600; cursor: pointer;
+  font-weight: 600; cursor: pointer;
   box-shadow: var(--shadow1), var(--shadow2);
 }
 .ghost {
-  background: transparent; border: 1px solid var(--border); border-radius: 999px;
-  padding: 12px 18px; color: var(--ink); cursor: pointer;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--ink); cursor: pointer;
 }
 .primary:disabled { opacity: .75; cursor: default; }
 
