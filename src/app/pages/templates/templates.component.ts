@@ -10,7 +10,6 @@ import { normalizeTemplateFormat } from '../../services/template-renderer.servic
 import { TemplateService } from '../../services/template.service';
 import { LetterDocxService } from '../../services/letter-docx.service';
 import { CompanyContextService } from '../../services/company-context.service';
-import { UploadTemplateComponent } from '../upload-template/upload-template.component';
 import { CompanyEmailTemplate, EMAIL_TEMPLATE_VARIABLE_LABELS, EMAIL_TEMPLATE_VARIABLES } from '../../models/company-email-template.model';
 import { EmailTemplateService, validateEmailTemplate } from '../../services/email-template.service';
 import { WorkspaceShellComponent } from '../../components/workspace-shell/workspace-shell.component';
@@ -24,6 +23,7 @@ import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-brows
 import { TemplateCreationType, TemplateCreationWizardComponent } from '../../components/template-creation-wizard/template-creation-wizard.component';
 import { DocumentTemplatePreviewService } from '../../services/document-template-preview.service';
 import { NotificationService } from '../../services/notification.service';
+import { RenameTemplateDialogComponent } from '../../components/rename-template-dialog/rename-template-dialog.component';
 
 type TemplateType = 'invoice' | 'letter';
 type TemplateTab = 'overview' | 'invoices' | 'letters' | 'emails';
@@ -76,7 +76,7 @@ export function filterTemplates(templates: TemplateCard[], filter: TemplateFilte
 @Component({
   selector: 'app-templates',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule, NavBarComponent, WorkspaceTopbarComponent, UploadTemplateComponent, WorkspaceShellComponent, EmptyStateComponent],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, NavBarComponent, WorkspaceTopbarComponent, WorkspaceShellComponent, EmptyStateComponent],
   templateUrl: './templates.component.html',
   styleUrl: './templates.component.scss'
 })
@@ -101,7 +101,6 @@ export class TemplatesComponent implements OnDestroy {
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly templates = signal<TemplateCard[]>([]);
-  protected readonly selectedInvoiceTemplate = signal<TemplateCard | null>(null);
   protected readonly statusFilter = signal<TemplateStatusFilter>('active');
   protected readonly emailTemplates = signal<CompanyEmailTemplate[]>([]);
   protected readonly designedEmailTemplates = signal<EmailTemplateDefinition[]>([]);
@@ -114,7 +113,6 @@ export class TemplatesComponent implements OnDestroy {
   protected readonly emailTemplateMessage = signal('');
   protected readonly variables = EMAIL_TEMPLATE_VARIABLES;
   protected readonly variableLabels = EMAIL_TEMPLATE_VARIABLE_LABELS;
-  private handledEditQuery = false;
   private documentPreviewObjectUrl: string | null = null;
 
   protected readonly emailTemplateForm = this.fb.nonNullable.group({
@@ -177,7 +175,6 @@ export class TemplatesComponent implements OnDestroy {
   }
 
   protected openUploadFlow(): void {
-    this.selectedInvoiceTemplate.set(null);
     this.openCreationWizard(this.activeTab() === 'letters' ? 'letter' : 'invoice');
   }
 
@@ -200,9 +197,31 @@ export class TemplatesComponent implements OnDestroy {
     else this.openUploadFlow();
   }
 
-  protected editGalleryTemplate(template: GalleryCard): void {
-    if (template.kind === 'email') this.editDesignedEmailTemplate(template.source);
-    else this.editTemplate(template.source);
+  protected renameGalleryTemplate(template: GalleryCard): void {
+    const ref = this.dialog.open<string | null>(RenameTemplateDialogComponent, {
+      data: { name: template.name },
+      width: 'min(92vw, 420px)',
+      backdropClass: 'dlg-backdrop',
+      panelClass: 'rename-template-dialog-panel'
+    });
+    ref.closed.subscribe(name => {
+      if (name && name !== template.name) void this.applyTemplateRename(template, name);
+    });
+  }
+
+  private async applyTemplateRename(template: GalleryCard, name: string): Promise<void> {
+    try {
+      const companyId = await this.companyContext.requireCompanyIdOnce();
+      if (template.kind === 'email') {
+        if (template.source.id) await this.emailTemplateDefinitions.rename(companyId, template.source.id, name);
+      } else {
+        await this.templateService.renameTemplate(companyId, template.source.id, name);
+      }
+    } catch (e: any) {
+      const message = e?.message ?? 'Unable to rename template.';
+      this.error.set(message);
+      this.notifications.error(message, e);
+    }
   }
 
   protected duplicateGalleryTemplate(template: GalleryCard): void {
@@ -264,30 +283,6 @@ export class TemplatesComponent implements OnDestroy {
     this.previewDocumentUrl.set(null);
   }
 
-  protected editTemplate(template: TemplateCard): void {
-    if (template.type === 'invoice') {
-      this.activeTab.set('invoices');
-      this.selectedInvoiceTemplate.set(template);
-      this.openInvoiceTemplateDialog(template);
-      return;
-    }
-    document.getElementById('letter-template-upload')?.click();
-  }
-
-  private openInvoiceTemplateDialog(template: TemplateCard | null): void {
-    const ref = this.dialog.open(UploadTemplateComponent, {
-      data: { inDialog: true, existingTemplate: template },
-      width: 'min(94vw, 900px)',
-      maxWidth: '900px',
-      maxHeight: '94vh',
-      backdropClass: 'dlg-backdrop',
-      panelClass: 'invoice-template-dialog-panel'
-    });
-    ref.closed.subscribe(() => {
-      this.selectedInvoiceTemplate.set(null);
-    });
-  }
-
   protected async onLetterTemplatePicked(ev: Event): Promise<void> {
     const input = ev.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
@@ -321,7 +316,7 @@ export class TemplatesComponent implements OnDestroy {
   }
 
   protected async openMoreMenu(template: TemplateCard): Promise<void> {
-    const action = window.prompt('Choose action: archive, rename, default, duplicate, delete', template.archived ? 'archive' : 'default');
+    const action = window.prompt('Choose action: archive, default, duplicate, delete', template.archived ? 'archive' : 'default');
     if (!action) return;
     try {
       const companyId = await this.companyContext.requireCompanyIdOnce();
@@ -329,11 +324,6 @@ export class TemplatesComponent implements OnDestroy {
         case 'archive':
           await this.templateService.archiveTemplate(companyId, template.id, !template.archived);
           break;
-        case 'rename': {
-          const name = window.prompt('Template name', template.name);
-          if (name) await this.templateService.renameTemplate(companyId, template.id, name);
-          break;
-        }
         case 'default':
         case 'set default':
           await this.templateService.setDefaultTemplate(companyId, template.id, template.type);
@@ -405,14 +395,6 @@ export class TemplatesComponent implements OnDestroy {
     }
   }
 
-  protected async renameDesignedEmailTemplate(template: EmailTemplateDefinition): Promise<void> {
-    if (!template.id) return;
-    const name = window.prompt('Email template name', template.name);
-    if (!name) return;
-    const companyId = await this.companyContext.requireCompanyIdOnce();
-    await this.emailTemplateDefinitions.rename(companyId, template.id, name);
-  }
-
   protected async archiveDesignedEmailTemplate(template: EmailTemplateDefinition): Promise<void> {
     if (!template.id) return;
     const companyId = await this.companyContext.requireCompanyIdOnce();
@@ -427,7 +409,7 @@ export class TemplatesComponent implements OnDestroy {
 
   protected async openEmailMoreMenu(template: EmailTemplateDefinition): Promise<void> {
     const action = window.prompt(
-      `Choose action: ${template.archived ? 'restore' : 'archive'}, rename, default, duplicate`,
+      `Choose action: ${template.archived ? 'restore' : 'archive'}, default, duplicate`,
       template.archived ? 'restore' : 'default'
     );
     if (!action) return;
@@ -437,9 +419,6 @@ export class TemplatesComponent implements OnDestroy {
         case 'archive':
         case 'restore':
           await this.archiveDesignedEmailTemplate(template);
-          break;
-        case 'rename':
-          await this.renameDesignedEmailTemplate(template);
           break;
         case 'duplicate':
         case 'copy':
@@ -486,10 +465,6 @@ export class TemplatesComponent implements OnDestroy {
     });
   }
 
-  protected editDesignedEmailTemplate(template: EmailTemplateDefinition): void {
-    if (template.id) this.router.navigate(['/templates/designer', template.id]);
-  }
-
   private async loadCompanyTemplates(): Promise<void> {
     try {
       const companyId = await this.companyContext.requireCompanyIdOnce();
@@ -502,16 +477,6 @@ export class TemplatesComponent implements OnDestroy {
       collectionData(collection(this.db, `companies/${companyId}/templates`), { idField: 'id' }).subscribe({
         next: templates => {
           this.templates.set((templates as CompanyTemplate[]).map(template => this.toTemplateCard(companyId, template)));
-          const editId = this.route.snapshot.queryParamMap.get('edit');
-          if (editId && !this.handledEditQuery) {
-            const selected = this.templates().find(template => template.id === editId && template.type === 'invoice') ?? null;
-            if (selected) {
-              this.handledEditQuery = true;
-              this.activeTab.set('invoices');
-              this.selectedInvoiceTemplate.set(selected);
-              this.openInvoiceTemplateDialog(selected);
-            }
-          }
           this.loading.set(false);
           this.error.set(null);
         },

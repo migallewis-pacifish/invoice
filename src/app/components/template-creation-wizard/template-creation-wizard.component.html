@@ -63,8 +63,11 @@
       </div>
       <section template-preview class="template-preview-panel" *ngIf="selectedFreemarker() as selected">
         <div class="preview-heading"><div><small>Preview</small><h2>{{ selected.name }}</h2></div>
-          <button type="button" class="primary" [disabled]="freemarkerBusy()" (click)="useSelectedFreemarker()">{{ freemarkerBusy() ? 'Adding…' : 'Use this template' }}</button>
+          <button type="button" class="primary" [disabled]="freemarkerBusy() || !templateName().trim()" (click)="useSelectedFreemarker()">{{ freemarkerBusy() ? 'Adding…' : 'Use this template' }}</button>
         </div>
+        <label class="template-name-field">Template name
+          <input type="text" [value]="templateName()" (input)="templateName.set($any($event.target).value)" placeholder="e.g. Standard invoice">
+        </label>
         <iframe *ngIf="freemarkerPreview() as preview" [src]="preview" [title]="selected.name + ' template preview'" sandbox=""></iframe>
         <div class="preview-loading" *ngIf="!freemarkerPreview() && !freemarkerError()">Loading preview…</div>
       </section>

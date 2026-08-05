@@ -112,6 +112,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
   readonly freemarkerPreview = signal<SafeResourceUrl | null>(null);
   readonly freemarkerBusy = signal(false);
   readonly freemarkerError = signal<string | null>(null);
+  readonly templateName = signal('');
   readonly selectedEmailStarter = signal<StarterTemplate | null>(null);
   readonly emailStarterPreview = signal('');
   readonly emailPalettes = signal<Record<string, TemplatePalette>>(Object.fromEntries(
@@ -153,6 +154,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
 
   async selectFreemarker(starter: FreemarkerStarterTemplate): Promise<void> {
     this.selectedFreemarker.set(starter);
+    this.templateName.set(starter.name);
     this.freemarkerError.set(null);
     this.releasePreview();
     try {
@@ -211,7 +213,8 @@ export class TemplateCreationWizardComponent implements OnDestroy {
 
   async useSelectedFreemarker(): Promise<void> {
     const starter = this.selectedFreemarker();
-    if (!starter || this.freemarkerBusy()) return;
+    const templateName = this.templateName().trim();
+    if (!starter || !templateName || this.freemarkerBusy()) return;
     this.freemarkerBusy.set(true);
     this.freemarkerError.set(null);
     try {
@@ -224,7 +227,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
       const file = new File([source], `${starter.id}.html`, { type: 'text/html' });
       const result = await this.templateService.upload(profile.companyId, file, this.documentType(), undefined, {
         format: 'freemarker-html',
-        name: starter.name,
+        name: templateName,
         sourceKind: 'ready-made',
         starterTemplateId: starter.id,
         theme: { primary: palette[0], secondary: palette[1], accent: palette[2] }
