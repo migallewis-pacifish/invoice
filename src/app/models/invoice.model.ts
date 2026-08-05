@@ -13,6 +13,7 @@ export interface InvoiceData {
   dueDate?: string;
 
   client_name: string;
+  client_title?: string;
   client_street: string;
   client_suburb: string;
   client_city: string;

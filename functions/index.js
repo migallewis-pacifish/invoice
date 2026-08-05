@@ -415,6 +415,16 @@ function buildTemplateVariables(data) {
   const money = value => `R ${Number(value || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const signature = company.signature || {};
   const signatureUrl = signature.imageUrl || signature.url || company.signatureUrl || '';
+  const companyAddressSource = typeof company.address === 'object' && company.address ? company.address : {};
+  const companyAddressText = typeof company.address === 'string'
+    ? company.address
+    : [companyAddressSource.building, companyAddressSource.line1, companyAddressSource.line2, companyAddressSource.suburb, companyAddressSource.city, companyAddressSource.province, companyAddressSource.postalCode, companyAddressSource.country].filter(Boolean).join(', ');
+  const companyAddress = {
+    building: companyAddressSource.building || '', line1: companyAddressSource.line1 || '', line2: companyAddressSource.line2 || '',
+    suburb: companyAddressSource.suburb || '', city: companyAddressSource.city || '', province: companyAddressSource.province || '',
+    postalCode: companyAddressSource.postalCode || '', country: companyAddressSource.country || '',
+    toString: () => companyAddressText,
+  };
   return {
     invoice: {
       number: payload.invoice_number || payload.invoiceNumber || data.documentId,
@@ -435,6 +445,7 @@ function buildTemplateVariables(data) {
       signatureUrl: payload.signatureUrl || signatureUrl,
     },
     client: {
+      title: payload.client_title || client.title || '',
       name: payload.client_name || client.displayName || data.clientName || '',
       email: payload.client_email || client.email || '',
       address: payload.client_address || [payload.client_street, payload.client_suburb, payload.client_city, payload.client_postal_code].filter(Boolean).join(', '),
@@ -443,7 +454,7 @@ function buildTemplateVariables(data) {
     company: {
       name: company.name || '',
       email: company.email || '',
-      phone: company.phone || company.tel || '', address: typeof company.address === 'string' ? company.address : [company.address?.line1, company.address?.line2, company.address?.suburb, company.address?.city, company.address?.postalCode].filter(Boolean).join(', '), website: company.website || '', logoUrl: company.logoUrl || '',
+      phone: company.phone || company.tel || '', address: companyAddress, website: company.website || '', logoUrl: company.logoUrl || '',
       registrationNumber: company.registrationNumber || company.regNo || '', taxNumber: company.taxNumber || company.vatNo || '',
     },
     payment: (() => {

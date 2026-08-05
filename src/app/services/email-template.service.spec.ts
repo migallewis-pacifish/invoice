@@ -25,9 +25,9 @@ describe('email template utilities', () => {
 
   it('converts handlebars variables to Apache FreeMarker variables for storage', () => {
     expect(toFreemarkerTemplate('Hi {{clientName}}, invoice {{ invoiceNumber }} is ready.'))
-      .toBe('Hi ${clientName}, invoice ${invoiceNumber} is ready.');
-    expect(fromFreemarkerTemplate('Hi ${clientName}, invoice ${invoiceNumber} is ready.'))
-      .toBe('Hi {{clientName}}, invoice {{invoiceNumber}} is ready.');
+      .toBe('Hi ${client.name}, invoice ${invoice.number} is ready.');
+    expect(fromFreemarkerTemplate('Hi ${client.name}, invoice ${invoice.number} is ready.'))
+      .toBe('Hi {{client.name}}, invoice {{invoice.number}} is ready.');
   });
 
   it('extracts supported variables for Firestore metadata', () => {

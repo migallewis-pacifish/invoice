@@ -5,6 +5,7 @@ import { Firestore } from '@angular/fire/firestore';
 import { Storage } from '@angular/fire/storage';
 import { ActivityService } from '../../services/activity.service';
 import { TemplateService } from '../../services/template.service';
+import { PdfTemplateService } from '../../services/pdf-template.service';
 import { CURRENT_AUTH_USER } from '../../services/company-context.service';
 import { of } from 'rxjs';
 
@@ -20,7 +21,8 @@ describe('UploadTemplateComponent', () => {
         { provide: Firestore, useValue: {} },
         { provide: Storage, useValue: {} },
         { provide: ActivityService, useValue: {} },
-        { provide: TemplateService, useValue: {} }
+        { provide: TemplateService, useValue: {} },
+        { provide: PdfTemplateService, useValue: {} }
       ]
     })
     .compileComponents();

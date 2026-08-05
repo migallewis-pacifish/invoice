@@ -49,6 +49,23 @@ describe('TemplateService', () => {
     expect(inspection.variables).toEqual(['invoice.number', 'invoice.total']);
   });
 
+  it('accepts client title and structured company address variables', async () => {
+    const file = new File([
+      '<h1>${client.title?html} ${client.name?html}</h1>',
+      '<p>${company.address.building?html}</p>',
+      '<p>${company.address.line1?html}</p>',
+      '<p>${company.address.line2?html}</p>',
+      '<p>${company.address.suburb?html}</p>',
+      '<p>${company.address.city?html}</p>',
+      '<p>${company.address.postalCode?html}</p>',
+      '<span>${invoice.number?html}</span><strong>${invoice.total?html}</strong>'
+    ], 'invoice.html', { type: 'text/html' });
+
+    const inspection = await service.inspectTemplateFile(file, 'freemarker-html', 'invoice');
+
+    expect(inspection.errors).toEqual([]);
+  });
+
 
   it('selects legacy templates that only have storagePath', () => {
     expect(selectDefaultTemplate([template('invoice-legacy', 'invoice', false)], 'invoice')?.id).toBe('invoice-legacy');

@@ -277,6 +277,7 @@ export class AddInvoiceDialogComponent {
         : new Date().toISOString().slice(0, 10),
       dueDate: formValue.dueDate || '',
       client_name: this.client?.displayName || 'Unknown Client',
+      client_title: this.client?.title || '',
       client_building: this.client?.address?.building || '',
       client_street: `${this.client?.address?.line1 || ''} ${this.client?.address?.line2 || ''}`.trim(),
       client_suburb: this.client?.address?.suburb || '',
