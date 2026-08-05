@@ -21,6 +21,7 @@ import { CompanyDocumentStorageSettings, DOCUMENT_STORAGE_PROVIDER_LABELS, Docum
 import { DocumentStorageService } from '../../services/document-storage.service';
 import { NotificationService } from '../../services/notification.service';
 import { CreateClientComponent } from '../../components/create-client/create-client.component';
+import { AddClientDialogueComponent } from '../../components/add-client-dialogue/add-client-dialogue.component';
 import { EmailComposeDialogComponent } from '../../components/email-compose-dialog/email-compose-dialog.component';
 import { EmailService, EmailDocumentType, InvoiceReminderType } from '../../services/email.service';
 import { InvoiceTableComponent } from '../../components/invoice-table/invoice-table.component';
@@ -167,8 +168,18 @@ export class ClientDetailComponent {
   }
 
   startEditClient(): void {
-    this.editingClient.set(true);
-    this.activeTab.set('details');
+    const client = this.client();
+    if (!client) return;
+
+    const ref = this.dialog.open<string | null>(AddClientDialogueComponent, {
+      backdropClass: 'dlg-backdrop',
+      panelClass: 'dlg-panel',
+      data: { client }
+    });
+
+    ref.closed.subscribe(result => {
+      if (result) this.onClientSaved();
+    });
   }
 
   get clientEmail(): string {

@@ -24,6 +24,7 @@ export class CreateClientComponent implements OnChanges {
   errorMsg = signal<string | null>(null);
 
   form = this.fb.group({
+  title: [''],
   displayName: ['', [Validators.required, Validators.minLength(2)]],
   line1: [''],
   line2: [''],
@@ -44,6 +45,7 @@ export class CreateClientComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['client'] && this.client) {
       this.form.patchValue({
+        title: this.client.title || '',
         displayName: this.client.displayName || '',
         line1: this.client.address?.line1 || '',
         line2: this.client.address?.line2 || '',
@@ -88,6 +90,7 @@ export class CreateClientComponent implements OnChanges {
       };
 
       const payload = {
+        title: this.form.value.title?.trim(),
         displayName: this.form.value.displayName!.trim(),
         address: address,
         email: this.form.value.email?.trim(),

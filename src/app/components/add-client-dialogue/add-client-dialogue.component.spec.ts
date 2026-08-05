@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { AddClientDialogueComponent } from './add-client-dialogue.component';
-import { DialogRef } from '@angular/cdk/dialog';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 
 describe('AddClientDialogueComponent', () => {
   let component: AddClientDialogueComponent;
@@ -10,7 +10,10 @@ describe('AddClientDialogueComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AddClientDialogueComponent]
-      , providers: [{ provide: DialogRef, useValue: { close: jasmine.createSpy('close') } }]
+      , providers: [
+        { provide: DialogRef, useValue: { close: jasmine.createSpy('close') } },
+        { provide: DIALOG_DATA, useValue: null }
+      ]
     })
     .overrideComponent(AddClientDialogueComponent, { set: { template: '' } })
     .compileComponents();

@@ -1,5 +1,6 @@
 <div class="dialog-wrap">
       <app-create-client
+        [client]="data?.client || null"
         (clientSaved)="onSaved($event)"
         (cancel)="close()">
       </app-create-client>

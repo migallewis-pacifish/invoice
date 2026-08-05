@@ -5,6 +5,7 @@ export type ClientStatus = 'active' | 'inactive' | 'prospect' | 'archived' | str
 
 export interface Client {
   id: string;
+  title?: string;
   displayName: string;
   address?: Address;
   email?: string;

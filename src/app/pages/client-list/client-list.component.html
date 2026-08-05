@@ -85,7 +85,7 @@
         <div *ngSwitchCase="'contact'" class="contact-cell muted"><span>{{ item.client.email || 'email unavailable' }}</span><span>{{ item.client.phone || 'phone unavailable' }}</span></div>
         <div *ngSwitchCase="'actions'" class="row-actions" (click)="$event.stopPropagation()">
           <button class="icon-button" type="button" aria-label="View client" (click)="goClient(item.client)"><span class="app-icon" aria-hidden="true">👁️</span></button>
-          <button class="icon-button" type="button" aria-label="Edit client" (click)="goClient(item.client)"><span class="app-icon" aria-hidden="true">✎</span></button>
+          <button class="icon-button" type="button" aria-label="Edit client" (click)="openEditClient(item.client); $event.stopPropagation()"><span class="app-icon" aria-hidden="true">✎</span></button>
           <div class="action-menu-wrap">
             <button
               class="icon-button"
