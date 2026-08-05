@@ -14,20 +14,24 @@ describe('InvoiceDocxService', () => {
   let service: InvoiceDocxService;
   let notifications: jasmine.SpyObj<NotificationService>;
   let documentStorage: jasmine.SpyObj<DocumentStorageService>;
+  let http: jasmine.SpyObj<HttpClient>;
+  let pdfGeneration: jasmine.SpyObj<PdfGenerationService>;
 
   beforeEach(() => {
     notifications = jasmine.createSpyObj<NotificationService>('NotificationService', ['error', 'success']);
     documentStorage = jasmine.createSpyObj<DocumentStorageService>('DocumentStorageService', ['saveGeneratedDocument']);
+    http = jasmine.createSpyObj<HttpClient>('HttpClient', ['get']);
+    pdfGeneration = jasmine.createSpyObj<PdfGenerationService>('PdfGenerationService', ['generate']);
 
     TestBed.configureTestingModule({
       providers: [
-        { provide: HttpClient, useValue: {} },
+        { provide: HttpClient, useValue: http },
         { provide: Firestore, useValue: {} },
         { provide: Storage, useValue: {} },
         { provide: TemplateService, useValue: { getDefaultTemplate: jasmine.createSpy('getDefaultTemplate') } },
         { provide: NotificationService, useValue: notifications },
         { provide: DocumentStorageService, useValue: documentStorage },
-        { provide: PdfGenerationService, useValue: { generate: jasmine.createSpy('generate') } }
+        { provide: PdfGenerationService, useValue: pdfGeneration }
       ]
     });
     service = TestBed.inject(InvoiceDocxService);
@@ -102,6 +106,33 @@ describe('InvoiceDocxService', () => {
     }).subscribe(result => {
       expect(result).toBe('INV-002.docx');
       expect(documentStorage.saveGeneratedDocument).toHaveBeenCalledWith(jasmine.objectContaining({ companyId: 'company-a', clientName: 'Client B', documentType: 'invoice', documentId: 'INV-002', fileName: 'INV-002.docx', blob }));
+      done();
+    });
+  });
+
+  it('downloads a generated ready-made PDF in the browser', (done) => {
+    const pdf = new Blob(['pdf'], { type: 'application/pdf' });
+    const result = {
+      storagePath: 'companies/company-a/generated/INV-003.pdf',
+      downloadUrl: 'https://storage.test/INV-003.pdf',
+      mimeType: 'application/pdf' as const,
+      provider: 'pdf-mapped-backend',
+      fileName: 'INV-003.pdf',
+      bytes: pdf.size,
+      pageCount: 1,
+      templateId: 'ready-made-1',
+      generatedAt: '2026-08-05T00:00:00.000Z'
+    };
+    const downloadSpy = spyOn<any>(service, 'downloadPdfBlob');
+    pdfGeneration.generate.and.resolveTo(result);
+    http.get.and.returnValue(of(pdf) as any);
+
+    service.generatePdfViaBackend('company-a', 'client-a', {
+      invoice_number: 'INV-003', invoice_date: '2026-08-05', client_name: 'Client C', client_building: '', client_street: '', client_suburb: '', client_city: '', client_postal_code: '', client_contact_no: '', services_rendered: '', client_email: '', notes: '', reference: '', items: []
+    }, 'ready-made-1').subscribe(generated => {
+      expect(generated).toEqual(result);
+      expect(http.get).toHaveBeenCalledWith(result.downloadUrl, { responseType: 'blob' });
+      expect(downloadSpy).toHaveBeenCalledWith(pdf, result.fileName);
       done();
     });
   });
