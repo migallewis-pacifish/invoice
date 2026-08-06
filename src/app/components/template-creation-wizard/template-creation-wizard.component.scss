@@ -48,3 +48,6 @@
 .template-error { grid-column:1/-1; margin:0; padding:10px 12px; border-radius:8px; background:#fef2f2; color:#b91c1c; }
 @media(max-width:760px){.type-grid{grid-template-columns:1fr}.wizard{padding:20px}}
 @media(max-width:860px){.preview-heading{align-items:flex-start;flex-direction:column}.template-preview-panel iframe{height:420px}.preview-placeholder{min-height:260px}}
+.template-name-field { display:grid; gap:6px; margin:0 0 16px; color:var(--muted); font-size:13px; font-weight:700; }
+.template-name-field input { width:100%; padding:11px 13px; border:1px solid var(--border); border-radius:10px; background:#fff; color:var(--ink); font:inherit; }
+.template-name-field input:focus { border-color:var(--primary); outline:0; box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 18%,transparent); }

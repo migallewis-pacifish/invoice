@@ -1,0 +1,11 @@
+<section class="rename-dialog" aria-labelledby="rename-template-title">
+  <h2 id="rename-template-title">Rename template</h2>
+  <p>Enter a recognisable name for this template.</p>
+  <label for="rename-template-name">Template name</label>
+  <input id="rename-template-name" type="text" [formControl]="name" (keydown.enter)="save()" autofocus>
+  <small *ngIf="name.touched && name.invalid">Enter at least two characters.</small>
+  <div class="actions">
+    <button type="button" class="secondary" (click)="cancel()">Cancel</button>
+    <button type="button" class="primary" [disabled]="name.invalid" (click)="save()">Rename</button>
+  </div>
+</section>

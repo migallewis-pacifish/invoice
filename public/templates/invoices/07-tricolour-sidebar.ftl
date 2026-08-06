@@ -39,7 +39,7 @@
     .side-section strong { font-weight: bold; }
     .contact { margin-top: 18mm; }
     .address { margin-top: 6mm; }
-    .email { font-size: 10px;}
+    .contact .data { margin-bottom: 3mm; }
     .main { min-width: 0; min-height: 297mm; padding: 18mm 16mm 25mm; display: flex; flex-direction: column; }
     .invoice-head {margin-bottom: 12px; margin-bottom: 5mm; text-align: right;} 
     .invoice-head h1 { margin: 6px; font-size: 34px; line-height: 1; letter-spacing: .05em; text-transform: uppercase; }
@@ -95,11 +95,13 @@
 
       <section class="side-section contact">
         <h2>Contact</h2>
-        <p class="email">
+        <p class="data">
           <#if (company.email)?has_content>${company.email?html}<br></#if>
         </p>
-        <p>
+        <p class="data">
           <#if (company.phone)?has_content>${company.phone?html}<br></#if>
+        </p>
+        <p class="data">
           <#if (company.website)?has_content>${company.website?html}</#if>
         </p>
       </section>

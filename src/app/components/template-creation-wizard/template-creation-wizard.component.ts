@@ -14,6 +14,7 @@ import { TemplateColourSelectorComponent, TemplatePalette } from '../template-co
 import { TemplateSelectionLayoutComponent } from '../template-selection-layout/template-selection-layout.component';
 import { EmailTemplateBuilderService } from '../template-designer/services/email-template-builder.service';
 import { EmailTemplatePreviewDataService } from '../template-designer/services/email-template-preview-data.service';
+import { DocumentTemplatePreviewService } from '../../services/document-template-preview.service';
 
 export type TemplateCreationType = 'invoice' | 'letter' | 'email';
 export type TemplateCreationFormat = Extract<CompanyTemplateFormat, 'docx' | 'freemarker-html'>;
@@ -100,6 +101,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly emailBuilder = inject(EmailTemplateBuilderService);
   private readonly emailPreviewData = inject(EmailTemplatePreviewDataService);
+  private readonly documentPreview = inject(DocumentTemplatePreviewService);
   private readonly dialogData = inject<TemplateCreationWizardData>(DIALOG_DATA, { optional: true });
 
   readonly typeLocked = !!this.dialogData?.initialType;
@@ -112,6 +114,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
   readonly freemarkerPreview = signal<SafeResourceUrl | null>(null);
   readonly freemarkerBusy = signal(false);
   readonly freemarkerError = signal<string | null>(null);
+  readonly templateName = signal('');
   readonly selectedEmailStarter = signal<StarterTemplate | null>(null);
   readonly emailStarterPreview = signal('');
   readonly emailPalettes = signal<Record<string, TemplatePalette>>(Object.fromEntries(
@@ -153,15 +156,16 @@ export class TemplateCreationWizardComponent implements OnDestroy {
 
   async selectFreemarker(starter: FreemarkerStarterTemplate): Promise<void> {
     this.selectedFreemarker.set(starter);
+    this.templateName.set(starter.name);
     this.freemarkerError.set(null);
     this.releasePreview();
     try {
       const source = this.customizeStarterSource(await this.fetchStarter(starter), starter);
-      const preview = source
-        .replace(/\$\{\(theme\.sidebarColor([123])(?:\)!|!)'[^']+'(?:\))?(?:\?html)?}/g, (_match, index) => this.paletteFor(starter)[Number(index) - 1] ?? '#2a7a87')
-        .replace(/<#[^>]*>/g, '')
-        .replace(/<\/#(?:if|list)>/g, '')
-        .replace(/\$\{[^}]+}/g, 'Sample');
+      const themedSource = source.replace(
+        /\$\{\(theme\.sidebarColor([123])(?:\)!|!)'[^']+'(?:\))?(?:\?html)?}/g,
+        (_match, index) => this.paletteFor(starter)[Number(index) - 1] ?? '#2a7a87'
+      );
+      const preview = this.documentPreview.buildHtml(themedSource);
       this.previewObjectUrl = URL.createObjectURL(new Blob([preview], { type: 'text/html' }));
       this.freemarkerPreview.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.previewObjectUrl));
     } catch {
@@ -211,7 +215,8 @@ export class TemplateCreationWizardComponent implements OnDestroy {
 
   async useSelectedFreemarker(): Promise<void> {
     const starter = this.selectedFreemarker();
-    if (!starter || this.freemarkerBusy()) return;
+    const templateName = this.templateName().trim();
+    if (!starter || !templateName || this.freemarkerBusy()) return;
     this.freemarkerBusy.set(true);
     this.freemarkerError.set(null);
     try {
@@ -224,7 +229,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
       const file = new File([source], `${starter.id}.html`, { type: 'text/html' });
       const result = await this.templateService.upload(profile.companyId, file, this.documentType(), undefined, {
         format: 'freemarker-html',
-        name: starter.name,
+        name: templateName,
         sourceKind: 'ready-made',
         starterTemplateId: starter.id,
         theme: { primary: palette[0], secondary: palette[1], accent: palette[2] }
