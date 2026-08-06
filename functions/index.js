@@ -404,6 +404,15 @@ function validatePdfGenerationRequest(data) {
   return errors;
 }
 
+function formatPhoneNumber(value) {
+  const compact = String(value || '').trim().replace(/[\s()-]+/g, '');
+  const international = compact.match(/^\+27(\d{2})(\d{3})(\d{4})$/);
+  if (international) return `+27${international[1]} ${international[2]} ${international[3]}`;
+  const local = compact.match(/^0(\d{2})(\d{3})(\d{4})$/);
+  if (local) return `0${local[1]} ${local[2]} ${local[3]}`;
+  return String(value || '');
+}
+
 function buildTemplateVariables(data) {
   const payload = data.payload || {};
   const client = data.client || {};
@@ -424,6 +433,27 @@ function buildTemplateVariables(data) {
     suburb: companyAddressSource.suburb || '', city: companyAddressSource.city || '', province: companyAddressSource.province || '',
     postalCode: companyAddressSource.postalCode || '', country: companyAddressSource.country || '',
     toString: () => companyAddressText,
+  };
+  const clientAddressSource = typeof client.address === 'object' && client.address ? client.address : {};
+  const clientAddress = {
+    building: payload.client_building || clientAddressSource.building || '',
+    line1: payload.client_line1 || payload.client_street || clientAddressSource.line1 || '',
+    line2: payload.client_line2 || clientAddressSource.line2 || '',
+    suburb: payload.client_suburb || clientAddressSource.suburb || '',
+    city: payload.client_city || clientAddressSource.city || '',
+    province: payload.client_province || clientAddressSource.province || '',
+    postalCode: payload.client_postal_code || clientAddressSource.postalCode || '',
+    country: payload.client_country || clientAddressSource.country || '',
+    toString: () => payload.client_address || [
+      payload.client_building || clientAddressSource.building,
+      payload.client_line1 || payload.client_street || clientAddressSource.line1,
+      payload.client_line2 || clientAddressSource.line2,
+      payload.client_suburb || clientAddressSource.suburb,
+      payload.client_city || clientAddressSource.city,
+      payload.client_province || clientAddressSource.province,
+      payload.client_postal_code || clientAddressSource.postalCode,
+      payload.client_country || clientAddressSource.country,
+    ].filter(Boolean).join(', '),
   };
   return {
     invoice: {
@@ -448,13 +478,14 @@ function buildTemplateVariables(data) {
       title: payload.client_title || client.title || '',
       name: payload.client_name || client.displayName || data.clientName || '',
       email: payload.client_email || client.email || '',
-      address: payload.client_address || [payload.client_street, payload.client_suburb, payload.client_city, payload.client_postal_code].filter(Boolean).join(', '),
+      phone: formatPhoneNumber(payload.client_contact_no || client.phone || ''),
+      address: clientAddress,
       street: payload.client_street || '', suburb: payload.client_suburb || '', city: payload.client_city || '', postalCode: payload.client_postal_code || '',
     },
     company: {
       name: company.name || '',
       email: company.email || '',
-      phone: company.phone || company.tel || '', address: companyAddress, website: company.website || '', logoUrl: company.logoUrl || '',
+      phone: formatPhoneNumber(company.phone || company.tel || ''), address: companyAddress, website: company.website || '', logoUrl: company.logoUrl || '',
       registrationNumber: company.registrationNumber || company.regNo || '', taxNumber: company.taxNumber || company.vatNo || '',
     },
     payment: (() => {
@@ -616,4 +647,4 @@ exports.generatePdfDocument = onCall({ memory: '1GiB', timeoutSeconds: 120 }, as
   }
 });
 
-module.exports._test = { validatePayload, renderFreeMarkerTemplate, renderDocumentTemplate, buildTemplateVariables, htmlToText, normalizeEmailList, buildEmailContent, isCompanyMember, validatePdfAnalysisRequest, buildPdfMapping, validatePdfVariables, generatedPdfMetadata, validatePdfGenerationRequest, sanitizePathSegment, minimalPdfBuffer, firebaseStorageDownloadUrl };
+module.exports._test = { validatePayload, renderFreeMarkerTemplate, renderDocumentTemplate, buildTemplateVariables, formatPhoneNumber, htmlToText, normalizeEmailList, buildEmailContent, isCompanyMember, validatePdfAnalysisRequest, buildPdfMapping, validatePdfVariables, generatedPdfMetadata, validatePdfGenerationRequest, sanitizePathSegment, minimalPdfBuffer, firebaseStorageDownloadUrl };

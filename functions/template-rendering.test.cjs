@@ -31,6 +31,22 @@ const { _test } = require('./index.js');
   assert.strictEqual(addressVariables.company.address.building, 'North Tower');
   assert.strictEqual(addressVariables.company.address.line1, '1 Main Road');
   assert.strictEqual(String(addressVariables.company.address), 'North Tower, 1 Main Road, Suite 2, Sandton, Johannesburg, 2196');
+  assert.strictEqual(_test.formatPhoneNumber('+27891231234'), '+2789 123 1234');
+  assert.strictEqual(_test.formatPhoneNumber('0891231234'), '089 123 1234');
+
+  const clientAddressVariables = _test.buildTemplateVariables({
+    documentId: 'INV-CLIENT-ADDRESS',
+    payload: {
+      client_name: 'Jamie Client', client_building: 'South Block', client_line1: '2 High Street', client_line2: 'Unit 4',
+      client_suburb: 'Rosebank', client_city: 'Johannesburg', client_province: 'Gauteng', client_postal_code: '2196', client_country: 'South Africa'
+    },
+    client: { phone: '+27891231234' }
+  });
+  assert.strictEqual(clientAddressVariables.client.address.building, 'South Block');
+  assert.strictEqual(clientAddressVariables.client.address.line2, 'Unit 4');
+  assert.strictEqual(clientAddressVariables.client.address.country, 'South Africa');
+  assert.strictEqual(String(clientAddressVariables.client.address), 'South Block, 2 High Street, Unit 4, Rosebank, Johannesburg, Gauteng, 2196, South Africa');
+  assert.strictEqual(clientAddressVariables.client.phone, '+2789 123 1234');
 
   const invoiceVariables = _test.buildTemplateVariables({
     documentId: 'INV-42',

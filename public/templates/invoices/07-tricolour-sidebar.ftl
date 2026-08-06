@@ -39,7 +39,7 @@
     .side-section strong { font-weight: bold; }
     .contact { margin-top: 18mm; }
     .address { margin-top: 6mm; }
-    .email { font-size: 10px;}
+    .contact .email { margin-bottom: 3mm; font-size: 10px; }
     .main { min-width: 0; min-height: 297mm; padding: 18mm 16mm 25mm; display: flex; flex-direction: column; }
     .invoice-head {margin-bottom: 12px; margin-bottom: 5mm; text-align: right;} 
     .invoice-head h1 { margin: 6px; font-size: 34px; line-height: 1; letter-spacing: .05em; text-transform: uppercase; }

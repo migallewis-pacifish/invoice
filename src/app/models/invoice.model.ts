@@ -14,6 +14,10 @@ export interface InvoiceData {
 
   client_name: string;
   client_title?: string;
+  client_line1?: string;
+  client_line2?: string;
+  client_province?: string;
+  client_country?: string;
   client_street: string;
   client_suburb: string;
   client_city: string;
