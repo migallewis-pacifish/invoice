@@ -70,7 +70,7 @@
       <h2 class="company-name">${company.name?html}</h2>
 
       <section>
-        <p class="side-label">Invoice for:</p>
+        <p>Invoice for:</p>
         <div class="client-name"><#if (client.title)?has_content>${client.title?html}</#if> ${client.name?html}</div>
         <p>
           <#if (client.address.building)?has_content>${client.address.building?html}<br></#if>
