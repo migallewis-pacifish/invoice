@@ -20,7 +20,16 @@ describe('DocumentTemplatePreviewService', () => {
 
     const html = service.buildHtml(source);
     expect(html).toContain('<div class="signature">');
-    expect(html).toContain('Alex Morgan');
+    expect(html).toContain('Mia Daniels');
     expect(html).not.toContain('<img');
+  });
+
+  it('renders meaningful Pacifish and Nexus invoice preview data', () => {
+    const html = service.buildHtml('<h1>${company.name?html}</h1><strong>${client.title?html} ${client.name?html}</strong><address>${client.address.building?html}</address><b>${invoice.total?html}</b>');
+
+    expect(html).toContain('Pacifish Consulting (Pty) Ltd');
+    expect(html).toContain('Ms Naledi Mokoena');
+    expect(html).toContain('Nexus House');
+    expect(html).toContain('R 13,800.00');
   });
 });

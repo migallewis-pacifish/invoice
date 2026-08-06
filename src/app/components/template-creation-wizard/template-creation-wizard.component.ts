@@ -14,6 +14,7 @@ import { TemplateColourSelectorComponent, TemplatePalette } from '../template-co
 import { TemplateSelectionLayoutComponent } from '../template-selection-layout/template-selection-layout.component';
 import { EmailTemplateBuilderService } from '../template-designer/services/email-template-builder.service';
 import { EmailTemplatePreviewDataService } from '../template-designer/services/email-template-preview-data.service';
+import { DocumentTemplatePreviewService } from '../../services/document-template-preview.service';
 
 export type TemplateCreationType = 'invoice' | 'letter' | 'email';
 export type TemplateCreationFormat = Extract<CompanyTemplateFormat, 'docx' | 'freemarker-html'>;
@@ -100,6 +101,7 @@ export class TemplateCreationWizardComponent implements OnDestroy {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly emailBuilder = inject(EmailTemplateBuilderService);
   private readonly emailPreviewData = inject(EmailTemplatePreviewDataService);
+  private readonly documentPreview = inject(DocumentTemplatePreviewService);
   private readonly dialogData = inject<TemplateCreationWizardData>(DIALOG_DATA, { optional: true });
 
   readonly typeLocked = !!this.dialogData?.initialType;
@@ -159,11 +161,11 @@ export class TemplateCreationWizardComponent implements OnDestroy {
     this.releasePreview();
     try {
       const source = this.customizeStarterSource(await this.fetchStarter(starter), starter);
-      const preview = source
-        .replace(/\$\{\(theme\.sidebarColor([123])(?:\)!|!)'[^']+'(?:\))?(?:\?html)?}/g, (_match, index) => this.paletteFor(starter)[Number(index) - 1] ?? '#2a7a87')
-        .replace(/<#[^>]*>/g, '')
-        .replace(/<\/#(?:if|list)>/g, '')
-        .replace(/\$\{[^}]+}/g, 'Sample');
+      const themedSource = source.replace(
+        /\$\{\(theme\.sidebarColor([123])(?:\)!|!)'[^']+'(?:\))?(?:\?html)?}/g,
+        (_match, index) => this.paletteFor(starter)[Number(index) - 1] ?? '#2a7a87'
+      );
+      const preview = this.documentPreview.buildHtml(themedSource);
       this.previewObjectUrl = URL.createObjectURL(new Blob([preview], { type: 'text/html' }));
       this.freemarkerPreview.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.previewObjectUrl));
     } catch {
