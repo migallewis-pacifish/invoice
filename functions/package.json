@@ -4,7 +4,7 @@
   "engines": { "node": "20" },
   "main": "index.js",
   "scripts": {
-    "test": "node template-rendering.test.cjs"
+    "test": "node --test *.test.cjs"
   },
   "dependencies": {
     "@sparticuz/chromium": "^143.0.4",

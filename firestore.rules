@@ -30,8 +30,26 @@ service cloud.firestore {
       return signedIn()
         && request.resource.data.users is list
         && request.auth.uid in request.resource.data.users
+        && !request.resource.data.keys().hasAny(['emailIntegrations', 'emailIntegrationStatus'])
         && (!exists(/databases/$(database)/documents/users/$(request.auth.uid))
           || userCompanyId() == companyId);
+    }
+
+    function emailPreferencesAreValid() {
+      return request.resource.data.keys().hasOnly([
+          'companyId', 'defaultProvider', 'onboardingCompleted', 'selectedSender',
+          'nexusFallback', 'updatedAt'
+        ])
+        && request.resource.data.companyId is string
+        && request.resource.data.defaultProvider in [
+          'gmail', 'microsoft_exchange', 'company_sendgrid', 'nexus_fallback'
+        ]
+        && request.resource.data.onboardingCompleted is bool
+        && (!('selectedSender' in request.resource.data)
+          || request.resource.data.selectedSender.keys().hasOnly(['email', 'displayName']))
+        && (!('nexusFallback' in request.resource.data)
+          || (request.resource.data.nexusFallback.keys().hasOnly(['enabled', 'replyToEmail'])
+            && request.resource.data.nexusFallback.enabled is bool));
     }
 
     match /users/{userId} {
@@ -45,7 +63,28 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow get, list: if isCompanyMember(companyId);
       allow create: if isCreatingOwnCompany(companyId);
-      allow update, delete: if isCompanyMember(companyId);
+      // Connection metadata is server-owned. This also prevents clients from
+      // reviving the legacy embedded emailIntegrations representation.
+      allow update: if isCompanyMember(companyId)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'emailIntegrations', 'emailIntegrationStatus'
+        ]);
+      allow delete: if isCompanyMember(companyId);
+
+      match /emailIntegration/{documentId} {
+        allow read: if isCompanyMember(companyId)
+          && documentId in ['preferences', 'status'];
+        allow create, update: if isCompanyMember(companyId)
+          && documentId == 'preferences'
+          && request.resource.data.companyId == companyId
+          && emailPreferencesAreValid();
+        allow delete: if false;
+      }
+
+      // OAuth/API credentials and their operational metadata are never client-visible.
+      match /privateEmailTokens/{document=**} {
+        allow read, write: if false;
+      }
 
       match /clients/{clientId} {
         allow read, write: if isCompanyMember(companyId);

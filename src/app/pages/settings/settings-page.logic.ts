@@ -1,5 +1,5 @@
 import { DocumentStorageProvider } from '../../models/document-storage.model';
-import { EmailProvider } from '../../models/email-integration.model';
+import { EmailProvider, LegacyEmailProvider } from '../../models/email-integration.model';
 
 export interface EmailSettingsFormValue {
   gmailAccountEmail: string;
@@ -39,9 +39,10 @@ export interface CompanyAccountFormValue {
 
 const optional = (value: string): string | undefined => value.trim() || undefined;
 
-export function emailSenderFor(provider: EmailProvider, value: EmailSettingsFormValue) {
+export function emailSenderFor(provider: EmailProvider | LegacyEmailProvider, value: EmailSettingsFormValue) {
   if (provider === 'gmail') return { email: optional(value.gmailAccountEmail) };
   if (provider === 'microsoft_exchange') return { email: optional(value.exchangeAccountEmail) };
+  if (provider === 'nexus_fallback') return undefined;
   return {
     email: optional(value.sendgridFromEmail),
     displayName: optional(value.sendgridFromName)

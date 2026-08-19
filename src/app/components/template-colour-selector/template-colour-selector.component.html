@@ -1,6 +1,6 @@
 <div class="colour-selector">
   <strong>{{ title }}</strong>
-  <label><span>Primary</span><input type="color" [value]="colors[0]" (input)="update(0, $event)"><code>{{ colors[0] }}</code></label>
-  <label><span>Secondary</span><input type="color" [value]="colors[1]" (input)="update(1, $event)"><code>{{ colors[1] }}</code></label>
-  <label><span>Accent</span><input type="color" [value]="colors[2]" (input)="update(2, $event)"><code>{{ colors[2] }}</code></label>
+  <label><span>Primary</span><input type="color" [value]="colors[0]" [disabled]="disabled" (input)="update(0, $event)"><code>{{ colors[0] }}</code></label>
+  <label><span>Secondary</span><input type="color" [value]="colors[1]" [disabled]="disabled" (input)="update(1, $event)"><code>{{ colors[1] }}</code></label>
+  <label><span>Accent</span><input type="color" [value]="colors[2]" [disabled]="disabled" (input)="update(2, $event)"><code>{{ colors[2] }}</code></label>
 </div>

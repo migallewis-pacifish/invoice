@@ -2,24 +2,59 @@ name: Deploy Firebase Functions
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - functions/**
-      - firebase.json
-      - .firebaserc
+  schedule:
+    # GitHub Actions cron expressions use UTC.
+    - cron: "0 2 * * *"
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: firebase-functions-production
   cancel-in-progress: false
 
 jobs:
+  schedule_deployment:
+    name: Schedule deployment for 02:00 UTC
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record deployment request
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          request_title="[deployment request] Firebase Functions"
+          existing_request="$(gh issue list --state open --search "\"${request_title}\" in:title" --json title --jq ".[] | select(.title == \"${request_title}\") | .title" | head -n 1)"
+          if [ -z "$existing_request" ]; then
+            gh issue create \
+              --title "$request_title" \
+              --body "Created by the deployment workflow. This request will be consumed at the next 02:00 UTC run."
+          fi
+          echo "Firebase Functions deployment scheduled for the next 02:00 UTC run."
+
+  check_deployment_request:
+    name: Check for a scheduled deployment
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    outputs:
+      issue_number: ${{ steps.request.outputs.issue_number }}
+    steps:
+      - id: request
+        name: Find open deployment request
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          request_title="[deployment request] Firebase Functions"
+          issue_number="$(gh issue list --state open --search "\"${request_title}\" in:title" --json number,title --jq ".[] | select(.title == \"${request_title}\") | .number" | head -n 1)"
+          echo "issue_number=${issue_number}" >> "$GITHUB_OUTPUT"
+
   test_and_deploy:
     name: Test and deploy functions
+    needs: check_deployment_request
+    if: ${{ needs.check_deployment_request.outputs.issue_number != '' }}
     runs-on: ubuntu-latest
     environment: production
     env:
@@ -27,6 +62,14 @@ jobs:
       FIREBASE_PROJECT_ID: invoice-simple-336
 
     steps:
+      - name: Consume deployment request
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue close "${{ needs.check_deployment_request.outputs.issue_number }}" \
+            --comment "Consumed by the 02:00 UTC deployment run. Click Run workflow again to schedule another deployment."
+
       - name: Check out repository
         uses: actions/checkout@v4
 

@@ -76,6 +76,11 @@ export interface InvoiceRecord {
   lastReminderSentAt?: any;
   reminderCount?: number;
   lastReminderType?: 'beforeDue' | 'dueToday' | 'overdue';
+  lastEmail?: {
+    status?: 'pending' | 'sent' | 'accepted' | 'deferred' | 'delivered' | 'dropped' | 'bounced' | 'complained' | 'unsubscribed' | 'failed';
+    failureReason?: string | null;
+    updatedAt?: any;
+  };
 }
 
 export interface InvoiceSummaryRecord extends InvoiceRecord {
@@ -104,6 +109,7 @@ export interface Company {
   signatureUrl?: string;
   signaturePath?: string;
   signature?: { name?: string; path?: string; imageUrl?: string; url?: string; updatedAt?: number };
+  brandColors?: CompanyTemplateTheme;
   users: string[];             
   createdAt: number;
   storageProvider?: 'local';

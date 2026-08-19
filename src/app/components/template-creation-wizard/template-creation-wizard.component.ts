@@ -13,10 +13,12 @@ import { TemplateSelectionLayoutComponent } from '../template-selection-layout/t
 import { DocumentTemplatePreviewService } from '../../services/document-template-preview.service';
 import { EmailTemplateDefinitionService } from '../template-designer/services/email-template-definition.service';
 import { TemplatePreviewFrameComponent } from '../template-preview-frame/template-preview-frame.component';
+import { brandColorsFrom } from '../../models/brand-colours.model';
 
 export type TemplateCreationType = 'invoice' | 'letter' | 'email';
 export type TemplateCreationFormat = Extract<CompanyTemplateFormat, 'docx' | 'freemarker-html'>;
 type WizardStep = 'type' | 'format' | 'configure';
+type ColourSource = 'brand' | 'custom';
 
 export interface TemplateCreationWizardData {
   initialType?: TemplateCreationType;
@@ -114,12 +116,34 @@ export class TemplateCreationWizardComponent {
   readonly emailStarterPreview = signal<string | null>(null);
   readonly emailBusy = signal(false);
   readonly emailError = signal<string | null>(null);
+  readonly brandPalette = signal<TemplatePalette | null>(null);
+  readonly colourSource = signal<ColourSource>('custom');
   readonly emailPalettes = signal<Record<string, TemplatePalette>>(Object.fromEntries(
     this.starters.map(starter => [starter.id, [...starter.palette] as TemplatePalette])
   ));
   readonly starterPalettes = signal<Record<string, TemplatePalette>>(Object.fromEntries(
     Object.entries(STARTER_PALETTES).map(([id, config]) => [id, [...config.defaults] as TemplatePalette])
   ));
+
+  constructor() {
+    void this.loadBrandPalette();
+  }
+
+  setColourSource(source: ColourSource): void {
+    if (source === 'brand' && !this.brandPalette()) return;
+    this.colourSource.set(source);
+    const palette = source === 'brand' ? this.brandPalette() : null;
+    this.starterPalettes.set(Object.fromEntries(Object.entries(STARTER_PALETTES).map(([id, config]) =>
+      [id, [...(palette ?? config.defaults)] as TemplatePalette]
+    )));
+    this.emailPalettes.set(Object.fromEntries(this.starters.map(starter =>
+      [starter.id, [...(palette ?? starter.palette)] as TemplatePalette]
+    )));
+    const selectedDocument = this.selectedFreemarker();
+    const selectedEmail = this.selectedEmailStarter();
+    if (selectedDocument) void this.selectFreemarker(selectedDocument);
+    if (selectedEmail) void this.selectEmailStarter(selectedEmail);
+  }
 
   selectType(type: TemplateCreationType): void {
     this.creationType.set(type);
@@ -169,6 +193,7 @@ export class TemplateCreationWizardComponent {
   }
 
   updateStarterPalette(colors: TemplatePalette): void {
+    if (this.colourSource() === 'brand') return;
     const selected = this.selectedFreemarker();
     if (!selected) return;
     this.starterPalettes.update(palettes => ({ ...palettes, [selected.id]: colors }));
@@ -199,6 +224,7 @@ export class TemplateCreationWizardComponent {
   }
 
   updateEmailPalette(colors: TemplatePalette): void {
+    if (this.colourSource() === 'brand') return;
     const selected = this.selectedEmailStarter();
     if (!selected?.id) return;
     this.emailPalettes.update(palettes => ({ ...palettes, [selected.id!]: colors }));
@@ -307,5 +333,21 @@ export class TemplateCreationWizardComponent {
       .replace(/\$\{\(theme\.primary\)!'[^']+'}/g, palette[0])
       .replace(/\$\{\(theme\.secondary\)!'[^']+'}/g, palette[1])
       .replace(/\$\{\(theme\.accent\)!'[^']+'}/g, palette[2]);
+  }
+
+  private async loadBrandPalette(): Promise<void> {
+    try {
+      const user = await firstValueFrom(this.authUser$.pipe(take(1)));
+      if (!user) return;
+      const profile = await firstValueFrom(docData(doc(this.db, `users/${user.uid}`)).pipe(take(1))) as any;
+      if (!profile?.companyId) return;
+      const company = await firstValueFrom(docData(doc(this.db, `companies/${profile.companyId}`)).pipe(take(1))) as any;
+      const colors = brandColorsFrom(company?.brandColors);
+      if (!colors) return;
+      this.brandPalette.set([colors.primary, colors.secondary, colors.accent]);
+      this.setColourSource('brand');
+    } catch {
+      // Template creation remains available with each design's built-in colours.
+    }
   }
 }

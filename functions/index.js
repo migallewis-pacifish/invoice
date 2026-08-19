@@ -1,19 +1,69 @@
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const admin = require('firebase-admin');
-const { randomUUID } = require('crypto');
+const { randomUUID, createHash } = require('crypto');
+const { createGmailProvider } = require('./email/providers/gmail');
+const { createMicrosoftProvider } = require('./email/providers/microsoft');
+const { dispatchEmail, resolveRoute } = require('./email/dispatcher');
+const { createSendCoordinator, recordIdFor, sanitizedError } = require('./email/send-coordinator');
+const { verifySendGridSignature, normalizeSendGridEvent, eventUpdate, suppressionBlockReason } = require('./email/email-status');
 
 admin.initializeApp();
 
 const sendGridApiKey = defineSecret('SENDGRID_API_KEY');
 const sendGridFromEmail = defineSecret('SENDGRID_FROM_EMAIL');
+const sendGridEventWebhookPublicKey = defineSecret('SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY');
+// JSON object keyed by company ID. This administrator-managed Secret Manager
+// value is the only supported location for company SendGrid API keys.
+const companySendGridCredentials = defineSecret('COMPANY_SENDGRID_CREDENTIALS');
+// Gmail intentionally has its own OAuth application. Do not substitute Drive
+// credentials unless that OAuth client was explicitly registered for both.
+const gmailClientId = defineSecret('GMAIL_OAUTH_CLIENT_ID');
+const gmailClientSecret = defineSecret('GMAIL_OAUTH_CLIENT_SECRET');
+const gmailRedirectUri = defineSecret('GMAIL_OAUTH_REDIRECT_URI');
+const microsoftEmailClientId = defineSecret('MICROSOFT_EMAIL_OAUTH_CLIENT_ID');
+const microsoftEmailClientSecret = defineSecret('MICROSOFT_EMAIL_OAUTH_CLIENT_SECRET');
+const microsoftEmailRedirectUri = defineSecret('MICROSOFT_EMAIL_OAUTH_REDIRECT_URI');
+// Comma-separated Entra tenant IDs. Microsoft email OAuth is deliberately
+// unavailable until an explicit single-tenant or tenant allow-list policy exists.
+const microsoftEmailAllowedTenants = defineSecret('MICROSOFT_EMAIL_ALLOWED_TENANTS');
+
+function gmailProvider() {
+  return createGmailProvider({
+    db: admin.firestore(),
+    clientId: () => gmailClientId.value(),
+    clientSecret: () => gmailClientSecret.value(),
+    redirectUri: () => gmailRedirectUri.value(),
+  });
+}
+
+function microsoftEmailProvider() {
+  return createMicrosoftProvider({
+    db: admin.firestore(), clientId: () => microsoftEmailClientId.value(),
+    clientSecret: () => microsoftEmailClientSecret.value(), redirectUri: () => microsoftEmailRedirectUri.value(),
+    allowedTenants: () => microsoftEmailAllowedTenants.value(),
+  });
+}
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// SendGrid limits the complete message (including base64 expansion) to 30 MB.
+// Keeping source documents at or below 20 MiB leaves room for that expansion
+// and for the rest of the MIME message.
+const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
 
 function normalizeEmailList(value) {
   if (Array.isArray(value)) return value.map(String).map(v => v.trim()).filter(Boolean);
   return String(value || '').split(/[;,]/).map(v => v.trim()).filter(Boolean);
+}
+
+function resolveEmailProvider(requestedProvider, companyDefault) {
+  return requestedProvider || companyDefault || 'nexus_fallback';
 }
 
 function validatePayload(data) {
@@ -22,6 +72,10 @@ function validatePayload(data) {
   if (!data.clientId) errors.push('clientId is required');
   if (data.documentType !== 'invoice' && data.documentType !== 'letter') errors.push('documentType must be invoice or letter');
   if (!data.documentId) errors.push('documentId is required');
+  if (!/^[A-Za-z0-9_-]{16,128}$/.test(String(data.idempotencyKey || ''))) errors.push('idempotencyKey must be 16-128 URL-safe characters');
+  for (const [field, value] of [['companyId', data.companyId], ['clientId', data.clientId], ['documentId', data.documentId]]) {
+    if (value && !/^[A-Za-z0-9_-]{1,128}$/.test(String(value))) errors.push(`${field} is invalid`);
+  }
   if (!EMAIL_PATTERN.test(data.recipient || '')) errors.push('recipient email is invalid');
   for (const email of [...normalizeEmailList(data.cc), ...normalizeEmailList(data.bcc)]) {
     if (!EMAIL_PATTERN.test(email)) errors.push(`copy recipient is invalid: ${email}`);
@@ -29,10 +83,102 @@ function validatePayload(data) {
   if (!String(data.subject || '').trim()) errors.push('subject is required');
   if (!String(data.messageBody || '').trim() && data.templateSelection?.kind !== 'designed') errors.push('messageBody is required');
   if (data.templateSelection?.kind === 'designed' && !String(data.templateSelection.templateId || '').trim()) errors.push('templateSelection.templateId is required');
-  if (!data.attachment?.storagePath && !data.attachment?.generatedDocumentPayloadRef) {
-    errors.push('attachment.storagePath or attachment.generatedDocumentPayloadRef is required');
-  }
+  if (data.attachment?.generatedDocumentPayloadRef) errors.push('attachment.generatedDocumentPayloadRef is not supported; provide attachment.storagePath');
+  if (!data.attachment?.storagePath) errors.push('attachment.storagePath is required');
   return errors;
+}
+
+const DOCUMENT_COLLECTIONS = Object.freeze({ invoice: 'invoices', letter: 'letters' });
+
+async function loadEmailDocument(data, db = admin.firestore()) {
+  const collection = DOCUMENT_COLLECTIONS[data.documentType];
+  if (!collection) throw new HttpsError('invalid-argument', 'documentType must be invoice or letter');
+  const path = `companies/${data.companyId}/clients/${data.clientId}/${collection}/${data.documentId}`;
+  const snapshot = await db.doc(path).get();
+  if (!snapshot.exists) throw new HttpsError('not-found', 'The requested document was not found for this client.');
+  const record = snapshot.data() || {};
+  const expected = { companyId: String(data.companyId), clientId: String(data.clientId), documentType: data.documentType, documentId: String(data.documentId) };
+  const aliases = { documentId: record.documentId ?? record.id, documentType: record.documentType ?? record.type };
+  for (const [field, expectedValue] of Object.entries(expected)) {
+    const actual = field in aliases ? aliases[field] : record[field];
+    if (actual !== undefined && String(actual) !== expectedValue) {
+      throw new HttpsError('failed-precondition', `The stored document ${field} does not match its location.`);
+    }
+  }
+  return { ...expected, record, path };
+}
+
+function documentAttachmentPaths(record) {
+  const values = [record.attachmentStoragePath, record.storagePath, record.documentStoragePath, record.filePath];
+  const outputs = Array.isArray(record.generatedOutputs) ? record.generatedOutputs : [];
+  for (const output of outputs) values.push(typeof output === 'string' ? output : output?.storagePath);
+  return new Set(values.filter(value => typeof value === 'string' && value));
+}
+
+function documentAttachmentFilename(record, storagePath) {
+  const output = (Array.isArray(record.generatedOutputs) ? record.generatedOutputs : [])
+    .find(value => typeof value === 'object' && value?.storagePath === storagePath);
+  if (output?.fileName) return output.fileName;
+  if ([record.attachmentStoragePath, record.storagePath, record.documentStoragePath, record.filePath].includes(storagePath)) {
+    return record.attachmentFileName || record.fileName;
+  }
+  return undefined;
+}
+
+function validateAttachmentPath(companyId, storagePath) {
+  const company = String(companyId || '');
+  const path = String(storagePath || '');
+  const prefix = `companies/${company}/generated/`;
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(company) || !path.startsWith(prefix)) {
+    throw new HttpsError('invalid-argument', `Attachment must be stored under ${prefix}`);
+  }
+  const relativePath = path.slice(prefix.length);
+  if (!relativePath || path.includes('\\') || path.includes('//') || relativePath.split('/').some(part => !part || part === '.' || part === '..')) {
+    throw new HttpsError('invalid-argument', 'Attachment storage path is not canonical.');
+  }
+  return path;
+}
+
+function validatedAttachmentFilename(requestedName, storagePath) {
+  const name = String(requestedName || storagePath.split('/').pop() || '');
+  if (!/^[A-Za-z0-9][A-Za-z0-9._ -]{0,254}$/.test(name) || name === '.' || name === '..') {
+    throw new HttpsError('invalid-argument', 'Attachment filename is invalid.');
+  }
+  return name;
+}
+
+async function resolveEmailAttachment(data, document, bucket = admin.storage().bucket()) {
+  const attachment = data.attachment || {};
+  if (attachment.generatedDocumentPayloadRef) {
+    throw new HttpsError('invalid-argument', 'attachment.generatedDocumentPayloadRef is not supported; generated documents must first be stored in company-scoped Storage.');
+  }
+  if (!document?.record) throw new HttpsError('failed-precondition', 'A loaded document is required to resolve an attachment.');
+  const storagePath = validateAttachmentPath(document.companyId, attachment.storagePath);
+  if (!documentAttachmentPaths(document.record).has(storagePath)) {
+    throw new HttpsError('permission-denied', 'The attachment is not an output recorded on the requested document.');
+  }
+  const file = bucket.file(storagePath);
+  let metadata;
+  try {
+    [metadata] = await file.getMetadata();
+  } catch (error) {
+    if (error?.code === 404 || error?.code === '404') throw new HttpsError('not-found', 'Attachment was not found.');
+    throw error;
+  }
+  const type = String(metadata.contentType || '').toLowerCase();
+  if (!ALLOWED_ATTACHMENT_TYPES.has(type)) throw new HttpsError('invalid-argument', 'Attachment MIME type is not allowed.');
+  const declaredSize = Number(metadata.size);
+  if (!Number.isSafeInteger(declaredSize) || declaredSize < 0) throw new HttpsError('failed-precondition', 'Attachment size metadata is invalid.');
+  if (declaredSize > MAX_ATTACHMENT_BYTES) throw new HttpsError('invalid-argument', 'Attachment exceeds the email provider size limit.');
+  const [bytes] = await file.download();
+  if (!Buffer.isBuffer(bytes) || bytes.length !== declaredSize) throw new HttpsError('failed-precondition', 'Attachment size does not match its Storage metadata.');
+  if (bytes.length > MAX_ATTACHMENT_BYTES) throw new HttpsError('invalid-argument', 'Attachment exceeds the email provider size limit.');
+  return {
+    filename: validatedAttachmentFilename(documentAttachmentFilename(document.record, storagePath), storagePath),
+    type,
+    disposition: 'attachment',
+    content: bytes.toString('base64'),
+  };
 }
 
 function isCompanyMember(uid, companyId, userCompanyId, users = []) {
@@ -49,6 +195,7 @@ async function assertCompanyMember(uid, companyId) {
   if (!isCompanyMember(uid, companyId, userCompanyId, users)) {
     throw new HttpsError('permission-denied', 'You are not a member of this company.');
   }
+  return companySnap;
 }
 
 const APPROVED_TEMPLATE_VARIABLES = new Set(['clientName', 'invoiceNumber', 'dueDate', 'total', 'companyName', 'paymentReference', 'outstandingBalance', 'daysOverdue', 'company.name', 'company.email', 'company.phone', 'company.address', 'company.logoUrl', 'signature.name', 'signature.imageUrl', 'client.name', 'client.email', 'invoice.number', 'invoice.date', 'invoice.dueDate', 'invoice.subtotal', 'invoice.vat', 'invoice.total', 'invoice.outstandingBalance', 'invoice.daysOverdue']);
@@ -100,14 +247,34 @@ async function buildEmailContent(data) {
     : [{ type: 'text/plain', value: data.messageBody }];
 }
 
-async function sendWithSendGrid(data) {
-  const apiKey = sendGridApiKey.value();
-  const fromEmail = sendGridFromEmail.value();
+function validatedDisplayName(value) {
+  const name = String(value || '').trim();
+  return name && name.length <= 100 && !/[\r\n<>]/.test(name) ? name : undefined;
+}
+
+function buildSendGridPayload(message, fromEmail, metadata, options = {}) {
+  const fromName = options.fromNameValidated ? validatedDisplayName(options.fromName) : undefined;
+  return {
+    personalizations: [{
+      to: message.to.map(email => ({ email })),
+      cc: message.cc.map(email => ({ email })),
+      bcc: message.bcc.map(email => ({ email })),
+    }],
+    from: { email: fromEmail, name: fromName },
+    ...(options.replyTo && EMAIL_PATTERN.test(options.replyTo) ? { reply_to: { email: options.replyTo } } : {}),
+    subject: message.subject,
+    content: [{ type: 'text/plain', value: message.text }, ...(message.html ? [{ type: 'text/html', value: message.html }] : [])],
+    attachments: message.attachments,
+    custom_args: metadata,
+  };
+}
+
+async function sendWithSendGrid(message, credentials, metadata, options = {}) {
+  const apiKey = credentials.apiKey;
+  const fromEmail = credentials.fromEmail;
   if (!apiKey || !fromEmail) {
     throw new HttpsError('failed-precondition', 'Email provider secrets are not configured.');
   }
-
-  const content = await buildEmailContent(data);
 
   const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
@@ -115,24 +282,7 @@ async function sendWithSendGrid(data) {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      personalizations: [{
-        to: [{ email: data.recipient }],
-        cc: normalizeEmailList(data.cc).map(email => ({ email })),
-        bcc: normalizeEmailList(data.bcc).map(email => ({ email })),
-      }],
-      from: { email: fromEmail },
-      subject: data.subject,
-      content,
-      custom_args: {
-        companyId: data.companyId,
-        clientId: data.clientId,
-        documentType: data.documentType,
-        documentId: data.documentId,
-        storagePath: data.attachment?.storagePath || '',
-        generatedDocumentPayloadRef: data.attachment?.generatedDocumentPayloadRef || '',
-      },
-    }),
+    body: JSON.stringify(buildSendGridPayload(message, fromEmail, metadata, options)),
   });
 
   if (!response.ok) {
@@ -142,14 +292,352 @@ async function sendWithSendGrid(data) {
   return response.headers.get('x-message-id') || `sendgrid-${Date.now()}`;
 }
 
-exports.sendDocumentEmail = onCall({ secrets: [sendGridApiKey, sendGridFromEmail] }, async request => {
+async function sendWithGmail(message) {
+  try { return await gmailProvider().send(message.sender.companyId, message); }
+  catch (error) { throw new HttpsError(error.message === 'not_connected' ? 'failed-precondition' : 'internal', `Gmail send failed: ${error.message}`); }
+}
+
+async function sendWithMicrosoftGraph(message, integrations) {
+  try { return await microsoftEmailProvider().send(message.sender.companyId, message, integrations.selectedSender); }
+  catch (error) {
+    const expected = ['not_connected', 'expired_consent', 'tenant_not_allowed', 'sender_not_authorized'];
+    throw new HttpsError(expected.includes(error.message) ? 'failed-precondition' : error.message === 'graph_throttled' ? 'resource-exhausted' : 'internal', `Microsoft Graph send failed: ${error.message}`);
+  }
+}
+
+async function sendWithCompanySendGrid(message, integrations) {
+  const settings = integrations.sendgrid || {};
+  const credentials = companySendGridCredential(message.sender.companyId);
+  if (!settings.connected || (!settings.senderVerified && !settings.domainVerified) || credentials.fromEmail !== settings.fromEmail) {
+    throw new HttpsError('failed-precondition', 'The company SendGrid sender has not been verified.');
+  }
+  await validateCompanySendGridCredential(credentials);
+  return sendWithSendGrid(message, credentials, message.sender.metadata, {
+    fromName: credentials.fromName, fromNameValidated: settings.fromNameValidated === true,
+  });
+}
+
+async function sendWithNexusFallback(message) {
+  const configuredFrom = String(sendGridFromEmail.value() || '').trim().toLowerCase();
+  const nexusDomain = String(process.env.NEXUS_SENDGRID_DOMAIN || '').trim().toLowerCase();
+  if (!nexusDomain || configuredFrom.split('@')[1] !== nexusDomain) {
+    throw new HttpsError('failed-precondition', 'The Nexus sender must use the administrator-approved Nexus domain.');
+  }
+  return sendWithSendGrid(
+    message,
+    { apiKey: sendGridApiKey.value(), fromEmail: sendGridFromEmail.value() },
+    message.sender.metadata,
+    {
+      replyTo: message.sender.replyToEmail,
+      fromName: message.sender.companyName,
+      fromNameValidated: true,
+    }
+  );
+}
+
+function nexusEnabled() {
+  return process.env.NEXUS_EMAIL_ENABLED === 'true';
+}
+
+function nexusLimits() {
+  return {
+    hourly: Math.max(1, Number(process.env.NEXUS_EMAIL_HOURLY_LIMIT) || 50),
+    daily: Math.max(1, Number(process.env.NEXUS_EMAIL_DAILY_LIMIT) || 250),
+  };
+}
+
+function recipientHash(email) {
+  return createHash('sha256').update(String(email || '').trim().toLowerCase()).digest('hex');
+}
+
+async function reserveNexusCapacity(companyId, recipient) {
+  if (!nexusEnabled()) throw new HttpsError('failed-precondition', 'Nexus managed email is disabled by an administrator.');
+  const db = admin.firestore();
+  const suppression = await db.doc(`companies/${companyId}/emailSuppressions/${recipientHash(recipient)}`).get();
+  if (suppression.exists && suppression.get('active') !== false) {
+    throw new HttpsError('failed-precondition', 'The recipient is suppressed due to a bounce, complaint, or unsubscribe.');
+  }
+  const now = new Date();
+  const day = now.toISOString().slice(0, 10);
+  const hour = now.toISOString().slice(0, 13).replace(/[:T]/g, '-');
+  const dailyRef = db.doc(`companies/${companyId}/emailUsage/${day}`);
+  const hourlyRef = db.doc(`companies/${companyId}/emailUsage/${day}-${hour}`);
+  const limits = nexusLimits();
+  await db.runTransaction(async transaction => {
+    const [dailySnap, hourlySnap] = await Promise.all([transaction.get(dailyRef), transaction.get(hourlyRef)]);
+    const dailyCount = Number(dailySnap.get('count') || 0);
+    const hourlyCount = Number(hourlySnap.get('count') || 0);
+    if (dailyCount >= limits.daily) throw new HttpsError('resource-exhausted', 'The company daily Nexus email quota has been reached.');
+    if (hourlyCount >= limits.hourly) throw new HttpsError('resource-exhausted', 'The company Nexus email rate limit has been reached.');
+    transaction.set(dailyRef, { count: dailyCount + 1, period: 'day', updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    transaction.set(hourlyRef, { count: hourlyCount + 1, period: 'hour', updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  });
+}
+
+function companySendGridCredential(companyId) {
+  let credentials;
+  try { credentials = JSON.parse(companySendGridCredentials.value() || '{}')[companyId]; }
+  catch (_) { throw new HttpsError('failed-precondition', 'Company SendGrid credential secret is invalid.'); }
+  if (!credentials?.apiKey || !EMAIL_PATTERN.test(credentials?.fromEmail || '')) {
+    throw new HttpsError('failed-precondition', 'Company SendGrid credentials are not provisioned by an administrator.');
+  }
+  return credentials;
+}
+
+async function sendGridJson(apiKey, path) {
+  const response = await fetch(`https://api.sendgrid.com/v3/${path}`, { headers: { Authorization: `Bearer ${apiKey}` } });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new HttpsError('failed-precondition', `SendGrid connection test failed (${response.status}).`);
+  return body;
+}
+
+async function validateCompanySendGridCredential(credentials) {
+  await sendGridJson(credentials.apiKey, 'scopes');
+  const [sendersBody, domainsBody] = await Promise.all([
+    sendGridJson(credentials.apiKey, 'verified_senders'),
+    sendGridJson(credentials.apiKey, 'whitelabel/domains'),
+  ]);
+  const senderVerified = (sendersBody.results || []).some(sender => sender.verified === true && String(sender.from_email || '').toLowerCase() === credentials.fromEmail.toLowerCase());
+  const domain = credentials.fromEmail.split('@')[1].toLowerCase();
+  const domainVerified = (Array.isArray(domainsBody) ? domainsBody : []).some(item => item.valid === true && (domain === String(item.domain || '').toLowerCase() || domain.endsWith(`.${String(item.domain || '').toLowerCase()}`)));
+  if (!senderVerified && !domainVerified) throw new HttpsError('failed-precondition', 'SendGrid From address or domain is not verified.');
+  return { senderVerified, domainVerified };
+}
+
+async function companyEmailIntegrations(companyId) {
+  const [preferences, status] = await Promise.all([
+    admin.firestore().doc(`companies/${companyId}/emailIntegration/preferences`).get(),
+    admin.firestore().doc(`companies/${companyId}/emailIntegration/status`).get(),
+  ]);
+  const preferenceData = preferences.exists ? preferences.data() : {};
+  const statusData = status.exists ? status.data() : {};
+  return {
+    ...preferenceData,
+    ...statusData,
+    nexusFallback: { ...statusData.nexusFallback, ...preferenceData.nexusFallback },
+  };
+}
+
+const microsoftEmailSecrets = [microsoftEmailClientId, microsoftEmailClientSecret, microsoftEmailRedirectUri, microsoftEmailAllowedTenants];
+
+exports.sendDocumentEmail = onCall({ secrets: [sendGridApiKey, sendGridFromEmail, companySendGridCredentials, gmailClientId, gmailClientSecret, gmailRedirectUri, ...microsoftEmailSecrets] }, async request => {
   if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required to send email.');
   const data = request.data || {};
   const errors = validatePayload(data);
   if (errors.length) throw new HttpsError('invalid-argument', errors.join('; '));
-  await assertCompanyMember(request.auth.uid, data.companyId);
-  const messageId = await sendWithSendGrid(data);
-  return { provider: 'sendgrid', messageId, accepted: true, sentAt: new Date().toISOString() };
+  const companySnap = await assertCompanyMember(request.auth.uid, data.companyId);
+  const document = await loadEmailDocument(data);
+  const company = companySnap.data() || {};
+  const integrations = await companyEmailIntegrations(data.companyId);
+  if (integrations.onboardingCompleted !== true) {
+    throw new HttpsError('failed-precondition', 'Choose and save an email provider in company settings before sending.');
+  }
+  const nexusConfigured = nexusEnabled() && !!sendGridApiKey.value() && !!sendGridFromEmail.value();
+  const configuration = { gmail: gmailProvider().configured(), microsoftExchange: microsoftEmailProvider().configured(), nexusFallback: nexusConfigured };
+  const route = resolveRoute(data.provider, integrations, configuration);
+  const suppression = await admin.firestore().doc(`companies/${data.companyId}/emailSuppressions/${recipientHash(data.recipient)}`).get();
+  const suppressionReason = suppressionBlockReason(suppression.exists ? suppression.data() : null);
+  if (suppressionReason) throw new HttpsError('failed-precondition', suppressionReason);
+  const replyToEmail = String(integrations.nexusFallback?.replyToEmail || '').trim().toLowerCase();
+  if (route.provider === 'nexus_fallback') {
+    if (!EMAIL_PATTERN.test(replyToEmail)) throw new HttpsError('failed-precondition', 'A valid company Reply-To address is required for Nexus managed email.');
+    if (replyToEmail !== String(company.email || '').trim().toLowerCase()) {
+      throw new HttpsError('failed-precondition', 'The Nexus Reply-To address must match the validated company email.');
+    }
+    await reserveNexusCapacity(data.companyId, data.recipient);
+  }
+  const content = await buildEmailContent(data);
+  const message = {
+    to: [data.recipient], cc: normalizeEmailList(data.cc), bcc: normalizeEmailList(data.bcc),
+    subject: data.subject,
+    text: content.find(item => item.type === 'text/plain')?.value || '',
+    html: content.find(item => item.type === 'text/html')?.value,
+    attachments: [await resolveEmailAttachment(data, document)],
+    sender: { ...integrations.selectedSender, companyName: company.name, replyToEmail, companyId: document.companyId, metadata: {
+      companyId: document.companyId, clientId: document.clientId, documentType: document.documentType,
+      documentId: document.documentId, storagePath: data.attachment.storagePath,
+      sendRecordId: recordIdFor(data),
+    } },
+  };
+  const coordinate = createSendCoordinator({ db: admin.firestore(), FieldValue: admin.firestore.FieldValue });
+  return coordinate({
+    data: { ...data, cc: normalizeEmailList(data.cc), bcc: normalizeEmailList(data.bcc), recipientHash: recipientHash(data.recipient) },
+    document, uid: request.auth.uid, route,
+    effectiveFrom: route.provider === 'nexus_fallback'
+      ? sendGridFromEmail.value()
+      : (integrations.selectedSender?.email || company.email || undefined),
+    dispatch: () => dispatchEmail({
+      requestedProvider: data.provider, integrations, message, configuration,
+      adapters: { gmail: sendWithGmail, microsoft_exchange: sendWithMicrosoftGraph, company_sendgrid: sendWithCompanySendGrid, nexus_fallback: sendWithNexusFallback },
+    }),
+  });
+});
+
+exports.verifyCompanySendGrid = onCall({ secrets: [companySendGridCredentials] }, async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required.');
+  const { companyId } = request.data || {};
+  if (!companyId) throw new HttpsError('invalid-argument', 'companyId is required.');
+  await assertCompanyMember(request.auth.uid, companyId);
+  const credentials = companySendGridCredential(companyId);
+  const validation = await validateCompanySendGridCredential(credentials);
+  const privateState = {
+    mode: 'company_owned_sendgrid', connected: true, apiKeyConfigured: true,
+    credentialReference: `COMPANY_SENDGRID_CREDENTIALS:${companyId}`,
+    fromEmail: credentials.fromEmail, fromName: validatedDisplayName(credentials.fromName),
+    fromNameValidated: !!validatedDisplayName(credentials.fromName), ...validation,
+    connectionTestedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  const publicState = { mode: 'company_owned_sendgrid', connected: true, apiKeyConfigured: true };
+  await admin.firestore().doc(`companies/${companyId}/privateEmailTokens/company_sendgrid`).set(privateState, { merge: true });
+  await admin.firestore().doc(`companies/${companyId}/emailIntegration/status`).set({ sendgrid: publicState }, { merge: true });
+  return publicState;
+});
+
+const gmailSecrets = [gmailClientId, gmailClientSecret, gmailRedirectUri];
+
+exports.getEmailProviderConfiguration = onCall({ secrets: [...gmailSecrets, ...microsoftEmailSecrets, sendGridApiKey, sendGridFromEmail] }, async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required.');
+  const nexusFallback = nexusEnabled() && !!sendGridApiKey.value() && !!sendGridFromEmail.value();
+  return { gmail: gmailProvider().configured(), microsoftExchange: microsoftEmailProvider().configured(), nexusFallback, nexusFromEmail: nexusFallback ? sendGridFromEmail.value() : undefined, microsoftTenantPolicy: microsoftEmailProvider().tenantPolicy().mode };
+});
+
+// Configure SendGrid Event Webhook with Twilio SendGrid signed-event verification.
+// The public verification key is safe to rotate independently of API credentials.
+exports.sendGridEventWebhook = onRequest({ secrets: [sendGridEventWebhookPublicKey] }, async (request, response) => {
+  const signature = request.get('x-twilio-email-event-webhook-signature');
+  const timestamp = request.get('x-twilio-email-event-webhook-timestamp');
+  if (!verifySendGridSignature({
+    publicKey: sendGridEventWebhookPublicKey.value(), signature, timestamp,
+    rawBody: request.rawBody,
+  })) {
+    response.status(401).send('Invalid webhook signature'); return;
+  }
+
+  const events = Array.isArray(request.body) ? request.body.slice(0, 1000) : [];
+  const db = admin.firestore();
+  for (const rawEvent of events) {
+    const event = normalizeSendGridEvent(rawEvent);
+    if (!event?.companyId || !EMAIL_PATTERN.test(event.email)) continue;
+    let recordRef = event.sendRecordId
+      ? db.doc(`companies/${event.companyId}/emailSendRecords/${event.sendRecordId}`) : null;
+    if (!recordRef && event.providerMessageId) {
+      const matches = await db.collection(`companies/${event.companyId}/emailSendRecords`)
+        .where('providerMessageId', '==', event.providerMessageId).limit(1).get();
+      recordRef = matches.empty ? null : matches.docs[0].ref;
+    }
+    if (!recordRef) continue; // Valid provider event, but not one of our sends.
+
+    await db.runTransaction(async transaction => {
+      const snapshot = await transaction.get(recordRef);
+      if (!snapshot.exists) return;
+      const current = snapshot.data() || {};
+      const update = eventUpdate(current, event);
+      if (!update || update.ignored) return;
+      const processedEventIds = [...(current.processedEventIds || []).slice(-49), event.eventId];
+      const now = admin.firestore.FieldValue.serverTimestamp();
+      const recordUpdate = {
+        status: update.status, providerEvent: update.providerEvent,
+        providerEventId: update.providerEventId, providerEventTimestamp: update.providerEventTimestamp,
+        failureReason: update.failureReason, processedEventIds, updatedAt: now,
+      };
+      transaction.set(recordRef, recordUpdate, { merge: true });
+      if (current.documentPath) {
+        transaction.update(db.doc(current.documentPath), {
+          'lastEmail.status': update.status, 'lastEmail.failureReason': update.failureReason,
+          'lastEmail.updatedAt': now, updatedAt: now,
+        });
+      }
+      if (current.documentType === 'invoice') {
+        transaction.update(db.doc(`companies/${event.companyId}/invoiceSummaries/${current.documentId}`), {
+          'lastEmail.status': update.status, 'lastEmail.failureReason': update.failureReason,
+          'lastEmail.updatedAt': now, updatedAt: now,
+        });
+      }
+      if (event.suppress) {
+        transaction.set(db.doc(`companies/${event.companyId}/emailSuppressions/${recipientHash(event.email)}`), {
+          active: true, companyId: event.companyId, clientId: current.clientId || null,
+          recipientHash: recipientHash(event.email), reason: update.status,
+          provider: current.effectiveProvider || 'sendgrid', sendRecordId: recordRef.id,
+          updatedAt: now,
+        }, { merge: true });
+      }
+    });
+  }
+  response.status(204).send();
+});
+
+exports.startGmailOAuth = onCall({ secrets: gmailSecrets }, async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required.');
+  const { companyId, accountEmail } = request.data || {};
+  if (!companyId) throw new HttpsError('invalid-argument', 'companyId is required.');
+  await assertCompanyMember(request.auth.uid, companyId);
+  try {
+    return { url: await gmailProvider().start({ uid: request.auth.uid, companyId, requestedMailbox: accountEmail }) };
+  } catch (error) {
+    throw new HttpsError('failed-precondition', error.message);
+  }
+});
+
+exports.gmailOAuthCallback = onRequest({ secrets: gmailSecrets }, async (request, response) => {
+  const state = String(request.query.state || '');
+  try {
+    const result = await gmailProvider().callback({ state, code: String(request.query.code || '') });
+    response.redirect(302, `/settings?emailOAuth=gmail&result=success&companyId=${encodeURIComponent(result.companyId)}`);
+  } catch (error) {
+    response.redirect(302, `/settings?emailOAuth=gmail&result=error&reason=${encodeURIComponent(error.message)}`);
+  }
+});
+
+exports.checkGmailConnection = onCall({ secrets: gmailSecrets }, async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required.');
+  const { companyId } = request.data || {};
+  await assertCompanyMember(request.auth.uid, companyId);
+  return gmailProvider().health(companyId);
+});
+
+exports.disconnectGmail = onCall({ secrets: gmailSecrets }, async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required.');
+  const { companyId } = request.data || {};
+  await assertCompanyMember(request.auth.uid, companyId);
+  return gmailProvider().disconnect(companyId);
+});
+
+exports.startMicrosoftEmailOAuth = onCall({ secrets: microsoftEmailSecrets }, async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required.');
+  const { companyId, accountEmail } = request.data || {};
+  if (!companyId) throw new HttpsError('invalid-argument', 'companyId is required.');
+  await assertCompanyMember(request.auth.uid, companyId);
+  try { return { url: await microsoftEmailProvider().start({ uid: request.auth.uid, companyId, loginHint: accountEmail }) }; }
+  catch (error) { throw new HttpsError('failed-precondition', error.message); }
+});
+
+exports.microsoftEmailOAuthCallback = onRequest({ secrets: microsoftEmailSecrets }, async (request, response) => {
+  try {
+    const result = await microsoftEmailProvider().callback({ state: String(request.query.state || ''), code: String(request.query.code || '') });
+    response.redirect(302, `/settings?emailOAuth=microsoft_exchange&result=success&companyId=${encodeURIComponent(result.companyId)}`);
+  } catch (error) { response.redirect(302, `/settings?emailOAuth=microsoft_exchange&result=error&reason=${encodeURIComponent(error.message)}`); }
+});
+
+exports.refreshMicrosoftEmailConnection = onCall({ secrets: microsoftEmailSecrets }, async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required.');
+  const { companyId } = request.data || {};
+  await assertCompanyMember(request.auth.uid, companyId);
+  const auth = await microsoftEmailProvider().refresh(companyId);
+  return { connected: true, accountEmail: auth.accountEmail, tenantId: auth.tenantId };
+});
+
+exports.checkMicrosoftEmailConnection = onCall({ secrets: microsoftEmailSecrets }, async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required.');
+  const { companyId } = request.data || {};
+  await assertCompanyMember(request.auth.uid, companyId);
+  return microsoftEmailProvider().health(companyId);
+});
+
+exports.disconnectMicrosoftEmail = onCall({ secrets: microsoftEmailSecrets }, async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Sign in is required.');
+  const { companyId } = request.data || {};
+  await assertCompanyMember(request.auth.uid, companyId);
+  return microsoftEmailProvider().disconnect(companyId);
 });
 
 
@@ -160,49 +648,185 @@ function toDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function startOfToday() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today;
+const REMINDER_MAX_ATTEMPTS = 5;
+const REMINDER_LEASE_MS = 10 * 60 * 1000;
+const EMAIL_PROVIDER_SECRETS = [sendGridApiKey, sendGridFromEmail, companySendGridCredentials, gmailClientId, gmailClientSecret, gmailRedirectUri, ...microsoftEmailSecrets];
+
+function cadenceDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function reminderDedupKey(companyId, invoiceId, reminderType, date) {
+  return [companyId, invoiceId, reminderType, cadenceDate(date)].join(':');
+}
+
+function reminderQueueId(companyId, invoiceId, reminderType, date) {
+  return [companyId, invoiceId, reminderType, cadenceDate(date)]
+    .map(value => encodeURIComponent(String(value)).replace(/%/g, '_')).join('__');
+}
+
+function overdueReminderPolicy(company) {
+  const policy = company.reminderPolicy || company.invoiceReminderPolicy || {};
+  const overdue = policy.overdue || {};
+  return {
+    enabled: policy.enabled === true && overdue.enabled !== false,
+    cadenceDays: Math.max(1, Math.min(365, Number(overdue.cadenceDays || policy.cadenceDays) || 7)),
+    subject: String(overdue.subject || 'Payment reminder for invoice {{invoiceNumber}}'),
+    body: String(overdue.body || 'Your invoice {{invoiceNumber}} is overdue. Please arrange payment of {{outstandingBalance}}.'),
+  };
+}
+
+function replaceReminderVariables(template, values) {
+  return String(template).replace(/{{\s*(invoiceNumber|outstandingBalance|dueDate|clientName|companyName)\s*}}/g,
+    (_, key) => String(values[key] ?? ''));
+}
+
+function retryableReminderError(error) {
+  const code = String(error?.code || '').replace(/^functions\//, '');
+  return ['internal', 'unavailable', 'resource-exhausted', 'deadline-exceeded', 'aborted', 'unknown'].includes(code);
+}
+
+function reminderFailureUpdate(error, attempt, now = new Date()) {
+  const retryable = retryableReminderError(error) && attempt < REMINDER_MAX_ATTEMPTS;
+  const delayMs = Math.min(6 * 60 * 60 * 1000, 30 * 1000 * (2 ** Math.max(0, attempt - 1)));
+  return {
+    status: retryable ? 'retry' : 'terminal_failure',
+    retryable, error: sanitizedError(error),
+    failedAt: now, updatedAt: now,
+    ...(retryable ? { nextAttemptAt: new Date(now.getTime() + delayMs) } : { terminalAt: now }),
+  };
+}
+
+async function enqueueOverdueReminders({ db, now = new Date(), FieldValue = admin.firestore.FieldValue }) {
+  const today = new Date(now); today.setHours(0, 0, 0, 0);
+  const companies = await db.collection('companies').get();
+  let queued = 0;
+  for (const companyDoc of companies.docs) {
+    const companyId = companyDoc.id;
+    const policy = overdueReminderPolicy(companyDoc.data() || {});
+    if (!policy.enabled) continue;
+    const summaries = await db.collection(`companies/${companyId}/invoiceSummaries`).where('status', 'in', ['sent', 'partial', 'overdue']).get();
+    for (const invoiceDoc of summaries.docs) {
+      const invoice = invoiceDoc.data() || {};
+      const dueDate = toDate(invoice.dueDate);
+      const outstanding = Math.max(0, Number(invoice.total || 0) - Number(invoice.amountPaid || 0));
+      if (!invoice.clientId || !dueDate || dueDate >= today || outstanding <= 0 || invoice.status === 'paid') continue;
+      const lastSent = toDate(invoice.lastReminderSentAt);
+      if (lastSent && today.getTime() - lastSent.getTime() < policy.cadenceDays * 86400000) continue;
+      const clientSnap = await db.doc(`companies/${companyId}/clients/${invoice.clientId}`).get();
+      const recipient = String(clientSnap.get('email') || '').trim().toLowerCase();
+      if (!EMAIL_PATTERN.test(recipient)) continue;
+      const suppression = await db.doc(`companies/${companyId}/emailSuppressions/${recipientHash(recipient)}`).get();
+      if (suppressionBlockReason(suppression.exists ? suppression.data() : null)) continue;
+      const queueId = reminderQueueId(companyId, invoiceDoc.id, 'overdue', today);
+      const queueRef = db.doc(`companies/${companyId}/emailReminderQueue/${queueId}`);
+      let created = false;
+      await db.runTransaction(async transaction => {
+        created = false;
+        const existing = await transaction.get(queueRef);
+        if (existing.exists) return;
+        transaction.set(queueRef, {
+          companyId, clientId: invoice.clientId, invoiceId: invoiceDoc.id, reminderType: 'overdue',
+          cadenceDate: cadenceDate(today), dedupKey: reminderDedupKey(companyId, invoiceDoc.id, 'overdue', today),
+          recipientHash: recipientHash(recipient), status: 'queued', attempts: 0,
+          createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(), nextAttemptAt: today,
+        }, { merge: false });
+        created = true;
+      });
+      if (created) queued += 1;
+    }
+  }
+  return queued;
 }
 
 exports.queueOverdueInvoiceReminders = onSchedule('every day 08:00', async () => {
   const db = admin.firestore();
-  const today = startOfToday();
-  const companies = await db.collection('companies').get();
-  let queued = 0;
-
-  for (const companyDoc of companies.docs) {
-    const companyId = companyDoc.id;
-    const summaries = await db.collection(`companies/${companyId}/invoiceSummaries`)
-      .where('status', 'in', ['sent', 'partial', 'overdue'])
-      .get();
-
-    for (const invoiceDoc of summaries.docs) {
-      const invoice = invoiceDoc.data();
-      const dueDate = toDate(invoice.dueDate);
-      const outstanding = Math.max(0, Number(invoice.total || 0) - Number(invoice.amountPaid || 0));
-      if (!invoice.clientId || !dueDate || dueDate >= today || outstanding <= 0) continue;
-
-      const clientRef = db.doc(`companies/${companyId}/clients/${invoice.clientId}`);
-      const clientSnap = await clientRef.get();
-      const recipient = clientSnap.get('email');
-      if (!EMAIL_PATTERN.test(recipient || '')) continue;
-
-      await db.collection(`companies/${companyId}/emailReminderQueue`).add({
-        companyId,
-        clientId: invoice.clientId,
-        invoiceId: invoiceDoc.id,
-        reminderType: 'overdue',
-        recipient,
-        status: 'queued',
-        queuedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      queued += 1;
-    }
-  }
-
+  const queued = await enqueueOverdueReminders({ db });
   console.log(`Queued ${queued} overdue invoice reminder(s).`);
+});
+
+async function claimReminderJob(db, ref, now = new Date()) {
+  let claimed = null;
+  await db.runTransaction(async transaction => {
+    const snap = await transaction.get(ref);
+    if (!snap.exists) return;
+    const job = snap.data() || {};
+    const lease = toDate(job.leaseExpiresAt);
+    const eligible = ['queued', 'retry'].includes(job.status) || (job.status === 'processing' && lease && lease <= now);
+    if (!eligible || (toDate(job.nextAttemptAt) || new Date(0)) > now) return;
+    if (Number(job.attempts || 0) >= REMINDER_MAX_ATTEMPTS) {
+      transaction.set(ref, { status: 'terminal_failure', retryable: false, error: { code: 'lease-expired', message: 'Maximum reminder attempts exhausted after a worker lease expired.' }, terminalAt: now, updatedAt: now }, { merge: true });
+      return;
+    }
+    claimed = { ...job, id: ref.id, attempts: Number(job.attempts || 0) + 1 };
+    transaction.set(ref, { status: 'processing', attempts: claimed.attempts, claimedAt: now, leaseExpiresAt: new Date(now.getTime() + REMINDER_LEASE_MS), updatedAt: now }, { merge: true });
+  });
+  return claimed;
+}
+
+async function buildReminderMessage(job, db = admin.firestore()) {
+  const [companySnap, summarySnap, clientSnap] = await Promise.all([
+    db.doc(`companies/${job.companyId}`).get(),
+    db.doc(`companies/${job.companyId}/invoiceSummaries/${job.invoiceId}`).get(),
+    db.doc(`companies/${job.companyId}/clients/${job.clientId}`).get(),
+  ]);
+  if (!summarySnap.exists) throw new HttpsError('not-found', 'Invoice summary no longer exists.');
+  const company = companySnap.data() || {}, invoice = summarySnap.data() || {}, client = clientSnap.data() || {};
+  const outstanding = Math.max(0, Number(invoice.total || 0) - Number(invoice.amountPaid || 0));
+  if (invoice.status === 'paid' || outstanding <= 0) throw new HttpsError('failed-precondition', 'Invoice is already paid.');
+  const policy = overdueReminderPolicy(company);
+  if (!policy.enabled) throw new HttpsError('failed-precondition', 'Invoice reminders are disabled.');
+  const recipient = String(client.email || '').trim().toLowerCase();
+  if (!EMAIL_PATTERN.test(recipient) || recipientHash(recipient) !== job.recipientHash) throw new HttpsError('failed-precondition', 'Reminder recipient is invalid or has changed.');
+  const suppression = await db.doc(`companies/${job.companyId}/emailSuppressions/${recipientHash(recipient)}`).get();
+  const block = suppressionBlockReason(suppression.exists ? suppression.data() : null);
+  if (block) throw new HttpsError('failed-precondition', block);
+  const invoicePath = `companies/${job.companyId}/clients/${job.clientId}/invoices/${job.invoiceId}`;
+  const invoiceSnap = await db.doc(invoicePath).get();
+  if (!invoiceSnap.exists) throw new HttpsError('not-found', 'Server-owned invoice document is missing.');
+  const record = invoiceSnap.data() || {};
+  const storagePath = [...documentAttachmentPaths(record)][0];
+  if (!storagePath) throw new HttpsError('not-found', 'Invoice attachment is missing.');
+  const values = { invoiceNumber: invoice.invoiceNumber || invoice.invoiceNo || record.invoiceNumber || job.invoiceId, outstandingBalance: outstanding, dueDate: cadenceDate(toDate(invoice.dueDate) || new Date()), clientName: client.name || '', companyName: company.name || '' };
+  const data = { companyId: job.companyId, clientId: job.clientId, documentType: 'invoice', documentId: job.invoiceId, reminderType: job.reminderType, idempotencyKey: createHash('sha256').update(job.dedupKey).digest('hex'), recipient, subject: replaceReminderVariables(policy.subject, values), messageBody: replaceReminderVariables(policy.body, values), attachment: { storagePath } };
+  const document = { companyId: job.companyId, clientId: job.clientId, documentType: 'invoice', documentId: job.invoiceId, path: invoicePath, record };
+  return { data, document, company };
+}
+
+async function processReminderJob(job, ref, { db = admin.firestore(), dispatch = dispatchEmail } = {}) {
+  try {
+    const { data, document, company } = await buildReminderMessage(job, db);
+    const integrations = await companyEmailIntegrations(data.companyId);
+    const configuration = { gmail: gmailProvider().configured(), microsoftExchange: microsoftEmailProvider().configured(), nexusFallback: nexusEnabled() && !!sendGridApiKey.value() && !!sendGridFromEmail.value() };
+    const route = resolveRoute(undefined, integrations, configuration);
+    const attachment = await resolveEmailAttachment(data, document);
+    const replyToEmail = String(integrations.nexusFallback?.replyToEmail || '').trim().toLowerCase();
+    if (route.provider === 'nexus_fallback') await reserveNexusCapacity(data.companyId, data.recipient);
+    const message = { to: [data.recipient], cc: [], bcc: [], subject: data.subject, text: data.messageBody, attachments: [attachment], sender: { ...integrations.selectedSender, companyName: company.name, replyToEmail, companyId: data.companyId, metadata: { companyId: data.companyId, clientId: data.clientId, documentType: 'invoice', documentId: data.documentId, storagePath: data.attachment.storagePath, reminderQueueId: job.id } } };
+    const result = await dispatch({ integrations, message, configuration, adapters: { gmail: sendWithGmail, microsoft_exchange: sendWithMicrosoftGraph, company_sendgrid: sendWithCompanySendGrid, nexus_fallback: sendWithNexusFallback } });
+    await completeReminderJob({ db, ref, job, document, data, result });
+  } catch (error) {
+    await ref.set(reminderFailureUpdate(error, job.attempts), { merge: true });
+  }
+}
+
+async function completeReminderJob({ db, ref, job, document, data, result, FieldValue = admin.firestore.FieldValue }) {
+  const now = FieldValue.serverTimestamp();
+  await db.runTransaction(async transaction => {
+    transaction.set(ref, { status: 'completed', retryable: false, provider: result.effectiveProvider, providerMessageId: result.messageId, completedAt: now, updatedAt: now, leaseExpiresAt: null }, { merge: true });
+    const metadata = { lastReminderSentAt: now, lastReminderType: job.reminderType, reminderCount: FieldValue.increment(1), 'lastEmail.status': 'accepted', 'lastEmail.providerMessageId': result.messageId, updatedAt: now };
+    transaction.set(db.doc(document.path), metadata, { merge: true });
+    transaction.set(db.doc(`companies/${data.companyId}/invoiceSummaries/${data.documentId}`), metadata, { merge: true });
+  });
+}
+
+exports.processInvoiceReminderQueue = onSchedule({ schedule: 'every 5 minutes', secrets: EMAIL_PROVIDER_SECRETS }, async () => {
+  const db = admin.firestore(), now = new Date();
+  const candidates = await db.collectionGroup('emailReminderQueue').where('status', 'in', ['queued', 'retry', 'processing']).limit(100).get();
+  for (const snap of candidates.docs) {
+    const job = await claimReminderJob(db, snap.ref, now);
+    if (job) await processReminderJob(job, snap.ref, { db });
+  }
 });
 
 const googleClientId = defineSecret('GOOGLE_DRIVE_CLIENT_ID');
@@ -631,10 +1255,14 @@ exports.generatePdfDocument = onCall({ memory: '1GiB', timeoutSeconds: 120 }, as
     const clientSegment = sanitizePathSegment(data.clientId || data.clientName, 'client');
     const documentSegment = sanitizePathSegment(data.documentId, data.documentType);
     const fileName = `${documentSegment}.pdf`;
-    const storagePath = `companies/${data.companyId}/clients/${clientSegment}/${data.documentType}s/${documentSegment}/generated/${fileName}`;
+    const storagePath = `companies/${data.companyId}/generated/${clientSegment}/${data.documentType}s/${documentSegment}/${fileName}`;
     const bucket = admin.storage().bucket();
     const downloadToken = randomUUID();
     await bucket.file(storagePath).save(pdf, { metadata: { contentType: 'application/pdf', metadata: { provider, templateId: templateDoc.id, templateFormat: format, firebaseStorageDownloadTokens: downloadToken } } });
+    const documentPath = `companies/${data.companyId}/clients/${data.clientId}/${DOCUMENT_COLLECTIONS[data.documentType]}/${data.documentId}`;
+    await admin.firestore().doc(documentPath).set({
+      generatedOutputs: admin.firestore.FieldValue.arrayUnion({ storagePath, fileName, mimeType: 'application/pdf', provider, templateId: templateDoc.id }),
+    }, { merge: true });
     // Signed URLs require the runtime service account to have signBlob permission.
     // Firebase download tokens work with the Storage client and avoid turning an
     // otherwise successful PDF render into a 500 when that IAM role is absent.
@@ -647,4 +1275,4 @@ exports.generatePdfDocument = onCall({ memory: '1GiB', timeoutSeconds: 120 }, as
   }
 });
 
-module.exports._test = { validatePayload, renderFreeMarkerTemplate, renderDocumentTemplate, buildTemplateVariables, formatPhoneNumber, htmlToText, normalizeEmailList, buildEmailContent, isCompanyMember, validatePdfAnalysisRequest, buildPdfMapping, validatePdfVariables, generatedPdfMetadata, validatePdfGenerationRequest, sanitizePathSegment, minimalPdfBuffer, firebaseStorageDownloadUrl };
+module.exports._test = { validatePayload, validateAttachmentPath, validatedAttachmentFilename, loadEmailDocument, documentAttachmentPaths, documentAttachmentFilename, resolveEmailAttachment, buildSendGridPayload, MAX_ATTACHMENT_BYTES, renderFreeMarkerTemplate, renderDocumentTemplate, buildTemplateVariables, formatPhoneNumber, htmlToText, normalizeEmailList, buildEmailContent, isCompanyMember, resolveEmailProvider, validatePdfAnalysisRequest, buildPdfMapping, validatePdfVariables, generatedPdfMetadata, validatePdfGenerationRequest, sanitizePathSegment, minimalPdfBuffer, firebaseStorageDownloadUrl, cadenceDate, reminderDedupKey, reminderQueueId, overdueReminderPolicy, replaceReminderVariables, retryableReminderError, reminderFailureUpdate, enqueueOverdueReminders, claimReminderJob, buildReminderMessage, processReminderJob, completeReminderJob, REMINDER_MAX_ATTEMPTS };

@@ -14,12 +14,16 @@ function authHeaders(uid) {
   return uid ? { Authorization: `Bearer ${token(uid)}` } : {};
 }
 
+function firestoreValue(value) {
+  if (Array.isArray(value)) return { arrayValue: { values: value.map(firestoreValue) } };
+  if (value === null) return { nullValue: null };
+  if (typeof value === 'boolean') return { booleanValue: value };
+  if (typeof value === 'object') return { mapValue: { fields: fields(value) } };
+  return { stringValue: String(value) };
+}
+
 function fields(data) {
-  return Object.fromEntries(Object.entries(data).map(([key, value]) => {
-    if (Array.isArray(value)) return [key, { arrayValue: { values: value.map(v => ({ stringValue: v })) } }];
-    if (value === null) return [key, { nullValue: null }];
-    return [key, { stringValue: String(value) }];
-  }));
+  return Object.fromEntries(Object.entries(data).map(([key, value]) => [key, firestoreValue(value)]));
 }
 
 async function write(path, data, uid, method = 'PATCH') {
@@ -62,5 +66,30 @@ await expectAllowed(write('companies/company-a/expenses/expense-1', { descriptio
 await expectAllowed(write('companies/company-a/clients/client-1/invoices/invoice-1', { invoiceNo: 'INV-1' }, 'alice'), 'member writes invoice');
 await expectAllowed(write('companies/company-a/invoiceSummaries/invoice-1', { clientId: 'client-1', invoiceNo: 'INV-1' }, 'alice'), 'member writes invoice summary');
 await expectDenied(read('companies/company-a/invoiceSummaries/invoice-1', 'bob'), 'cross-company invoice summary read is denied');
+
+await expectAllowed(write('companies/company-a/emailIntegration/preferences', {
+  companyId: 'company-a',
+  defaultProvider: 'gmail',
+  onboardingCompleted: true,
+  selectedSender: { displayName: 'Accounts', email: 'accounts@example.com' },
+  nexusFallback: { enabled: true, replyToEmail: 'replies@example.com' },
+}, 'alice'), 'company member edits email preferences');
+await expectAllowed(read('companies/company-a/emailIntegration/preferences', 'alice'), 'company member reads email preferences');
+
+await expectDenied(write('companies/company-a/emailIntegration/preferences', {
+  companyId: 'company-a', defaultProvider: 'gmail', onboardingCompleted: true,
+  gmail: { connected: true },
+}, 'alice'), 'company member cannot add trusted flags to preferences');
+await expectDenied(write('companies/company-a/emailIntegration/status', {
+  gmail: { connected: true, connectedBy: 'alice' },
+  sendgrid: { apiKeyConfigured: true },
+}, 'alice'), 'company member cannot forge public connection status');
+await expectDenied(write('companies/company-a/privateEmailTokens/gmail', {
+  refreshToken: 'secret', accessToken: 'secret',
+}, 'alice'), 'company member cannot write provider credentials');
+await expectDenied(read('companies/company-a/privateEmailTokens/gmail', 'alice'), 'company member cannot read provider credentials');
+await expectDenied(write('companies/company-a', {
+  users: ['alice'], name: 'A', emailIntegrations: { gmail: { connected: true } },
+}, 'alice'), 'company member cannot forge legacy embedded connection metadata');
 
 console.log('Firestore rules tests passed');

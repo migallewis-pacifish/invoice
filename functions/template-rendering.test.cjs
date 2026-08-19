@@ -67,7 +67,7 @@ const { _test } = require('./index.js');
   assert.strictEqual(htmlText, 'Hello World');
 
   const errors = _test.validatePayload({
-    companyId: 'co', clientId: 'cl', documentType: 'invoice', documentId: 'inv', recipient: 'a@example.com', subject: 'Subject',
+    companyId: 'co', clientId: 'cl', documentType: 'invoice', documentId: 'inv', idempotencyKey: 'abcdefghijklmnop', recipient: 'a@example.com', subject: 'Subject',
     templateSelection: { kind: 'designed', templateId: 'tmpl' }, attachment: { storagePath: 'docs/invoice.pdf' }
   });
   assert.deepStrictEqual(errors, []);
@@ -78,6 +78,62 @@ const { _test } = require('./index.js');
   assert.strictEqual(_test.isCompanyMember('u1', 'co1', 'co1', []), true);
   assert.strictEqual(_test.isCompanyMember('u1', 'co1', 'co2', ['u1']), true);
   assert.strictEqual(_test.isCompanyMember('u1', 'co1', 'co2', ['u2']), false);
+
+  function attachmentBucket({ bytes = Buffer.from('PDF'), contentType = 'application/pdf', size = bytes.length, metadataError } = {}) {
+    let downloads = 0;
+    return {
+      get downloads() { return downloads; },
+      file() {
+        return {
+          async getMetadata() {
+            if (metadataError) throw metadataError;
+            return [{ contentType, size: String(size) }];
+          },
+          async download() { downloads += 1; return [bytes]; },
+        };
+      },
+    };
+  }
+
+  const validBucket = attachmentBucket();
+  const emailDocument = { companyId: 'co', clientId: 'cl', documentType: 'invoice', documentId: 'INV-1', record: { generatedOutputs: [{ storagePath: 'companies/co/generated/invoices/INV-1.pdf', fileName: 'Invoice 1.pdf' }, { storagePath: 'companies/co/generated/missing.pdf' }, { storagePath: 'companies/co/generated/large.pdf' }, { storagePath: 'companies/co/generated/file.exe' }] } };
+  const validAttachment = await _test.resolveEmailAttachment({
+    companyId: 'co', attachment: { storagePath: 'companies/co/generated/invoices/INV-1.pdf', fileName: 'Invoice 1.pdf' }
+  }, emailDocument, validBucket);
+  assert.deepStrictEqual(validAttachment, {
+    filename: 'Invoice 1.pdf', type: 'application/pdf', disposition: 'attachment', content: Buffer.from('PDF').toString('base64')
+  });
+  assert.strictEqual(validBucket.downloads, 1);
+  const sendGridPayload = _test.buildSendGridPayload({
+    to: ['client@example.com'], cc: [], bcc: [], subject: 'Invoice', text: 'Attached',
+    attachments: [validAttachment], sender: {}
+  }, 'billing@example.com', { companyId: 'co', documentId: 'INV-1' });
+  assert.deepStrictEqual(sendGridPayload.attachments, [validAttachment]);
+
+  await assert.rejects(
+    _test.resolveEmailAttachment({ companyId: 'co', attachment: { storagePath: 'companies/co/generated/missing.pdf' } }, emailDocument, attachmentBucket({ metadataError: { code: 404 } })),
+    error => error.code === 'not-found'
+  );
+  await assert.rejects(
+    _test.resolveEmailAttachment({ companyId: 'co', attachment: { storagePath: 'companies/other/generated/INV-1.pdf' } }, emailDocument, attachmentBucket()),
+    error => error.code === 'invalid-argument' && /under companies\/co\/generated\//.test(error.message)
+  );
+  const oversizedBucket = attachmentBucket({ size: _test.MAX_ATTACHMENT_BYTES + 1 });
+  await assert.rejects(
+    _test.resolveEmailAttachment({ companyId: 'co', attachment: { storagePath: 'companies/co/generated/large.pdf' } }, emailDocument, oversizedBucket),
+    error => error.code === 'invalid-argument' && /size limit/.test(error.message)
+  );
+  assert.strictEqual(oversizedBucket.downloads, 0);
+  await assert.rejects(
+    _test.resolveEmailAttachment({ companyId: 'co', attachment: { storagePath: 'companies/co/generated/file.exe' } }, emailDocument, attachmentBucket({ contentType: 'application/octet-stream' })),
+    error => error.code === 'invalid-argument' && /MIME type/.test(error.message)
+  );
+  assert(_test.validatePayload({ attachment: { generatedDocumentPayloadRef: 'generatedPayloads/payload-1' } })
+    .includes('attachment.generatedDocumentPayloadRef is not supported; provide attachment.storagePath'));
+  await assert.rejects(
+    _test.resolveEmailAttachment({ companyId: 'co', attachment: { generatedDocumentPayloadRef: 'generatedPayloads/payload-1' } }, emailDocument, attachmentBucket()),
+    error => error.code === 'invalid-argument' && /not supported/.test(error.message)
+  );
 
 
   assert.deepStrictEqual(_test.validatePdfAnalysisRequest({

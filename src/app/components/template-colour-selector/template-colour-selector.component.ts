@@ -13,9 +13,11 @@ export type TemplatePalette = [string, string, string];
 export class TemplateColourSelectorComponent {
   @Input({ required: true }) colors!: TemplatePalette;
   @Input() title = 'Template colours';
+  @Input() disabled = false;
   @Output() colorsChange = new EventEmitter<TemplatePalette>();
 
   update(index: 0 | 1 | 2, event: Event): void {
+    if (this.disabled) return;
     const colors = [...this.colors] as TemplatePalette;
     colors[index] = (event.target as HTMLInputElement).value;
     this.colorsChange.emit(colors);

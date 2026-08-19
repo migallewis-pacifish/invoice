@@ -51,4 +51,10 @@
 .template-name-field { display:grid; gap:6px; margin:0 0 16px; color:var(--muted); font-size:13px; font-weight:700; }
 .template-name-field input { width:100%; padding:11px 13px; border:1px solid var(--border); border-radius:10px; background:#fff; color:var(--ink); font:inherit; }
 .template-name-field input:focus { border-color:var(--primary); outline:0; box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 18%,transparent); }
+.colour-source { display:grid; gap:8px; padding:14px; border:1px solid var(--border); border-radius:12px; background:#fff; }
+.colour-source div { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.colour-source button { padding:8px; border:1px solid var(--border); border-radius:8px; background:#f8fafc; color:var(--muted); cursor:pointer; font-weight:700; }
+.colour-source button.active { border-color:var(--primary); background:#e8f1ff; color:var(--primary); }
+.colour-source button:disabled { cursor:not-allowed; opacity:.5; }
+.colour-source small { color:var(--muted); line-height:1.4; }
 .email-design-preview-frame { min-height:520px; overflow:auto; border:1px solid var(--border); border-radius:10px; background:#f4f6f8; }

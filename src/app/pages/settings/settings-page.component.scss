@@ -169,6 +169,26 @@ general-panel {
     gap: 16px;
 }
 
+.brand-colours-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 16px;
+    padding: 24px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: #fff;
+}
+
+.brand-colours-card h3, .brand-colours-card p { margin: 0; }
+.brand-colours-card p { margin-top: 6px; color: var(--muted); }
+.brand-colour-fields { display: flex; flex-wrap: wrap; gap: 12px; }
+.brand-colour-fields label { display: grid; grid-template-columns: 34px auto; align-items: center; gap: 2px 8px; color: var(--ink); font-size: 12px; font-weight: 700; }
+.brand-colour-fields label span { grid-column: 1 / -1; }
+.brand-colour-fields input { width: 34px; height: 34px; padding: 2px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+.brand-colour-fields code { color: var(--muted); font-size: 11px; }
+
 .provider-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -206,6 +226,7 @@ general-panel {
 }
 
 @media(max-width:640px) {
+    .brand-colours-card { align-items: stretch; flex-direction: column; }
     .settings-tabs {
         justify-content: flex-start
     }

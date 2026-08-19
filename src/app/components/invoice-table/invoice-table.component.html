@@ -7,7 +7,12 @@
     <span>{{ (invoice.dueDate || invoice.date) | date:'mediumDate' }}</span>
     <span>{{ invoice.total | currency:currency:'symbol' }}</span>
     <span *ngIf="showPaid">{{ invoice.amountPaid || 0 | currency:currency:'symbol' }}</span>
-    <app-status-badge [status]="statusFor(invoice)"></app-status-badge>
+    <span class="status-stack">
+      <app-status-badge [status]="statusFor(invoice)"></app-status-badge>
+      <small *ngIf="invoice.lastEmail?.status" [title]="invoice.lastEmail?.failureReason || ''">
+        Email: {{ invoice.lastEmail?.status }}<ng-container *ngIf="invoice.lastEmail?.failureReason"> — {{ invoice.lastEmail?.failureReason }}</ng-container>
+      </small>
+    </span>
     <span class="row-actions">
       <button class="secondary small" type="button" (click)="viewed.emit(invoice)">{{ compact ? '•••' : 'View' }}</button>
       <button class="secondary small" type="button" *ngIf="!compact" (click)="updated.emit(invoice)">Update</button>

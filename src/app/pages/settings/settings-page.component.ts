@@ -17,6 +17,7 @@ import { CurrencyService } from '../../services/currency.service';
 import { DocumentStorageService } from '../../services/document-storage.service';
 import { EmailIntegrationService } from '../../services/email-integration.service';
 import { companyAccountPayload, emailSenderFor, folderMetadataFor } from './settings-page.logic';
+import { DEFAULT_BRAND_COLORS, brandColorsFrom } from '../../models/brand-colours.model';
 
 export type SettingsTab = 'account' | 'branding' | 'general' | 'storage' | 'email';
 
@@ -57,9 +58,18 @@ export class SettingsPageComponent {
   readonly message = signal('');
   readonly storage = signal<CompanyDocumentStorageSettings | null>(null);
   readonly emailSettings = signal<CompanyEmailSettings | null>(null);
+  readonly gmailConfigured = signal(false);
+  readonly microsoftExchangeConfigured = signal(false);
+  readonly nexusFallbackConfigured = signal(false);
+  readonly nexusFromEmail = signal('');
   readonly logoUrl = signal('');
   readonly signatureUrl = signal('');
   readonly signerName = signal('');
+  readonly brandingForm = this.fb.nonNullable.group({
+    primary: [DEFAULT_BRAND_COLORS.primary],
+    secondary: [DEFAULT_BRAND_COLORS.secondary],
+    accent: [DEFAULT_BRAND_COLORS.accent]
+  });
 
   readonly accountForm = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(2)]], regNo: [''], vatNo: [''], tel: [''],
@@ -73,12 +83,14 @@ export class SettingsPageComponent {
     googleDriveFolder: [''], googleDriveFolderId: [''], oneDriveFolder: [''], oneDriveFolderId: [''], localFolderPath: ['']
   });
   readonly emailForm = this.fb.nonNullable.group({
-    defaultProvider: ['gmail' as EmailProvider], gmailAccountEmail: [''], exchangeAccountEmail: [''],
-    exchangeTenantId: [''], sendgridFromEmail: [''], sendgridFromName: ['']
+    defaultProvider: ['' as EmailProvider], gmailAccountEmail: [''], exchangeAccountEmail: [''],
+    exchangeTenantId: [''], sendgridFromEmail: [''], sendgridFromName: [''], nexusFallbackEnabled: [false],
+    nexusReplyToEmail: ['', Validators.email]
   });
 
   constructor() {
     this.loadSettings();
+    this.reportEmailOAuthResult();
   }
 
   selectTab(tab: SettingsTab): void {
@@ -157,6 +169,24 @@ export class SettingsPageComponent {
     }
   }
 
+  async saveBrandColors(): Promise<void> {
+    const companyId = this.companyId();
+    if (!companyId) return;
+    this.savingBranding.set(true);
+    this.message.set('');
+    try {
+      const brandColors = this.brandingForm.getRawValue();
+      await this.activityService.track(companyId, 'update', `companies/${companyId}`, 'Updated company brand colours.', () =>
+        updateDoc(doc(this.db, `companies/${companyId}`), { brandColors })
+      );
+      this.message.set('Brand colours saved. New templates will use them by default.');
+    } catch (error: any) {
+      this.message.set(error?.message || 'Unable to save brand colours.');
+    } finally {
+      this.savingBranding.set(false);
+    }
+  }
+
   async saveDocumentStorage(): Promise<void> {
     const companyId = this.companyId();
     if (!companyId) return;
@@ -185,15 +215,23 @@ export class SettingsPageComponent {
     const companyId = this.companyId();
     if (!companyId) return;
     const value = this.emailForm.getRawValue();
+    if (!value.defaultProvider) {
+      this.message.set('Choose a company email provider to complete onboarding.');
+      return;
+    }
+    if (value.nexusFallbackEnabled && this.emailForm.controls.nexusReplyToEmail.invalid) {
+      this.emailForm.controls.nexusReplyToEmail.markAsTouched();
+      this.message.set('Enter a valid Reply-To address before enabling Nexus email.');
+      return;
+    }
     this.savingEmail.set(true);
     this.message.set('');
     try {
       await this.emailService.saveCompanySettings(companyId, {
         defaultProvider: value.defaultProvider,
+        onboardingCompleted: true,
         selectedSender: emailSenderFor(value.defaultProvider, value),
-        gmail: { connected: !!this.emailSettings()?.gmail?.connected, accountEmail: value.gmailAccountEmail || undefined },
-        microsoftExchange: { connected: !!this.emailSettings()?.microsoftExchange?.connected, accountEmail: value.exchangeAccountEmail || undefined, tenantId: value.exchangeTenantId || undefined },
-        sendgrid: { connected: !!this.emailSettings()?.sendgrid?.connected, apiKeyConfigured: !!this.emailSettings()?.sendgrid?.apiKeyConfigured, fromEmail: value.sendgridFromEmail || undefined, fromName: value.sendgridFromName || undefined }
+        nexusFallback: { enabled: value.nexusFallbackEnabled, replyToEmail: value.nexusReplyToEmail || undefined }
       });
       this.message.set('Email integration settings saved. Complete provider authorization in the backend connection flow before sending mail.');
     } finally {
@@ -214,10 +252,72 @@ export class SettingsPageComponent {
     }
   }
 
+  async connectEmailProvider(provider: 'gmail' | 'microsoft_exchange'): Promise<void> {
+    const companyId = this.companyId();
+    const configured = provider === 'gmail' ? this.gmailConfigured() : this.microsoftExchangeConfigured();
+    if (!companyId || !configured) return;
+    this.message.set('');
+    try {
+      const accountEmail = provider === 'gmail' ? this.emailForm.controls.gmailAccountEmail.value : this.emailForm.controls.exchangeAccountEmail.value;
+      const url = await this.emailService.connectEmailProvider(provider, companyId, accountEmail);
+      this.message.set(`Opening secure ${provider === 'gmail' ? 'Gmail' : 'Microsoft'} authorization. Refresh tokens remain server-only.`);
+      if (typeof window !== 'undefined') window.location.assign(url);
+    } catch (error: any) {
+      this.message.set(error?.message || 'Unable to start email connection.');
+    }
+  }
+
+  async verifyCompanySendGrid(): Promise<void> {
+    const companyId = this.companyId();
+    if (!companyId) return;
+    this.savingEmail.set(true);
+    this.message.set('');
+    try {
+      const sendgrid = await this.emailService.verifyCompanySendGrid(companyId);
+      const current = this.emailSettings();
+      if (current) this.emailSettings.set({ ...current, sendgrid });
+      this.emailForm.patchValue({ sendgridFromEmail: sendgrid?.fromEmail || '', sendgridFromName: sendgrid?.fromName || '' });
+      this.message.set('Company SendGrid connection and sending identity verified.');
+    } catch (error: any) {
+      this.message.set(error?.message || 'Company SendGrid verification failed. Ask an administrator to check the secret and sender authentication.');
+    } finally { this.savingEmail.set(false); }
+  }
+
+  async disconnectEmailProvider(provider: 'gmail' | 'microsoft_exchange'): Promise<void> {
+    const companyId = this.companyId();
+    if (!companyId) return;
+    try {
+      await this.emailService.disconnectEmailProvider(provider, companyId);
+      const current = this.emailSettings();
+      if (current) this.emailSettings.set(provider === 'gmail'
+        ? { ...current, gmail: { ...current.gmail, connected: false } }
+        : { ...current, microsoftExchange: { ...current.microsoftExchange, connected: false } });
+      this.message.set(`${provider === 'gmail' ? 'Gmail' : 'Microsoft Exchange'} disconnected.`);
+    } catch (error: any) {
+      this.message.set(error?.message || 'Unable to disconnect Gmail.');
+    }
+  }
+
+  private reportEmailOAuthResult(): void {
+    if (typeof window === 'undefined') return;
+    const query = new URLSearchParams(window.location.search);
+    const provider = query.get('emailOAuth');
+    if (provider !== 'gmail' && provider !== 'microsoft_exchange') return;
+    this.activeTab.set('email');
+    const label = provider === 'gmail' ? 'Gmail' : 'Microsoft Exchange';
+    this.message.set(query.get('result') === 'success' ? `${label} connected successfully.` : `${label} connection failed: ${query.get('reason') || 'unknown error'}.`);
+  }
+
   private loadSettings(): void {
     this.companyContext.currentCompanyId$().pipe(take(1)).subscribe(companyId => {
       this.companyId.set(companyId);
       if (!companyId) return;
+      this.emailService.providerConfiguration().then(configuration => {
+        this.gmailConfigured.set(configuration.gmail);
+        this.microsoftExchangeConfigured.set(configuration.microsoftExchange);
+        this.nexusFallbackConfigured.set(configuration.nexusFallback);
+        this.nexusFromEmail.set(configuration.nexusFromEmail || '');
+      }).catch(() => { this.gmailConfigured.set(false); this.microsoftExchangeConfigured.set(false); });
       this.loadCompany();
       this.storageService.getCompanySettings(companyId).pipe(take(1)).subscribe(settings => {
         this.storage.set(settings);
@@ -234,12 +334,14 @@ export class SettingsPageComponent {
       this.emailService.getCompanySettings(companyId).pipe(take(1)).subscribe(settings => {
         this.emailSettings.set(settings);
         this.emailForm.patchValue({
-          defaultProvider: settings.defaultProvider,
+          defaultProvider: settings.onboardingCompleted ? settings.defaultProvider : '' as EmailProvider,
           gmailAccountEmail: settings.gmail?.accountEmail || '',
           exchangeAccountEmail: settings.microsoftExchange?.accountEmail || '',
           exchangeTenantId: settings.microsoftExchange?.tenantId || '',
           sendgridFromEmail: settings.sendgrid?.fromEmail || '',
-          sendgridFromName: settings.sendgrid?.fromName || ''
+          sendgridFromName: settings.sendgrid?.fromName || '',
+          nexusFallbackEnabled: settings.nexusFallback?.enabled || false,
+          nexusReplyToEmail: settings.nexusFallback?.replyToEmail || ''
         });
       });
     });
@@ -262,6 +364,8 @@ export class SettingsPageComponent {
       this.logoUrl.set(company?.logoUrl || '');
       this.signatureUrl.set(company?.signature?.imageUrl || company?.signature?.url || company?.signatureUrl || '');
       this.signerName.set(company?.signature?.name || '');
+      const brandColors = brandColorsFrom(company?.brandColors) ?? DEFAULT_BRAND_COLORS;
+      this.brandingForm.setValue(brandColors);
     });
   }
 }

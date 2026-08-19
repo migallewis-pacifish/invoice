@@ -1,11 +1,10 @@
 import { inject, Injectable } from '@angular/core';
-import { Auth } from '@angular/fire/auth';
 import { Functions, httpsCallable } from '@angular/fire/functions';
-import { Firestore, doc, getDoc, increment, serverTimestamp, setDoc, updateDoc } from '@angular/fire/firestore';
-import { from, Observable, switchMap } from 'rxjs';
-import { ActivityService } from './activity.service';
+import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { from, map, Observable } from 'rxjs';
 import { CompanyEmailTemplateType, EmailTemplateVariables } from '../models/company-email-template.model';
 import { EmailTemplateService, validateRenderedEmail } from './email-template.service';
+import { EmailProvider } from '../models/email-integration.model';
 
 export type EmailDocumentType = 'invoice' | 'letter';
 export type InvoiceReminderType = 'beforeDue' | 'dueToday' | 'overdue';
@@ -23,6 +22,7 @@ export interface SendEmailRequest {
   documentType: EmailDocumentType;
   documentId: string;
   reminderType?: InvoiceReminderType;
+  provider?: EmailProvider;
   recipient: string;
   cc?: string[];
   bcc?: string[];
@@ -31,6 +31,7 @@ export interface SendEmailRequest {
   attachment?: EmailAttachmentReference;
   templateSelection?: EmailTemplateSelection;
   templateVariables?: EmailTemplateVariablePayload;
+  idempotencyKey?: string;
 }
 
 export interface EmailTemplateSelection {
@@ -62,8 +63,14 @@ interface BrandedEmailTemplateVariables extends EmailTemplateVariables {
 
 export interface SendEmailResponse {
   provider: string;
+  effectiveProvider: string;
+  requestedProvider: string;
+  fallbackReason?: string | null;
+  effectiveFrom?: string;
+  sendRecordId?: string;
   messageId: string;
   accepted: boolean;
+  status?: 'pending' | 'sent' | 'accepted' | 'deferred' | 'delivered' | 'dropped' | 'bounced' | 'complained' | 'unsubscribed' | 'failed';
   sentAt?: string;
 }
 
@@ -97,8 +104,6 @@ export function validateSendEmailRequest(request: SendEmailRequest): string[] {
 export class EmailService {
   private readonly functions = inject(Functions);
   private readonly db = inject(Firestore);
-  private readonly auth = inject(Auth);
-  private readonly activityService = inject(ActivityService);
   private readonly emailTemplateService = inject(EmailTemplateService);
 
   send(request: SendEmailRequest): Observable<SendEmailResponse> {
@@ -106,51 +111,13 @@ export class EmailService {
     if (errors.length) throw new Error(errors.join(' '));
 
     const callable = httpsCallable<SendEmailRequest, SendEmailResponse>(this.functions, 'sendDocumentEmail');
-    return from(callable({ ...request, cc: normalizeEmailList(request.cc), bcc: normalizeEmailList(request.bcc) })).pipe(
-      switchMap(result => from(this.recordSuccessfulSend(request, result.data)))
-    );
+    const idempotencyKey = request.idempotencyKey || this.newIdempotencyKey();
+    return from(callable({ ...request, idempotencyKey, cc: normalizeEmailList(request.cc), bcc: normalizeEmailList(request.bcc) }))
+      .pipe(map(result => result.data));
   }
 
-  private async recordSuccessfulSend(request: SendEmailRequest, response: SendEmailResponse): Promise<SendEmailResponse> {
-    const sentAt = serverTimestamp();
-    const sentBy = this.auth.currentUser?.uid || 'unknown';
-    const path = `companies/${request.companyId}/clients/${request.clientId}/${request.documentType === 'invoice' ? 'invoices' : 'letters'}/${request.documentId}`;
-    const ref = doc(this.db, path);
-    const snap = await getDoc(ref);
-    const current = snap.exists() ? snap.data() as any : {};
-    const metadata = {
-      sentAt,
-      sentBy,
-      recipient: request.recipient,
-      cc: normalizeEmailList(request.cc),
-      bcc: normalizeEmailList(request.bcc),
-      subject: request.subject,
-      emailProvider: response.provider,
-      emailProviderMessageId: response.messageId,
-    };
-    const update: any = { ...metadata, lastEmail: metadata, updatedAt: sentAt };
-    if (request.documentType === 'invoice' && current.status === 'draft') update.status = 'sent';
-    if (request.documentType === 'invoice' && request.reminderType) {
-      update.lastReminderSentAt = sentAt;
-      update.reminderCount = increment(1);
-      update.lastReminderType = request.reminderType;
-    }
-    await updateDoc(ref, update);
-
-    if (request.documentType === 'invoice') {
-      const summaryRef = doc(this.db, `companies/${request.companyId}/invoiceSummaries/${request.documentId}`);
-      await setDoc(summaryRef, update, { merge: true });
-    }
-
-    await this.activityService.record(
-      request.companyId,
-      'update',
-      path,
-      request.reminderType
-        ? `Sent ${request.reminderType} reminder for invoice ${request.documentId} to ${request.recipient}.`
-        : `Sent ${request.documentType} ${request.documentId} email to ${request.recipient}.`
-    );
-    return response;
+  private newIdempotencyKey(): string {
+    return globalThis.crypto?.randomUUID?.().replace(/-/g, '') || `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
   }
 
   async buildDefaultRequest(documentType: EmailDocumentType, document: any, companyId: string, clientId: string, recipient = '', client?: any, reminderType?: InvoiceReminderType): Promise<SendEmailRequest> {
@@ -170,6 +137,7 @@ export class EmailService {
       clientId,
       documentType,
       documentId: document.id,
+      idempotencyKey: this.newIdempotencyKey(),
       recipient,
       subject: `${documentType === 'invoice' ? 'Invoice' : 'Letter'} ${label}`,
       messageBody: `Please find the attached ${documentType}.`,

@@ -21,7 +21,9 @@ describe('settings page logic', () => {
 
     expect(emailSenderFor('gmail', value)).toEqual({ email: 'gmail@example.com' });
     expect(emailSenderFor('microsoft_exchange', value)).toEqual({ email: 'exchange@example.com' });
+    expect(emailSenderFor('company_sendgrid', value)).toEqual({ email: 'sendgrid@example.com', displayName: 'Accounts' });
     expect(emailSenderFor('sendgrid', value)).toEqual({ email: 'sendgrid@example.com', displayName: 'Accounts' });
+    expect(emailSenderFor('nexus_fallback', value)).toBeUndefined();
   });
 
   it('builds provider-specific folder metadata', () => {
