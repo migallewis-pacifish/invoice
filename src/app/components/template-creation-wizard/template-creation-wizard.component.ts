@@ -33,7 +33,11 @@ export interface FreemarkerStarterTemplate {
 }
 
 const FREEMARKER_STARTER_IDS = ['azure-ledger', 'midnight-teal', 'sage-studio', 'coral-sidebar', 'monochrome-grid', 'violet-gradient', 'tricolour-sidebar'];
-const FREEMARKER_LETTER_STARTER_IDS = ['classic-formal', 'modern-sidebar', 'editorial-centred', 'compact-business', 'window-envelope', 'executive-banner'];
+const FREEMARKER_LETTER_STARTER_IDS = [
+  'classic-formal', 'modern-sidebar', 'editorial-centred', 'compact-business', 'window-envelope', 'executive-banner',
+  'azure-ledger-letter', 'midnight-teal-letter', 'sage-studio-letter', 'coral-sidebar-letter',
+  'monochrome-grid-letter', 'violet-gradient-letter', 'tricolour-sidebar-letter'
+];
 
 interface StarterPaletteConfig {
   defaults: TemplatePalette;
@@ -53,7 +57,14 @@ const STARTER_PALETTES: Record<string, StarterPaletteConfig> = {
   'editorial-centred': letterPalette(),
   'compact-business': letterPalette(),
   'window-envelope': letterPalette(),
-  'executive-banner': letterPalette()
+  'executive-banner': letterPalette(),
+  'azure-ledger-letter': { defaults: ['#3478d4', '#245ca8', '#c9dcf7'], sourceColors: [['#3478d4'], ['#245ca8'], ['#c9dcf7']] },
+  'midnight-teal-letter': { defaults: ['#062f43', '#0e6174', '#16a9b8'], sourceColors: [['#062f43', '#063c50'], ['#0e6174', '#1993a3'], ['#16a9b8', '#18a4b3']] },
+  'sage-studio-letter': { defaults: ['#637f70', '#8b664a', '#9caf9f'], sourceColors: [['#637f70', '#647e70'], ['#8b664a'], ['#9caf9f']] },
+  'coral-sidebar-letter': { defaults: ['#18324b', '#ff6b5d', '#ff9c93'], sourceColors: [['#18324b'], ['#ff6b5d', '#ff6255'], ['#ff9c93', '#ff8b80']] },
+  'monochrome-grid-letter': { defaults: ['#111111', '#555555', '#dddddd'], sourceColors: [['#111'], ['#555'], ['#ddd']] },
+  'violet-gradient-letter': { defaults: ['#302561', '#5b3cc4', '#8b5cf6'], sourceColors: [['#302561', '#292344'], ['#5b3cc4', '#5135aa'], ['#8b5cf6', '#9f7aea']] },
+  'tricolour-sidebar-letter': { defaults: ['#3a666d', '#2a7a87', '#71c2a7'], sourceColors: [[], [], []] }
 };
 
 export const FREEMARKER_INVOICE_TEMPLATES: FreemarkerStarterTemplate[] = [
@@ -72,7 +83,14 @@ export const FREEMARKER_LETTER_TEMPLATES: FreemarkerStarterTemplate[] = [
   starter('letter', 'editorial-centred', 'Editorial Centred', 'A spacious centred masthead and editorial body.', '#686f78'),
   starter('letter', 'compact-business', 'Compact Business', 'A structured metadata grid for concise correspondence.', '#1f2933'),
   starter('letter', 'window-envelope', 'Window Envelope', 'A recipient-first layout designed for window envelopes.', '#6e7781'),
-  starter('letter', 'executive-banner', 'Executive Banner', 'A prominent masthead with a split executive header.', '#252930')
+  starter('letter', 'executive-banner', 'Executive Banner', 'A prominent masthead with a split executive header.', '#252930'),
+  starter('letter', 'azure-ledger-letter', 'Classic Ledger Letter', 'The letter companion to the crisp blue Classic Ledger invoice.', '#3478d4'),
+  starter('letter', 'midnight-teal-letter', 'Executive Masthead Letter', 'The letter companion to the high-contrast Executive Masthead invoice.', '#1b9c96'),
+  starter('letter', 'sage-studio-letter', 'Editorial Studio Letter', 'The letter companion to the calm, refined Editorial Studio invoice.', '#779b78'),
+  starter('letter', 'coral-sidebar-letter', 'Payment Sidebar Letter', 'The letter companion to the bold coral sidebar invoice.', '#ed765f'),
+  starter('letter', 'monochrome-grid-letter', 'Minimalist Grid Letter', 'The letter companion to the structured monochrome invoice.', '#202020'),
+  starter('letter', 'violet-gradient-letter', 'Contemporary Flow Letter', 'The letter companion to the layered violet gradient invoice.', '#7357d9'),
+  starter('letter', 'tricolour-sidebar-letter', 'Tricolour Sidebar Letter', 'The letter companion with the same custom three-colour sidebar.', 'linear-gradient(#3a666d, #2a7a87, #71c2a7)')
 ];
 
 function starter(type: 'invoice' | 'letter', id: string, name: string, description: string, accent: string): FreemarkerStarterTemplate {
@@ -290,14 +308,23 @@ export class TemplateCreationWizardComponent {
   }
 
   private async fetchStarter(starter: FreemarkerStarterTemplate): Promise<string> {
-    const response = await fetch(starter.path);
+    // Do not retain an SPA fallback response cached from before a newly added
+    // public template asset was deployed.
+    const response = await fetch(starter.path, { cache: 'no-store' });
     if (!response.ok) throw new Error(`Unable to load ${starter.name}.`);
-    return response.text();
+    const source = await response.text();
+    const required = this.documentType() === 'letter'
+      ? ['letter.title', 'letter.message', 'letter.date']
+      : ['invoice.number', 'invoice.total'];
+    if (!/<html[\s>]/i.test(source) || required.some(variable => !source.includes(`\${${variable}`))) {
+      throw new Error(`Unable to load ${starter.name}. The template asset is unavailable.`);
+    }
+    return source;
   }
 
   private customizeStarterSource(source: string, starter: FreemarkerStarterTemplate): string {
     const palette = this.paletteFor(starter);
-    if (starter.id === 'tricolour-sidebar') {
+    if (starter.id === 'tricolour-sidebar' || starter.id === 'tricolour-sidebar-letter') {
       return source.replace(
         /\$\{\(theme\.sidebarColor([123])(?:\)!|!)'[^']+'(?:\))?(?:\?html)?}/g,
         (expression, index) => expression.replace(/'[^']+'/, `'${palette[Number(index) - 1] ?? '#2a7a87'}'`)

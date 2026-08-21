@@ -19,25 +19,34 @@ export class DocumentTemplatePreviewService {
     'invoice.number': 'PAC-2026-1042', 'invoice.date': '6 August 2026', 'invoice.dueDate': '5 September 2026',
     'invoice.subtotal': 'R 12,000.00', 'invoice.vatPercentage': '15', 'invoice.vat': 'R 1,800.00', 'invoice.total': 'R 13,800.00',
     'invoice.notes': 'Thank you for choosing Pacifish.',
+    'letter.title': 'Project update and next steps', 'letter.date': '6 August 2026',
+    'letter.message': 'Dear Naledi,\n\nThank you for partnering with Pacifish Consulting. We are pleased to share the latest project update and the next steps for your team.',
+    'letter.signedBy': 'Mia Daniels', 'letter.signatureUrl': '',
     'message.body': 'Please find the latest update from the Pacifish team. Review the details below and contact us if you have any questions.',
     'item.description': 'Nexus platform consulting and support', 'item.hours': '20', 'item.rate': 'R 600.00', 'item.amount': 'R 12,000.00',
     'payment.reference': 'PAC-2026-1042', 'payment.bankName': 'Nexus Bank', 'payment.accountHolder': 'Pacifish Consulting (Pty) Ltd',
     'payment.accountType': 'Business Cheque', 'payment.accountNumber': '1234567890', 'payment.branchCode': '250655', 'signature.name': 'Mia Daniels'
   };
 
-  buildHtml(source: string): string {
-    return this.renderConditionals(source)
+  buildHtml(source: string, overrides: Record<string, string> = {}): string {
+    const values = { ...this.sampleValues, ...overrides };
+    return this.renderConditionals(source, values)
       .replace(/\$\{\(theme\.sidebarColor[123]\)!'([^']+)'}/g, '$1')
       .replace(/<#--[\s\S]*?-->/g, '')
       .replace(/<#[^>]*>/g, '')
       .replace(/<\/#list>/g, '')
       .replace(/\$\{([^}]+)}/g, (_match, expression: string) => {
         const path = expression.match(/[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_]+)+/)?.[0];
-        return path ? this.sampleValues[path] ?? '' : '';
+        const value = path ? values[path] ?? '' : '';
+        return expression.includes('?html') && path !== 'letter.message' ? this.escapeHtml(value) : value;
       });
   }
 
-  private renderConditionals(source: string): string {
+  private escapeHtml(value: string): string {
+    return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character] || character));
+  }
+
+  private renderConditionals(source: string, values: Record<string, string>): string {
     const directive = /<#if\s+([^>]+)>|<\/#if>/g;
     const activeConditions: boolean[] = [];
     let output = '';
@@ -46,7 +55,7 @@ export class DocumentTemplatePreviewService {
 
     while ((match = directive.exec(source))) {
       if (activeConditions.every(Boolean)) output += source.slice(cursor, match.index);
-      if (match[1] !== undefined) activeConditions.push(this.evaluateCondition(match[1]));
+      if (match[1] !== undefined) activeConditions.push(this.evaluateCondition(match[1], values));
       else activeConditions.pop();
       cursor = directive.lastIndex;
     }
@@ -54,11 +63,11 @@ export class DocumentTemplatePreviewService {
     return output;
   }
 
-  private evaluateCondition(expression: string): boolean {
+  private evaluateCondition(expression: string, values: Record<string, string>): boolean {
     return expression.split('||').some(orPart => orPart.split('&&').every(andPart => {
       const match = andPart.trim().match(/^\(?\s*([a-zA-Z0-9_.]+)\s*\)?\?has_content$/);
       if (!match) return false;
-      return !!this.sampleValues[match[1]]?.trim();
+      return !!values[match[1]]?.trim();
     }));
   }
 }

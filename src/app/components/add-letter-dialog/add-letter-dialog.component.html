@@ -1,15 +1,8 @@
-<app-dialog-shell title="Add Letter" (closed)="close()">
+<app-dialog-shell title="Add Letter" [wide]="!!previewHtml()" (closed)="close()">
   <form [formGroup]="form" (ngSubmit)="generateLetter()" class="dialog-body">
-    <p class="copy-note">Generate a client letter from your company Word template.</p>
-
-    <div class="template-box">
-      <strong>Letter template</strong>
-      <span class="badge" [class.ok]="templatePath()" [class.warn]="!templatePath()">
-        {{ templatePath() ? 'Template set' : 'No letter template' }}
-      </span>
-      <input type="file" accept=".docx" (change)="uploadTemplate($event)" [disabled]="uploading() || saving()">
-      <small>Template placeholders: &#123;letter_title&#125;, &#123;letter_message&#125;, &#123;client_name&#125;, &#123;company_name&#125;, &#123;signed_by&#125;, &#123;signature_url&#125;.</small>
-    </div>
+    <div class="dialog-layout" [class.with-preview]="!!previewHtml()">
+      <div class="letter-fields">
+        <p class="copy-note">Create a formatted client letter using one of your saved templates.</p>
 
     <div class="form-group full">
       <label>Title <span>*</span></label>
@@ -17,42 +10,55 @@
     </div>
 
     <div class="form-group full">
-      <label>Custom Message <span>*</span></label>
-      <textarea rows="8" formControlName="message" placeholder="Write the letter body..."></textarea>
-    </div>
-
-    <div class="form-group full">
-      <label>Signed by</label>
-      <input type="text" formControlName="signedBy" placeholder="Migal">
-    </div>
-
-    <div class="form-group full">
-      <label>Signature</label>
-      <select formControlName="signatureId">
-        <option value="">No uploaded signature</option>
-        <option *ngFor="let sig of signatures()" [value]="sig.id">{{ sig.name }}</option>
+      <label>Template <span>*</span></label>
+      <select formControlName="templateId">
+        <option value="" disabled>{{ templatesLoading() ? 'Loading templates…' : 'Choose a letter template' }}</option>
+        <option *ngFor="let template of letterTemplates()" [value]="template.id">
+          {{ template.name }} — {{ templateFormatLabel(template) }}{{ template.isDefault ? ' (Default)' : '' }}
+        </option>
       </select>
-      <input type="file" accept="image/*" (change)="uploadSignature($event)" [disabled]="uploading() || saving()">
-      <small>Upload a signature image after entering the signer name. The template receives its URL as &#123;signature_url&#125;.</small>
+      <small *ngIf="!templatesLoading() && letterTemplates().length === 0">No letter templates are available. Add one from Templates first.</small>
     </div>
 
     <div class="form-group full">
-      <label>Output format</label>
-      <select formControlName="downloadFormat">
-        <option value="docx">Microsoft Word document</option>
-        <option value="pdf">PDF (backend generated)</option>
-      </select>
-      <small>PDF output is generated server-side and saved to company/client/document storage.</small>
+      <label id="message-label">Message <span>*</span></label>
+      <div class="editor-shell">
+        <div class="editor-toolbar" role="toolbar" aria-label="Message formatting">
+          <button type="button" title="Bold" (click)="formatMessage('bold')"><b>B</b></button>
+          <button type="button" title="Italic" (click)="formatMessage('italic')"><i>I</i></button>
+          <button type="button" title="Underline" (click)="formatMessage('underline')"><u>U</u></button>
+          <span class="toolbar-divider"></span>
+          <button type="button" title="Upper case" (click)="changeCase('upper')">AA</button>
+          <button type="button" title="Lower case" (click)="changeCase('lower')">aa</button>
+          <label class="colour-control" title="Font colour"><span>A</span><input type="color" value="#26364a" (input)="setFontColour($event)"></label>
+        </div>
+        <div #messageEditor class="message-editor" contenteditable="true" role="textbox" aria-labelledby="message-label" aria-multiline="true" data-placeholder="Write the letter body…" (input)="syncMessage()"></div>
+      </div>
     </div>
 
-    <div class="actions">
-      <button type="submit" class="primary" [disabled]="saving() || uploading() || form.invalid">
-        <span *ngIf="!saving()">Generate & Download Letter</span>
-        <span *ngIf="saving()" class="spinner"></span>
-      </button>
-    </div>
+    <fieldset class="signature-choice">
+      <legend>Signature</legend>
+      <label><input type="radio" formControlName="includeSignature" value="no"> Do not add a signature</label>
+      <label><input type="radio" formControlName="includeSignature" value="yes" [disabled]="!defaultSignature()"> Add signature from Settings</label>
+      <small *ngIf="defaultSignature() as signature">Using {{ signature.name }}</small>
+      <small *ngIf="!defaultSignature()">No signature is uploaded in Settings → Branding.</small>
+    </fieldset>
 
-    <div class="msg error" *ngIf="error()">{{ error() }}</div>
-    <div class="msg info" *ngIf="info()">{{ info() }}</div>
+        <div class="actions">
+          <button type="button" class="secondary" [disabled]="previewBusy() || templatesLoading() || !form.controls.templateId.value" (click)="previewLetter()">
+            {{ previewBusy() ? 'Loading preview…' : (previewHtml() ? 'Refresh Preview' : 'Preview Letter') }}
+          </button>
+          <button type="submit" class="primary" [disabled]="saving() || templatesLoading() || form.invalid">
+            <span *ngIf="!saving()">Generate Letter</span>
+            <span *ngIf="saving()" class="spinner"></span>
+          </button>
+        </div>
+        <div class="msg error" *ngIf="error()">{{ error() }}</div>
+      </div>
+      <section class="letter-preview" *ngIf="previewHtml() as html">
+        <div class="preview-heading"><strong>Letter preview</strong><button type="button" aria-label="Close preview" (click)="previewHtml.set(null)">×</button></div>
+        <app-template-preview-frame [html]="html" title="Letter preview"></app-template-preview-frame>
+      </section>
+    </div>
   </form>
 </app-dialog-shell>

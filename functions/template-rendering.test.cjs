@@ -22,6 +22,18 @@ const { _test } = require('./index.js');
   assert.strictEqual(brandedVariables.letter.signatureUrl, 'signature.png');
   assert.strictEqual(brandedVariables.letter.signedBy, 'Alex');
 
+  const richLetter = _test.buildTemplateVariables({
+    documentId: 'LETTER-2', payload: { message: '<b>Bold</b> <span style="color:#c00">red</span><script>alert(1)</script>', includeSignature: false },
+    company: { signature: { name: 'Alex', imageUrl: 'signature.png' } }
+  });
+  assert.strictEqual(richLetter.letter.message, '<b>Bold</b> <span style="color:#c00">red</span>');
+  assert.strictEqual(richLetter.letter.signatureUrl, '');
+  assert.strictEqual(richLetter.letter.signedBy, '');
+  assert.strictEqual(
+    _test.renderDocumentTemplate('<article>${letter.message?html}</article>', richLetter),
+    '<article><b>Bold</b> <span style="color:#c00">red</span></article>'
+  );
+
   const addressVariables = _test.buildTemplateVariables({
     documentId: 'INV-ADDRESS',
     payload: { client_title: 'Dr', client_name: 'Jamie Client' },

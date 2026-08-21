@@ -67,8 +67,8 @@ export class LetterDocxService {
     client: any;
     signedBy?: string;
     signature?: LetterSignature | null;
-  }): Observable<string> {
-    return this.generateLetterDocx(companyId, input).pipe(
+  }, templateId?: string | null): Observable<string> {
+    return this.generateLetterDocx(companyId, input, templateId).pipe(
       switchMap(({ blob, fileName }) =>
         from(this.documentStorage.saveGeneratedDocument({ companyId, clientId: input.client?.id, clientName: input.client?.displayName || 'client', documentType: 'letter', documentId: input.title, fileName, mimeType: blob.type, blob })).pipe(map(() => fileName))
       ),
@@ -87,16 +87,18 @@ export class LetterDocxService {
     client: any;
     signedBy?: string;
     signature?: LetterSignature | null;
-  }): Observable<PdfGenerationResult> {
+  }, templateId?: string | null): Observable<PdfGenerationResult> {
     return from(this.pdfGeneration.generate({
       companyId,
       clientId: input.client?.id,
       clientName: input.client?.displayName || 'client',
       documentType: 'letter',
       documentId: input.title,
+      templateId: templateId || undefined,
       payload: {
         title: input.title,
         message: input.message,
+        includeSignature: !!input.signature,
         signedBy: input.signedBy || input.signature?.name || '',
         signaturePath: input.signature?.path || null
       },
@@ -121,14 +123,14 @@ export class LetterDocxService {
     client: any;
     signedBy?: string;
     signature?: LetterSignature | null;
-  }): Observable<{ blob: Blob; fileName: string }> {
+  }, templateId?: string | null): Observable<{ blob: Blob; fileName: string }> {
     const companyDoc = doc(this.db, `companies/${companyId}`);
     return docData(companyDoc).pipe(
       take(1),
       switchMap((companyRaw: any) => {
         if (!companyRaw) return throwError(() => new Error('Company not found.'));
         const company = companyRaw as Company;
-        return this.templateService.getDefaultTemplate(companyId, 'letter').pipe(
+        return this.templateService.getDefaultTemplate(companyId, 'letter', templateId).pipe(
           take(1),
           switchMap(template => {
             const path = template?.bodyStoragePath || template?.storagePath;
@@ -191,7 +193,7 @@ export class LetterDocxService {
       company_province: a.province || '',
       company_postal_code: a.postalCode || '',
       signed_by: input.signedBy || input.signature?.name || company.signature?.name || '',
-      signature_url: input.signature?.url || company.signature?.imageUrl || company.signature?.url || company.signatureUrl || '',
+      signature_url: input.signature ? (input.signature.url || company.signature?.imageUrl || company.signature?.url || company.signatureUrl || '') : '',
       company_logo_url: company.logoUrl || ''
     };
   }

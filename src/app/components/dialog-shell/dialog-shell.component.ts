@@ -4,7 +4,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
   selector: 'app-dialog-shell',
   standalone: true,
   template: `
-    <div class="dialog-shell">
+    <div class="dialog-shell" [class.wide]="wide">
       <div class="dialog-header">
         <h3>{{ title }}</h3>
         <button class="icon-btn" type="button" [attr.aria-label]="'Close ' + title" (click)="closed.emit()">✕</button>
@@ -16,5 +16,6 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 })
 export class DialogShellComponent {
   @Input({ required: true }) title = '';
+  @Input() wide = false;
   @Output() closed = new EventEmitter<void>();
 }

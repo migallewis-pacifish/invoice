@@ -1,0 +1,160 @@
+[debug] [2026-08-19T17:56:05.790Z] ----------------------------------------------------------------------
+[debug] [2026-08-19T17:56:05.793Z] Command:       /home/migal/.nvm/versions/node/v20.19.2/bin/node /home/migal/.nvm/versions/node/v20.19.2/bin/firebase deploy --only functions
+[debug] [2026-08-19T17:56:05.794Z] CLI Version:   14.18.0
+[debug] [2026-08-19T17:56:05.794Z] Platform:      linux
+[debug] [2026-08-19T17:56:05.794Z] Node Version:  v20.19.2
+[debug] [2026-08-19T17:56:05.794Z] Time:          Wed Aug 19 2026 19:56:05 GMT+0200 (South Africa Standard Time)
+[debug] [2026-08-19T17:56:05.795Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-19T17:56:05.799Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-08-19T17:56:06.192Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-19T17:56:06.192Z] > authorizing via signed-in user (migallewis@pacifish.biz)
+[debug] [2026-08-19T17:56:06.192Z] [iam] checking project invoice-simple-336 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-08-19T17:56:06.193Z] Checked if tokens are valid: false, expires at: 1786001787690
+[debug] [2026-08-19T17:56:06.193Z] Checked if tokens are valid: false, expires at: 1786001787690
+[debug] [2026-08-19T17:56:06.193Z] > refreshing access token with scopes: []
+[debug] [2026-08-19T17:56:06.194Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-08-19T17:56:06.195Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-19T17:56:06.615Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-08-19T17:56:06.615Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-19T17:56:06.625Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/invoice-simple-336:testIamPermissions [none]
+[debug] [2026-08-19T17:56:06.625Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/invoice-simple-336:testIamPermissions x-goog-quota-user=projects/invoice-simple-336
+[debug] [2026-08-19T17:56:06.625Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/invoice-simple-336:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-08-19T17:56:06.719Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-08-19T17:56:06.720Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-08-19T17:56:08.236Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/invoice-simple-336:testIamPermissions 200
+[debug] [2026-08-19T17:56:08.236Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/invoice-simple-336:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-08-19T17:56:08.237Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:08.237Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:08.237Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/invoice-simple-336/serviceAccounts/invoice-simple-336@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-08-19T17:56:08.238Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/invoice-simple-336/serviceAccounts/invoice-simple-336@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-08-19T17:56:10.117Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/invoice-simple-336/serviceAccounts/invoice-simple-336@appspot.gserviceaccount.com:testIamPermissions 404
+[debug] [2026-08-19T17:56:10.117Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/invoice-simple-336/serviceAccounts/invoice-simple-336@appspot.gserviceaccount.com:testIamPermissions {"error":{"code":404,"message":"Unknown service account","status":"NOT_FOUND"}}
+[debug] [2026-08-19T17:56:10.118Z] [functions] service account IAM check errored, deploy may fail: Request to https://iam.googleapis.com/v1/projects/invoice-simple-336/serviceAccounts/invoice-simple-336@appspot.gserviceaccount.com:testIamPermissions had HTTP Error: 404, Unknown service account {"name":"FirebaseError","children":[],"context":{"body":{"error":{"code":404,"message":"Unknown service account","status":"NOT_FOUND"}},"response":{"statusCode":404}},"exit":1,"message":"Request to https://iam.googleapis.com/v1/projects/invoice-simple-336/serviceAccounts/invoice-simple-336@appspot.gserviceaccount.com:testIamPermissions had HTTP Error: 404, Unknown service account","status":404}
+[info] 
+[info] === Deploying to 'invoice-simple-336'...
+[info] 
+[info] i  deploying functions 
+[debug] [2026-08-19T17:56:10.121Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:10.121Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:10.121Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/invoice-simple-336 [none]
+[debug] [2026-08-19T17:56:10.428Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/invoice-simple-336 200
+[debug] [2026-08-19T17:56:10.429Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/invoice-simple-336 {"projectNumber":"224759554009","projectId":"invoice-simple-336","lifecycleState":"ACTIVE","name":"invoice-simple-336","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-10-04T08:14:50.557887Z","parent":{"type":"organization","id":"681375639803"}}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2026-08-19T17:56:10.435Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:10.435Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:10.436Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/invoice-simple-336/adminSdkConfig [none]
+[debug] [2026-08-19T17:56:11.338Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/invoice-simple-336/adminSdkConfig 200
+[debug] [2026-08-19T17:56:11.338Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/invoice-simple-336/adminSdkConfig {"projectId":"invoice-simple-336","storageBucket":"invoice-simple-336.firebasestorage.app"}
+[debug] [2026-08-19T17:56:11.339Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:11.339Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:11.339Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/invoice-simple-336/configs [none]
+[debug] [2026-08-19T17:56:12.152Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/invoice-simple-336/configs 200
+[debug] [2026-08-19T17:56:12.153Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/invoice-simple-336/configs {}
+[debug] [2026-08-19T17:56:12.155Z] Validating nodejs source
+[warn] ⚠  functions: Runtime Node.js 20 was deprecated on 2026-04-30 and will be decommissioned on 2026-10-30, after which you will not be able to deploy without upgrading. Consider upgrading now to avoid disruption. See https://cloud.google.com/functions/docs/runtime-support for full details on the lifecycle policy 
+[warn] ⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] ⚠  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-08-19T17:56:12.912Z] > [functions] package.json contents: {
+  "name": "invoice-functions",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test *.test.cjs"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^143.0.4",
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.4.0",
+    "puppeteer-core": "^24.35.0"
+  }
+}
+[debug] [2026-08-19T17:56:12.912Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[debug] [2026-08-19T17:56:12.914Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-08-19T17:56:12.918Z] Found firebase-functions binary at '/home/migal/projects/pacifish/invoice/clone/invoice/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8611
+
+[debug] [2026-08-19T17:56:13.340Z] Got response from /__/functions.yaml {"endpoints":{"sendDocumentEmail":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"SENDGRID_API_KEY"},{"key":"SENDGRID_FROM_EMAIL"},{"key":"COMPANY_SENDGRID_CREDENTIALS"},{"key":"GMAIL_OAUTH_CLIENT_ID"},{"key":"GMAIL_OAUTH_CLIENT_SECRET"},{"key":"GMAIL_OAUTH_REDIRECT_URI"},{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_ID"},{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_SECRET"},{"key":"MICROSOFT_EMAIL_OAUTH_REDIRECT_URI"},{"key":"MICROSOFT_EMAIL_ALLOWED_TENANTS"}],"labels":{},"callableTrigger":{},"entryPoint":"sendDocumentEmail"},"verifyCompanySendGrid":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"COMPANY_SENDGRID_CREDENTIALS"}],"labels":{},"callableTrigger":{},"entryPoint":"verifyCompanySendGrid"},"getEmailProviderConfiguration":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"GMAIL_OAUTH_CLIENT_ID"},{"key":"GMAIL_OAUTH_CLIENT_SECRET"},{"key":"GMAIL_OAUTH_REDIRECT_URI"},{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_ID"},{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_SECRET"},{"key":"MICROSOFT_EMAIL_OAUTH_REDIRECT_URI"},{"key":"MICROSOFT_EMAIL_ALLOWED_TENANTS"},{"key":"SENDGRID_API_KEY"},{"key":"SENDGRID_FROM_EMAIL"}],"labels":{},"callableTrigger":{},"entryPoint":"getEmailProviderConfiguration"},"sendGridEventWebhook":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY"}],"labels":{},"httpsTrigger":{},"entryPoint":"sendGridEventWebhook"},"startGmailOAuth":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"GMAIL_OAUTH_CLIENT_ID"},{"key":"GMAIL_OAUTH_CLIENT_SECRET"},{"key":"GMAIL_OAUTH_REDIRECT_URI"}],"labels":{},"callableTrigger":{},"entryPoint":"startGmailOAuth"},"gmailOAuthCallback":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"GMAIL_OAUTH_CLIENT_ID"},{"key":"GMAIL_OAUTH_CLIENT_SECRET"},{"key":"GMAIL_OAUTH_REDIRECT_URI"}],"labels":{},"httpsTrigger":{},"entryPoint":"gmailOAuthCallback"},"checkGmailConnection":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"GMAIL_OAUTH_CLIENT_ID"},{"key":"GMAIL_OAUTH_CLIENT_SECRET"},{"key":"GMAIL_OAUTH_REDIRECT_URI"}],"labels":{},"callableTrigger":{},"entryPoint":"checkGmailConnection"},"disconnectGmail":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"GMAIL_OAUTH_CLIENT_ID"},{"key":"GMAIL_OAUTH_CLIENT_SECRET"},{"key":"GMAIL_OAUTH_REDIRECT_URI"}],"labels":{},"callableTrigger":{},"entryPoint":"disconnectGmail"},"startMicrosoftEmailOAuth":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_ID"},{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_SECRET"},{"key":"MICROSOFT_EMAIL_OAUTH_REDIRECT_URI"},{"key":"MICROSOFT_EMAIL_ALLOWED_TENANTS"}],"labels":{},"callableTrigger":{},"entryPoint":"startMicrosoftEmailOAuth"},"microsoftEmailOAuthCallback":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_ID"},{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_SECRET"},{"key":"MICROSOFT_EMAIL_OAUTH_REDIRECT_URI"},{"key":"MICROSOFT_EMAIL_ALLOWED_TENANTS"}],"labels":{},"httpsTrigger":{},"entryPoint":"microsoftEmailOAuthCallback"},"refreshMicrosoftEmailConnection":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_ID"},{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_SECRET"},{"key":"MICROSOFT_EMAIL_OAUTH_REDIRECT_URI"},{"key":"MICROSOFT_EMAIL_ALLOWED_TENANTS"}],"labels":{},"callableTrigger":{},"entryPoint":"refreshMicrosoftEmailConnection"},"checkMicrosoftEmailConnection":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_ID"},{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_SECRET"},{"key":"MICROSOFT_EMAIL_OAUTH_REDIRECT_URI"},{"key":"MICROSOFT_EMAIL_ALLOWED_TENANTS"}],"labels":{},"callableTrigger":{},"entryPoint":"checkMicrosoftEmailConnection"},"disconnectMicrosoftEmail":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_ID"},{"key":"MICROSOFT_EMAIL_OAUTH_CLIENT_SECRET"},{"key":"MICROSOFT_EMAIL_OAUTH_REDIRECT_URI"},{"key":"MICROSOFT_EMAIL_ALLOWED_TENANTS"}],"labels":{},"callableTrigger":{},"entryPoint":"disconnectMicrosoftEmail"},"queueOverdueInvoiceReminders":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"scheduleTrigger":{"schedule":"every day 08:00","retryConfig":{"retryCount":null,"maxDoublings":null,"maxRetrySeconds":null,"minBackoffSeconds":null,"maxBackoffSeconds":null},"timeZone":null},"entryPoint":"queueOverdueInvoiceReminders"},"startDocumentStorageConnection":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"GOOGLE_DRIVE_CLIENT_ID"},{"key":"MICROSOFT_ONEDRIVE_CLIENT_ID"},{"key":"DOCUMENT_STORAGE_REDIRECT_URI"}],"labels":{},"callableTrigger":{},"entryPoint":"startDocumentStorageConnection"},"completeDocumentStorageConnection":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"GOOGLE_DRIVE_CLIENT_ID"},{"key":"GOOGLE_DRIVE_CLIENT_SECRET"},{"key":"MICROSOFT_ONEDRIVE_CLIENT_ID"},{"key":"MICROSOFT_ONEDRIVE_CLIENT_SECRET"},{"key":"DOCUMENT_STORAGE_REDIRECT_URI"}],"labels":{},"httpsTrigger":{},"entryPoint":"completeDocumentStorageConnection"},"uploadGeneratedDocument":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"GOOGLE_DRIVE_CLIENT_ID"},{"key":"GOOGLE_DRIVE_CLIENT_SECRET"},{"key":"MICROSOFT_ONEDRIVE_CLIENT_ID"},{"key":"MICROSOFT_ONEDRIVE_CLIENT_SECRET"}],"labels":{},"callableTrigger":{},"entryPoint":"uploadGeneratedDocument"},"analyzePdfTemplate":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"analyzePdfTemplate"},"renderPdfTemplate":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"renderPdfTemplate"},"generatePdfDocument":{"availableMemoryMb":1024,"timeoutSeconds":120,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"generatePdfDocument"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"cloudscheduler.googleapis.com","reason":"Needed for scheduled functions."}],"extensions":{},"params":[{"type":"secret","name":"SENDGRID_API_KEY"},{"type":"secret","name":"SENDGRID_FROM_EMAIL"},{"type":"secret","name":"SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY"},{"type":"secret","name":"COMPANY_SENDGRID_CREDENTIALS"},{"type":"secret","name":"GMAIL_OAUTH_CLIENT_ID"},{"type":"secret","name":"GMAIL_OAUTH_CLIENT_SECRET"},{"type":"secret","name":"GMAIL_OAUTH_REDIRECT_URI"},{"type":"secret","name":"MICROSOFT_EMAIL_OAUTH_CLIENT_ID"},{"type":"secret","name":"MICROSOFT_EMAIL_OAUTH_CLIENT_SECRET"},{"type":"secret","name":"MICROSOFT_EMAIL_OAUTH_REDIRECT_URI"},{"type":"secret","name":"MICROSOFT_EMAIL_ALLOWED_TENANTS"},{"type":"secret","name":"GOOGLE_DRIVE_CLIENT_ID"},{"type":"secret","name":"GOOGLE_DRIVE_CLIENT_SECRET"},{"type":"secret","name":"MICROSOFT_ONEDRIVE_CLIENT_ID"},{"type":"secret","name":"MICROSOFT_ONEDRIVE_CLIENT_SECRET"},{"type":"secret","name":"DOCUMENT_STORAGE_REDIRECT_URI"}]}
+[info] i  extensions: ensuring required API firebaseextensions.googleapis.com is enabled... 
+[debug] [2026-08-19T17:56:17.408Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-19T17:56:17.409Z] > authorizing via signed-in user (migallewis@pacifish.biz)
+[debug] [2026-08-19T17:56:17.409Z] [iam] checking project invoice-simple-336 for permissions ["firebase.projects.get","firebaseextensions.instances.list"]
+[debug] [2026-08-19T17:56:17.409Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:17.409Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:17.410Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/invoice-simple-336:testIamPermissions [none]
+[debug] [2026-08-19T17:56:17.410Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/invoice-simple-336:testIamPermissions x-goog-quota-user=projects/invoice-simple-336
+[debug] [2026-08-19T17:56:17.410Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/invoice-simple-336:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2026-08-19T17:56:19.130Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/invoice-simple-336:testIamPermissions 200
+[debug] [2026-08-19T17:56:19.130Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/invoice-simple-336:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2026-08-19T17:56:19.131Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:19.132Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:19.134Z] >>> [apiv2][query] GET https://firebaseextensions.googleapis.com/v1beta/projects/invoice-simple-336/instances pageSize=100&pageToken=
+[debug] [2026-08-19T17:56:21.208Z] <<< [apiv2][status] GET https://firebaseextensions.googleapis.com/v1beta/projects/invoice-simple-336/instances 200
+[debug] [2026-08-19T17:56:21.208Z] <<< [apiv2][body] GET https://firebaseextensions.googleapis.com/v1beta/projects/invoice-simple-336/instances {}
+[debug] [2026-08-19T17:56:21.212Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:21.212Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:21.213Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_API_KEY [none]
+[debug] [2026-08-19T17:56:23.047Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_API_KEY 200
+[debug] [2026-08-19T17:56:23.048Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_API_KEY {"name":"projects/224759554009/secrets/SENDGRID_API_KEY","replication":{"automatic":{}},"createTime":"2026-08-03T21:46:55.454400Z","labels":{"firebase-managed":"functions"},"etag":"\"16582b7a214ddd\""}
+[debug] [2026-08-19T17:56:23.050Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:23.050Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:23.050Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_API_KEY/versions/latest [none]
+[debug] [2026-08-19T17:56:23.392Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_API_KEY/versions/latest 200
+[debug] [2026-08-19T17:56:23.393Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_API_KEY/versions/latest {"name":"projects/224759554009/secrets/SENDGRID_API_KEY/versions/1","createTime":"2026-08-03T21:46:57.071719Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"16582b7a300e67\""}
+[debug] [2026-08-19T17:56:23.395Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:23.395Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:23.395Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_FROM_EMAIL [none]
+[debug] [2026-08-19T17:56:24.218Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_FROM_EMAIL 200
+[debug] [2026-08-19T17:56:24.218Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_FROM_EMAIL {"name":"projects/224759554009/secrets/SENDGRID_FROM_EMAIL","replication":{"automatic":{}},"createTime":"2026-08-03T21:47:15.086894Z","labels":{"firebase-managed":"functions"},"etag":"\"16582b7b4cc85d\""}
+[debug] [2026-08-19T17:56:24.219Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:24.220Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:24.220Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_FROM_EMAIL/versions/latest [none]
+[debug] [2026-08-19T17:56:24.654Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_FROM_EMAIL/versions/latest 200
+[debug] [2026-08-19T17:56:24.655Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_FROM_EMAIL/versions/latest {"name":"projects/224759554009/secrets/SENDGRID_FROM_EMAIL/versions/1","createTime":"2026-08-03T21:47:17.850715Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"16582b7b6d1e5b\""}
+[debug] [2026-08-19T17:56:24.655Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:24.656Z] Checked if tokens are valid: true, expires at: 1787165765616
+[debug] [2026-08-19T17:56:24.656Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY [none]
+[debug] [2026-08-19T17:56:25.338Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY 404
+[debug] [2026-08-19T17:56:25.338Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY {"error":{"code":404,"message":"Secret [projects/224759554009/secrets/SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY] not found.","status":"NOT_FOUND"}}
+[debug] [2026-08-19T18:54:05.372Z] Checked if tokens are valid: false, expires at: 1787165765616
+[debug] [2026-08-19T18:54:05.372Z] Checked if tokens are valid: false, expires at: 1787165765616
+[debug] [2026-08-19T18:54:05.372Z] > refreshing access token with scopes: []
+[debug] [2026-08-19T18:54:05.373Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-08-19T18:54:05.373Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-19T18:54:05.924Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-08-19T18:54:05.924Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-19T18:54:05.948Z] >>> [apiv2][query] POST https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets secretId=SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY
+[debug] [2026-08-19T18:54:05.948Z] >>> [apiv2][body] POST https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets {"name":"SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY","replication":{"automatic":{}},"labels":{"firebase-managed":"functions"}}
+[debug] [2026-08-19T18:54:08.279Z] <<< [apiv2][status] POST https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets 200
+[debug] [2026-08-19T18:54:08.279Z] <<< [apiv2][body] POST https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets {"name":"projects/224759554009/secrets/SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY","replication":{"automatic":{}},"createTime":"2026-08-19T18:54:07.367232Z","labels":{"firebase-managed":"functions"},"etag":"\"16596aed9b6bcb\""}
+[debug] [2026-08-19T18:54:08.280Z] Checked if tokens are valid: true, expires at: 1787169244924
+[debug] [2026-08-19T18:54:08.281Z] Checked if tokens are valid: true, expires at: 1787169244924
+[debug] [2026-08-19T18:54:08.281Z] >>> [apiv2][query] POST https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY:addVersion [none]
+[debug] [2026-08-19T18:54:08.281Z] >>> [apiv2][body] POST https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY:addVersion {"payload":{"data":"TUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFTHNyRVE2a2ZBMW5oRVZUYXdudzR1cnVrK3RvV2N2YmNYeFVzdXg0VUdBeER6dnlzVndsU3ZLdVd4ZzhwanphQmZTNjlNUmY2YllrTXZUMGxPR0ZUYlE9PQ=="}}
+[debug] [2026-08-19T18:54:09.401Z] <<< [apiv2][status] POST https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY:addVersion 200
+[debug] [2026-08-19T18:54:09.401Z] <<< [apiv2][body] POST https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY:addVersion {"name":"projects/224759554009/secrets/SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY/versions/1","createTime":"2026-08-19T18:54:09.110866Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"16596aedab8752\""}
+[debug] [2026-08-19T18:54:09.401Z] Checked if tokens are valid: true, expires at: 1787169244924
+[debug] [2026-08-19T18:54:09.401Z] Checked if tokens are valid: true, expires at: 1787169244924
+[debug] [2026-08-19T18:54:09.401Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/COMPANY_SENDGRID_CREDENTIALS [none]
+[debug] [2026-08-19T18:54:09.915Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/COMPANY_SENDGRID_CREDENTIALS 404
+[debug] [2026-08-19T18:54:09.916Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/invoice-simple-336/secrets/COMPANY_SENDGRID_CREDENTIALS {"error":{"code":404,"message":"Secret [projects/224759554009/secrets/COMPANY_SENDGRID_CREDENTIALS] not found.","status":"NOT_FOUND"}}
+[debug] [2026-08-19T19:03:22.651Z] ExitPromptError: User force closed the prompt with SIGINT
+    at Interface.sigint (/home/migal/.nvm/versions/node/v20.19.2/lib/node_modules/firebase-tools/node_modules/@inquirer/core/dist/commonjs/lib/create-prompt.js:101:37)
+    at Interface.emit (node:events:524:28)
+    at Interface.emit (node:domain:489:12)
+    at [_ttyWrite] [as _ttyWrite] (node:internal/readline/interface:1125:18)
+    at ReadStream.onkeypress (node:internal/readline/interface:264:20)
+    at ReadStream.emit (node:events:536:35)
+    at ReadStream.emit (node:domain:489:12)
+    at emitKeys (node:internal/readline/utils:371:14)
+    at emitKeys.next (<anonymous>)
+    at ReadStream.onData (node:internal/readline/emitKeypressEvents:64:36)
+[error] 
+[error] Error: An unexpected error has occurred.

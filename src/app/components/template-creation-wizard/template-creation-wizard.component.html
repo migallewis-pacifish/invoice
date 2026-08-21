@@ -63,7 +63,7 @@
           <small *ngIf="!brandPalette()">Add brand colours in Settings → Branding to use them here.</small>
         </div>
         <app-template-colour-selector *ngIf="selectedFreemarker() as selected"
-          [colors]="paletteFor(selected)" [title]="selected.id === 'tricolour-sidebar' ? 'Sidebar gradient' : 'Template colours'"
+          [colors]="paletteFor(selected)" [title]="selected.id === 'tricolour-sidebar' || selected.id === 'tricolour-sidebar-letter' ? 'Sidebar gradient' : 'Template colours'"
           [disabled]="colourSource() === 'brand'"
           (colorsChange)="updateStarterPalette($event)"></app-template-colour-selector>
       </div>
